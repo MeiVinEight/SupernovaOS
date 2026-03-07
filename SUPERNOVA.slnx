@@ -1,0 +1,8 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="CORE/CORE.vcxproj" Id="68215876-cb21-49cd-9f58-9857560d7578" />
+  <Project Path="EFI/EFI.vcxproj" Id="b81b697a-3c8d-4fc0-b2e7-347873b2dc5e" />
+</Solution>

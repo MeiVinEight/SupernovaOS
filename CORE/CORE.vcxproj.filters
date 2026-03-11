@@ -13,6 +13,24 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\interrupt">
+      <UniqueIdentifier>{38eabc39-e735-454c-82dc-7fd27cf49c77}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\interrupt">
+      <UniqueIdentifier>{70f1ef65-92ab-47ee-86bd-b0d34ef748c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\arch">
+      <UniqueIdentifier>{2ff7765b-6477-42ff-93be-746066bfb2b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\timer">
+      <UniqueIdentifier>{149263c4-4924-4e0d-ac1c-49aecd8c428b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\arch">
+      <UniqueIdentifier>{8efd8e66-1f3f-4bf0-a7c3-355e843a0f35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\timer">
+      <UniqueIdentifier>{340403bd-1218-4139-82b6-1d2772b949c3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.c">
@@ -21,10 +39,64 @@
     <ClCompile Include="src\intrinsic.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\console.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\memory\segment.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\memory\paging.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interrupt\8259a.c">
+      <Filter>Source Files\interrupt</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interrupt\apic.c">
+      <Filter>Source Files\interrupt</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interrupt\interrupt.c">
+      <Filter>Source Files\interrupt</Filter>
+    </ClCompile>
+    <ClCompile Include="src\arch\processor.c">
+      <Filter>Source Files\arch</Filter>
+    </ClCompile>
+    <ClCompile Include="src\timer\timer.c">
+      <Filter>Source Files\timer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\intrinsic.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory\segment.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory\paging.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\interrupt\8259a.h">
+      <Filter>Header Files\interrupt</Filter>
+    </ClInclude>
+    <ClInclude Include="src\interrupt\apic.h">
+      <Filter>Header Files\interrupt</Filter>
+    </ClInclude>
+    <ClInclude Include="src\interrupt\interrupt.h">
+      <Filter>Header Files\interrupt</Filter>
+    </ClInclude>
+    <ClInclude Include="src\arch\processor.h">
+      <Filter>Header Files\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="src\arch\ia32_msr.h">
+      <Filter>Header Files\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="src\timer\timer.h">
+      <Filter>Header Files\timer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\timer\8254.h">
+      <Filter>Header Files\timer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

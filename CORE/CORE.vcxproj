@@ -164,6 +164,8 @@
       <CallingConvention />
       <UseFullPaths />
       <ErrorReporting />
+      <Optimization>
+      </Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -232,6 +234,8 @@
       <CallingConvention />
       <UseFullPaths />
       <ErrorReporting />
+      <Optimization>
+      </Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -262,11 +266,29 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\arch\processor.c" />
+    <ClCompile Include="src\console.c" />
+    <ClCompile Include="src\interrupt\8259a.c" />
+    <ClCompile Include="src\interrupt\apic.c" />
+    <ClCompile Include="src\interrupt\interrupt.c" />
     <ClCompile Include="src\intrinsic.c" />
     <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\memory\paging.c" />
+    <ClCompile Include="src\memory\segment.c" />
+    <ClCompile Include="src\timer\timer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\arch\ia32_msr.h" />
+    <ClInclude Include="src\arch\processor.h" />
+    <ClInclude Include="src\console.h" />
+    <ClInclude Include="src\interrupt\8259a.h" />
+    <ClInclude Include="src\interrupt\apic.h" />
+    <ClInclude Include="src\interrupt\interrupt.h" />
     <ClInclude Include="src\intrinsic.h" />
+    <ClInclude Include="src\memory\paging.h" />
+    <ClInclude Include="src\memory\segment.h" />
+    <ClInclude Include="src\timer\8254.h" />
+    <ClInclude Include="src\timer\timer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

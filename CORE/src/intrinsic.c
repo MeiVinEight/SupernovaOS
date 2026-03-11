@@ -1,6 +1,10 @@
 //#include <intrinsic.h>
 #pragma section(".text")
 
+__declspec(allocate(".text")) const char __getrsp[] = {
+	0x48, 0x8D, 0x44, 0x24, 0x08, // LEA RAX, [RSP+08H];
+	0xC3,                         // RET
+};
 __declspec(allocate(".text")) const char __memset128[] =
 {
 	0x48, 0x8B, 0xC1,       // MOV    RAX,  RCX
@@ -17,4 +21,10 @@ __declspec(allocate(".text")) const char __memset128[] =
 
 	// LOOP1:
 	0xC3,                   // RET
+};
+
+__declspec(allocate(".text")) char __lgdt[] =
+{
+	0x0F, 0x01, 0x11, // LGDT [RCX]
+	0xC3              // RET
 };

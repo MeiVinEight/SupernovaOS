@@ -1,31 +1,9 @@
 #pragma once
 
+#include <types.h>
+
 #pragma section(".text")
 #define COREAPI __declspec(allocate(".text"))
-
-
-typedef unsigned char BYTE;
-typedef unsigned short WORD;
-typedef unsigned long DWORD;
-typedef unsigned long long QWORD;
-
-typedef struct _MEMORY_REGION
-{
-	QWORD A;
-	QWORD L : 56;
-	QWORD F : 8;
-} MEMORY_REGION;
-typedef struct _SUPERNOVA_SYSTEM_TABLE
-{
-	QWORD GUID0[2];
-	QWORD GUID1[2];
-	WORD HRES;
-	WORD VRES;
-	DWORD PPL;
-	QWORD FBB;
-	QWORD GDT[3];
-	MEMORY_REGION MEMORY[1];
-} SUPERNOVA_SYSTEM_TABLE;
 
 void  __cpuid(int *, int);
 void  __cpuidex(int *, int, int);

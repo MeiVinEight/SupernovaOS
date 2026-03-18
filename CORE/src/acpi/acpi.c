@@ -2,6 +2,7 @@
 #include <core.h>
 #include <timer/hpet.h>
 #include <interrupt/apic.h>
+#include <driver/pci/pcie.h>
 
 void setup_acpi()
 {
@@ -10,20 +11,22 @@ void setup_acpi()
 		return;
 
 	QWORD sign = 0;
-	DWORD *dwSign = (DWORD *) &sign;
+	volatile DWORD *dwSign = (DWORD *) &sign;
 	char *signName = (char *) dwSign;
 	ACPI_RSDT *rsdt = (ACPI_RSDT *) core_mapping(rsdp->RSDT);
 	DWORD entryCount = (rsdt->HEAD.LENG - sizeof(ACPI_SDT_HEADER)) >> 2;
 	for (DWORD enityIdx = 0; enityIdx < entryCount; enityIdx++)
 	{
 		DWORD entryPhyAddr = rsdt->TABLE[enityIdx];
-
 		ACPI_SDT_HEADER *entry = (ACPI_SDT_HEADER *) core_mapping(entryPhyAddr);
 		*dwSign = *((DWORD *) entry->SIGN);
+
 		if (*dwSign == 0x54455048) // HPET
 			setup_hpet((ACPI_HPET *) entry);
 		if (*dwSign == ACPI_SIGNATURE_MADT)
 			setup_madt((ACPI_MADT *) entry);
+		if (*dwSign == ACPI_SIGNATURE_MCFG)
+			setup_pcie_mcfg((ACPI_MCFG *) entry);
 	}
 	/*
 	ACPI_XSDT *xsdt = (ACPI_XSDT *) core_mapping(rsdp->XSDT);

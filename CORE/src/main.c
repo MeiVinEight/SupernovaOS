@@ -8,7 +8,7 @@
 #include <interrupt/apic.h>
 #include <timer/timer.h>
 #include <acpi/acpi.h>
-#include <driver/pci/pci.h>
+#include <driver/pci/pcie.h>
 
 QWORD __stdcall coreCRTStartup();
 
@@ -51,7 +51,7 @@ QWORD coreCRTStartup()
 	setup_acpi();
 	setup_timer();
 	apic_setup_multiprocessor();
-	setup_pci();
+	setup_pcie();
 
 	/*
 	MEMORY_REGION *beg = SYSTEM_TABLE->MEMORY;

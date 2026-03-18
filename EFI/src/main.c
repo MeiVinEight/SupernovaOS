@@ -4,6 +4,8 @@
 #include "pci.h"
 #include "ahci.h"
 #include "ntfs.h"
+#include "acpi.h"
+#include "pcie.h"
 
 #define PCI_COMMAND         0x04
 #define PCI_BASE_ADDRESS_5	0x24
@@ -157,6 +159,10 @@ void OutputAddress(QWORD addr)
 	OutputText(buf);
 	*/
 	OutputAddressX(addr, 16);
+}
+QWORD core_mapping(QWORD x)
+{
+	return x;
 }
 QWORD jmp(QWORD(*entry)(), QWORD stackAddr)
 {
@@ -393,25 +399,8 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 
 	return 1;
 }
-DWORD ahci_controller_setup(DWORD cmdAhci)
+DWORD ahci_controller_load(void *iobase)
 {
-	void *iobase = pci_enable_mmio(cmdAhci, PCI_BASE_ADDRESS_5);
-	if (!iobase)
-	{
-		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
-		return 0;
-	}
-
-	DWORD dvc = cmdAhci;
-	// Enable busmaster
-	// Read Command register and set MASTER bit
-	__outdword(0x0CF8, dvc + PCI_COMMAND);
-	WORD val = __inword(0x0CFC) | PCI_COMMAND_MASTER;
-	// Write to Command register
-	__outdword(0x0CF8, dvc + PCI_COMMAND);
-	__outword(0x0CFC, val);
-
-
 	HBA_MEM *abar = (HBA_MEM *) iobase;
 	abar->ghc |= HOST_CTL_AHCI_EN;
 
@@ -445,20 +434,146 @@ DWORD ahci_controller_setup(DWORD cmdAhci)
 
 		finding &= (1 ^ loading_core_sata(port, page));
 
-		STOP_READ:
+	STOP_READ:
 		stop_cmd(port);
 
-		NEXT_PORT:
+	NEXT_PORT:
 		pi >>= 1;
 		port++;
 		portNum++;
 	}
 	return finding ^ 1;
 }
+DWORD ahci_controller_setup(DWORD cmdAhci)
+{
+	OutputText("PCI @ ");
+	OutputAddressX(cmdAhci, 8);
+	OutputText(" AHCI CONTROLLER\r\n");
+	void *iobase = pci_enable_mmio(cmdAhci, PCI_BASE_ADDRESS_5);
+	if (!iobase)
+	{
+		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
+		return 0;
+	}
+
+	DWORD dvc = cmdAhci;
+	// Enable busmaster
+	// Read Command register and set MASTER bit
+	__outdword(0x0CF8, dvc + PCI_COMMAND);
+	WORD val = __inword(0x0CFC) | PCI_COMMAND_MASTER;
+	// Write to Command register
+	__outdword(0x0CF8, dvc + PCI_COMMAND);
+	__outword(0x0CFC, val);
+
+	return ahci_controller_load(iobase);
+}
+DWORD pcie_ahci_controller_setup(volatile PCI_CONFIGURATION_SPACE *configSpec)
+{
+	OutputText("PCI Express @ ");
+	OutputAddressX((QWORD) configSpec, 8);
+	OutputText(" AHCI CONTROLLER\r\n");
+	void *iobase = pcie_enable_mmio(configSpec, 5);
+	if (!iobase)
+	{
+		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
+		return 0;
+	}
+
+	// Enable busmaster
+	WORD cmd = configSpec->command | PCI_COMMAND_MASTER;
+	// Write to Command Register
+	configSpec->command = cmd;
+
+	return ahci_controller_load(iobase);
+}
+DWORD find_pcie(ACPI_RSDP *rsdp)
+{
+	// Find RSDT
+	if (!rsdp)
+		return 0;
+
+	ACPI_MCFG *mcfg = 0;
+
+	{
+		QWORD sign = 0;
+		volatile DWORD *dwSign = (DWORD *) &sign;
+		char *signName = (char *) dwSign;
+		ACPI_RSDT *rsdt = (ACPI_RSDT *) (QWORD) rsdp->RSDT;
+		DWORD entryCount = (rsdt->HEAD.LENG - sizeof(ACPI_SDT_HEADER)) >> 2;
+		for (DWORD entryIdx = 0; (entryIdx < entryCount) && (!mcfg); entryIdx++)
+		{
+			QWORD entryPhyAddr = rsdt->TABLE[entryIdx];
+			ACPI_SDT_HEADER *entry = (ACPI_SDT_HEADER *) entryPhyAddr;
+			*dwSign = *((DWORD *) entry->SIGN);
+
+			if (*dwSign == ACPI_SIGNATURE_MCFG)
+				mcfg = (ACPI_MCFG *) entry;
+		}
+
+		if (!mcfg)
+		{
+			OutputText("PCI Express Address Not Found\r\n");
+			return 0;
+		}
+	}
+
+	OutputText("PCI Express @ ");
+	OutputAddressX((QWORD) mcfg, 8);
+	OutputText("\r\n");
+
+	QWORD length = mcfg->HEAD.LENG;
+	DWORD entryCount = (length - /*sizeof(ACPI_MCFG)*/ 44) / sizeof(PCIE_SEGMENT_ADDRESS);
+
+	for (volatile DWORD entryIdx = 0; entryIdx < entryCount; entryIdx++)
+	{
+		volatile QWORD segAddr = core_mapping(mcfg->ECAM[entryIdx].ECAM);
+
+		for (volatile BYTE bus = 0; (bus + mcfg->ECAM[entryIdx].SBUS) < mcfg->ECAM[entryIdx].EBUS; bus++)
+		{
+			// Enumerate BUS
+			volatile QWORD busAddr = segAddr + ((QWORD) bus << 20);
+
+			for (volatile BYTE device = 0; device < 32; device++)
+			{
+				// Enumerate DEVICE
+				volatile QWORD devAddr = busAddr + ((QWORD) device << 15);
+				for (volatile BYTE func = 0; func < 8; func++)
+				{
+					// Enumerate function
+					volatile QWORD funcAddr = devAddr + ((QWORD) func << 12);
+					volatile PCI_CONFIGURATION_SPACE *conf = (PCI_CONFIGURATION_SPACE *) funcAddr;
+					if ((!conf->device) || (conf->device == 0xFFFF))
+						continue;
+
+					volatile PCI_DEVICE_VENDOR vendor;
+					vendor.VENDOR = conf->vendor;
+					vendor.DEVICE = conf->device;
+					OutputText("PCI @ ");
+					OutputAddressX(funcAddr, 16);
+					OutputText(" - ");
+					OutputAddressX(conf->subsystem, 8);
+					OutputText(": ");
+					OutputAddressX(conf->class, 6);
+					OutputText(" - ");
+					OutputAddressX(vendor.ID, 8);
+					OutputText("\r\n");
+
+					if (conf->class == 0x010601) // AHCI
+					{
+						DWORD found = pcie_ahci_controller_setup(conf);
+						if (found) return 1;
+					}
+				}
+			}
+		}
+	}
+
+	return 0;
+}
 DWORD find_pci()
 {
 	// Config Address
-	DWORD cmd = 0x80000000;
+	volatile DWORD cmd = 0x80000000;
 	while (cmd < 0x81000000)
 	{
 		__outdword(0x0CF8, cmd);
@@ -569,16 +684,22 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 			)
 		{
 			rsdp = (QWORD) SYSTEM_TABLE->ConfigurationTable[i].TABLE;
-			//OutputText("ACPI 2.0 RSD PTR @ ");
-			//OutputAddress(rsdp);
-			//OutputText("\r\n");
+			OutputText("ACPI 2.0 RSD PTR @ ");
+			OutputAddress(rsdp);
+			OutputText("\r\n");
 			break;
 		}
 	}
 	if (!rsdp)
 		OutputText("ACPI 2.0 RSD PTR NOT FOUND\r\n");
-
-	find_pci();
+	if (!find_pcie((ACPI_RSDP *) rsdp))
+	{
+		if (!find_pci())
+		{
+			OutputText("CORE.DLL NOT FOUND");
+			jmp(0, 0);
+		}
+	}
 
 	QWORD memMapSize = 0;
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = 0;

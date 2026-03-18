@@ -247,10 +247,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\acpi.h" />
     <ClInclude Include="src\ahci.h" />
     <ClInclude Include="src\intrinsic.h" />
     <ClInclude Include="src\ntfs.h" />
     <ClInclude Include="src\pci.h" />
+    <ClInclude Include="src\pcie.h" />
     <ClInclude Include="src\uefi.h" />
   </ItemGroup>
   <ItemGroup>

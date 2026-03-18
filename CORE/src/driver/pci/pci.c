@@ -2,80 +2,80 @@
 #include <console.h>
 #include <core.h>
 
-COREAPI const char PCI_VENDOR_10DE[] = "NVIDIA Corporation";
-COREAPI const char PCI_VENDOR_1234[] = "QEMU Virtual Machine";
-COREAPI const char PCI_VENDOR_15AD[] = "VMware";
-COREAPI const char PCI_VENDOR_1969[] = "Qualcomm Atheros";
-COREAPI const char PCI_VENDOR_1987[] = "Phison Electronics Corporation";
-COREAPI const char PCI_VENDOR_1B21[] = "ASMedia Technology Inc.";
-COREAPI const char PCI_VENDOR_1B36[] = "Red Hat Inc";
-COREAPI const char PCI_VENDOR_1DEE[] = "Biwin Storage Technology Co., Ltd.";
-COREAPI const char PCI_VENDOR_8086[] = "Intel Corporation";
-COREAPI const char PCI_VENDOR_80EE[] = "InnoTek Systemberatung GmbH";
+COREAPI char PCI_VENDOR_10DE[] = "NVIDIA Corporation";
+COREAPI char PCI_VENDOR_1234[] = "QEMU Virtual Machine";
+COREAPI char PCI_VENDOR_15AD[] = "VMware";
+COREAPI char PCI_VENDOR_1969[] = "Qualcomm Atheros";
+COREAPI char PCI_VENDOR_1987[] = "Phison Electronics Corporation";
+COREAPI char PCI_VENDOR_1B21[] = "ASMedia Technology Inc.";
+COREAPI char PCI_VENDOR_1B36[] = "Red Hat Inc";
+COREAPI char PCI_VENDOR_1DEE[] = "Biwin Storage Technology Co., Ltd.";
+COREAPI char PCI_VENDOR_8086[] = "Intel Corporation";
+COREAPI char PCI_VENDOR_80EE[] = "InnoTek Systemberatung GmbH";
 
-COREAPI const char PCI_DEVICE_10DE10F7[] = "TU102 High Definition Audio Controller";
-COREAPI const char PCI_DEVICE_10DE1AD6[] = "TU102 USB 3.1 Host Controller";
-COREAPI const char PCI_DEVICE_10DE1AD7[] = "TU102 USB Type-C UCSI Controller";
-COREAPI const char PCI_DEVICE_10DE1E07[] = "TU102 [GeForce RTX 2080 Ti Rev. A]";
+COREAPI char PCI_DEVICE_10DE10F7[] = "TU102 High Definition Audio Controller";
+COREAPI char PCI_DEVICE_10DE1AD6[] = "TU102 USB 3.1 Host Controller";
+COREAPI char PCI_DEVICE_10DE1AD7[] = "TU102 USB Type-C UCSI Controller";
+COREAPI char PCI_DEVICE_10DE1E07[] = "TU102 [GeForce RTX 2080 Ti Rev. A]";
 
-COREAPI const char PCI_DEVICE_12341111[] = "VGA Controller";
+COREAPI char PCI_DEVICE_12341111[] = "VGA Controller";
 
-COREAPI const char PCI_DEVICE_15AD0405[] = "SVGA II Adapter";
-COREAPI const char PCI_DEVICE_15AD0740[] = "Virtual Machine Communication Interface";
-COREAPI const char PCI_DEVICE_15AD0770[] = "USB2 EHCI Controller";
-COREAPI const char PCI_DEVICE_15AD0774[] = "USB1.1 UHCI Controller";
-COREAPI const char PCI_DEVICE_15AD077A[] = "USB3 xHCI 2.0 Controller";
-COREAPI const char PCI_DEVICE_15AD0790[] = "PCI bridge";
-COREAPI const char PCI_DEVICE_15AD07A0[] = "PCI Express Root Port";
-COREAPI const char PCI_DEVICE_15AD07E0[] = "SATA AHCI controller";
+COREAPI char PCI_DEVICE_15AD0405[] = "SVGA II Adapter";
+COREAPI char PCI_DEVICE_15AD0740[] = "Virtual Machine Communication Interface";
+COREAPI char PCI_DEVICE_15AD0770[] = "USB2 EHCI Controller";
+COREAPI char PCI_DEVICE_15AD0774[] = "USB1.1 UHCI Controller";
+COREAPI char PCI_DEVICE_15AD077A[] = "USB3 xHCI 2.0 Controller";
+COREAPI char PCI_DEVICE_15AD0790[] = "PCI bridge";
+COREAPI char PCI_DEVICE_15AD07A0[] = "PCI Express Root Port";
+COREAPI char PCI_DEVICE_15AD07E0[] = "SATA AHCI controller";
 
-COREAPI const char PCI_DEVICE_1969E0B1[] = "Killer E2500 Gigabit Ethernet Controller";
+COREAPI char PCI_DEVICE_1969E0B1[] = "Killer E2500 Gigabit Ethernet Controller";
 
-COREAPI const char PCI_DEVICE_19875013[] = "PS5013 E13 NVMe Controller";
+COREAPI char PCI_DEVICE_19875013[] = "PS5013 E13 NVMe Controller";
 
-COREAPI const char PCI_DEVICE_1B212142[] = "ASM2142/ASM3142 USB 3.1 Host Controller";
+COREAPI char PCI_DEVICE_1B212142[] = "ASM2142/ASM3142 USB 3.1 Host Controller";
 
-COREAPI const char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
+COREAPI char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
 
-COREAPI const char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
+COREAPI char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
 
-COREAPI const char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
-COREAPI const char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
-COREAPI const char PCI_DEVICE_80861901[] = "6th-9th Gen Core Processor PCIe Controller (x16)";
-COREAPI const char PCI_DEVICE_80861911[] = "Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model";
-COREAPI const char PCI_DEVICE_8086272B[] = "Wi-Fi 7(802.11be) AX1775*/AX1790*/BE20*/BE401/BE1750* 2x2";
-COREAPI const char PCI_DEVICE_80862829[] = "82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode]";
-COREAPI const char PCI_DEVICE_80862922[] = "QEMU Virtual Machine SATA Controller [AHCI 1.0]";
-COREAPI const char PCI_DEVICE_80863EC2[] = "8th Gen Core Processor Host Bridge/DRAM Registers";
-COREAPI const char PCI_DEVICE_80867000[] = "82371SB PIIX3 ISA [Natoma/Triton II]";
-COREAPI const char PCI_DEVICE_80867010[] = "QEMU Virtual Machine IDE Controller";
-COREAPI const char PCI_DEVICE_80867110[] = "82371AB/EB/MB PIIX4 ISA";
-COREAPI const char PCI_DEVICE_80867111[] = "82371AB/EB/MB PIIX4 IDE";
-COREAPI const char PCI_DEVICE_80867113[] = "82371AB/EB/MB PIIX4 ACPI";
-COREAPI const char PCI_DEVICE_80867191[] = "440BX/ZX/DX - 82443BX/ZX/DX AGP bridge";
-COREAPI const char PCI_DEVICE_80867192[] = "440BX/ZX/DX - 82443BX/ZX/DX Host bridge (AGP disabled)";
-COREAPI const char PCI_DEVICE_8086A282[] = "200 Series PCH SATA controller [AHCI mode]";
-COREAPI const char PCI_DEVICE_8086A290[] = "200 Series PCH PCI Express Root Port #1";
-COREAPI const char PCI_DEVICE_8086A292[] = "200 Series PCH PCI Express Root Port #3";
-COREAPI const char PCI_DEVICE_8086A293[] = "200 Series PCH PCI Express Root Port #4";
-COREAPI const char PCI_DEVICE_8086A294[] = "200 Series PCH PCI Express Root Port #5";
-COREAPI const char PCI_DEVICE_8086A295[] = "200 Series PCH PCI Express Root Port #6";
-COREAPI const char PCI_DEVICE_8086A296[] = "200 Series PCH PCI Express Root Port #7";
-COREAPI const char PCI_DEVICE_8086A297[] = "200 Series PCH PCI Express Root Port #8";
-COREAPI const char PCI_DEVICE_8086A298[] = "200 Series PCH PCI Express Root Port #9";
-COREAPI const char PCI_DEVICE_8086A2A1[] = "200 Series/Z370 Chipset Family Power Management Controller";
-COREAPI const char PCI_DEVICE_8086A2A3[] = "200 Series/Z370 Chipset Family SMBus Controller";
-COREAPI const char PCI_DEVICE_8086A2AF[] = "200 Series/Z370 Chipset Family USB 3.0 xHCI Controller";
-COREAPI const char PCI_DEVICE_8086A2BA[] = "200 Series PCH CSME HECI #1";
-COREAPI const char PCI_DEVICE_8086A2E7[] = "200 Series PCH PCI Express Root Port #17";
-COREAPI const char PCI_DEVICE_8086A2E9[] = "200 Series PCH PCI Express Root Port #19";
-COREAPI const char PCI_DEVICE_8086A2EB[] = "200 Series PCH PCI Express Root Port #21";
-COREAPI const char PCI_DEVICE_8086A2C9[] = "Z370 Chipset LPC/eSPI Controller";
-COREAPI const char PCI_DEVICE_8086A2F0[] = "200 Series PCH HD Audio";
+COREAPI char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
+COREAPI char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
+COREAPI char PCI_DEVICE_80861901[] = "6th-9th Gen Core Processor PCIe Controller (x16)";
+COREAPI char PCI_DEVICE_80861911[] = "Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model";
+COREAPI char PCI_DEVICE_8086272B[] = "Wi-Fi 7(802.11be) AX1775*/AX1790*/BE20*/BE401/BE1750* 2x2";
+COREAPI char PCI_DEVICE_80862829[] = "82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode]";
+COREAPI char PCI_DEVICE_80862922[] = "QEMU Virtual Machine SATA Controller [AHCI 1.0]";
+COREAPI char PCI_DEVICE_80863EC2[] = "8th Gen Core Processor Host Bridge/DRAM Registers";
+COREAPI char PCI_DEVICE_80867000[] = "82371SB PIIX3 ISA [Natoma/Triton II]";
+COREAPI char PCI_DEVICE_80867010[] = "QEMU Virtual Machine IDE Controller";
+COREAPI char PCI_DEVICE_80867110[] = "82371AB/EB/MB PIIX4 ISA";
+COREAPI char PCI_DEVICE_80867111[] = "82371AB/EB/MB PIIX4 IDE";
+COREAPI char PCI_DEVICE_80867113[] = "82371AB/EB/MB PIIX4 ACPI";
+COREAPI char PCI_DEVICE_80867191[] = "440BX/ZX/DX - 82443BX/ZX/DX AGP bridge";
+COREAPI char PCI_DEVICE_80867192[] = "440BX/ZX/DX - 82443BX/ZX/DX Host bridge (AGP disabled)";
+COREAPI char PCI_DEVICE_8086A282[] = "200 Series PCH SATA controller [AHCI mode]";
+COREAPI char PCI_DEVICE_8086A290[] = "200 Series PCH PCI Express Root Port #1";
+COREAPI char PCI_DEVICE_8086A292[] = "200 Series PCH PCI Express Root Port #3";
+COREAPI char PCI_DEVICE_8086A293[] = "200 Series PCH PCI Express Root Port #4";
+COREAPI char PCI_DEVICE_8086A294[] = "200 Series PCH PCI Express Root Port #5";
+COREAPI char PCI_DEVICE_8086A295[] = "200 Series PCH PCI Express Root Port #6";
+COREAPI char PCI_DEVICE_8086A296[] = "200 Series PCH PCI Express Root Port #7";
+COREAPI char PCI_DEVICE_8086A297[] = "200 Series PCH PCI Express Root Port #8";
+COREAPI char PCI_DEVICE_8086A298[] = "200 Series PCH PCI Express Root Port #9";
+COREAPI char PCI_DEVICE_8086A2A1[] = "200 Series/Z370 Chipset Family Power Management Controller";
+COREAPI char PCI_DEVICE_8086A2A3[] = "200 Series/Z370 Chipset Family SMBus Controller";
+COREAPI char PCI_DEVICE_8086A2AF[] = "200 Series/Z370 Chipset Family USB 3.0 xHCI Controller";
+COREAPI char PCI_DEVICE_8086A2BA[] = "200 Series PCH CSME HECI #1";
+COREAPI char PCI_DEVICE_8086A2E7[] = "200 Series PCH PCI Express Root Port #17";
+COREAPI char PCI_DEVICE_8086A2E9[] = "200 Series PCH PCI Express Root Port #19";
+COREAPI char PCI_DEVICE_8086A2EB[] = "200 Series PCH PCI Express Root Port #21";
+COREAPI char PCI_DEVICE_8086A2C9[] = "Z370 Chipset LPC/eSPI Controller";
+COREAPI char PCI_DEVICE_8086A2F0[] = "200 Series PCH HD Audio";
 
-COREAPI const char PCI_DEVICE_80EE4E56[] = "VirtualBox NVMe Controller";
-COREAPI const char PCI_DEVICE_80EEBEEF[] = "VirtualBox Graphics Adapter";
-COREAPI const char PCI_DEVICE_80EECAFE[] = "VirtualBox Guest Service";
+COREAPI char PCI_DEVICE_80EE4E56[] = "VirtualBox NVMe Controller";
+COREAPI char PCI_DEVICE_80EEBEEF[] = "VirtualBox Graphics Adapter";
+COREAPI char PCI_DEVICE_80EECAFE[] = "VirtualBox Guest Service";
 
 const char *pci_vendor_name(DWORD vendorId)
 {

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <intrinsic.h>
-#include <interrupt/interrupt.h>
+#include <types.h>
 
 #define PIC1_COMMAND 0x20 // IO base address for master PIC
 #define PIC2_COMMAND 0xA0 // IO base address for slave PIC

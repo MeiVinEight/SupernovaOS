@@ -68,12 +68,12 @@ typedef struct _PCI_DEVICE
 DWORD pci_read_config_word(DWORD deviceId, DWORD offset);
 DWORD pci_read_config_dword(DWORD deviceId, DWORD offset);
 void pci_write_config_word(DWORD deviceId, DWORD offset, DWORD value);
-PCI_DEVICE_VENDOR pci_read_register_vendor(PCI_DEVICE_ADDRESS address);
-DWORD pci_read_register_class(PCI_DEVICE_ADDRESS address);
-DWORD pci_read_register_command(DWORD deviceId);
-void pci_write_register_command(DWORD deviceId, DWORD value);
-DWORD pci_read_register_header_type(PCI_DEVICE_ADDRESS address);
-PCI_DEVICE_SUBSYSTEM pci_read_register_subsystem(PCI_DEVICE_ADDRESS address);
+PCI_DEVICE_VENDOR pci_cfg_get_vendor(PCI_DEVICE_ADDRESS address);
+DWORD pci_cfg_get_class(PCI_DEVICE_ADDRESS address);
+DWORD pci_cfg_get_command(DWORD deviceId);
+void pci_cfg_set_command(DWORD deviceId, DWORD value);
+DWORD pci_cfg_get_header_type(PCI_DEVICE_ADDRESS address);
+PCI_DEVICE_SUBSYSTEM pci_cfg_get_subsystem(PCI_DEVICE_ADDRESS address);
 void pci_enable(PCI_DEVICE_ADDRESS deviceId);
 void setup_pci();
 

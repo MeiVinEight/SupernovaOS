@@ -232,29 +232,29 @@ void pci_write_config_word(DWORD deviceId, DWORD offset, DWORD value)
 	__outdword(PCI_CONFIG_ADDRESS, newVal);
 	__outdword(PCI_CONFIG_DATA, newVal);
 }
-DWORD pci_read_register_command(DWORD deviceId)
+DWORD pci_cfg_get_command(DWORD deviceId)
 {
 	return pci_read_config_word(deviceId, PCI_OFFSET_COMMAND);
 }
-void pci_write_register_command(DWORD deviceId, DWORD value)
+void pci_cfg_set_command(DWORD deviceId, DWORD value)
 {
 	pci_write_config_word(deviceId, PCI_OFFSET_COMMAND, value);
 }
-PCI_DEVICE_VENDOR pci_read_register_vendor(PCI_DEVICE_ADDRESS address)
+PCI_DEVICE_VENDOR pci_cfg_get_vendor(PCI_DEVICE_ADDRESS address)
 {
 	PCI_DEVICE_VENDOR deviceId;
 	deviceId.ID = pci_read_config_dword(address.address, PCI_OFFSET_VENDOR);
 	return deviceId;
 }
-DWORD pci_read_register_class(PCI_DEVICE_ADDRESS address)
+DWORD pci_cfg_get_class(PCI_DEVICE_ADDRESS address)
 {
 	return pci_read_config_dword(address.address, PCI_OFFSET_REVISION) >> 8;
 }
-DWORD pci_read_register_header_type(PCI_DEVICE_ADDRESS address)
+DWORD pci_cfg_get_header_type(PCI_DEVICE_ADDRESS address)
 {
 	return pci_read_config_word(address.address, PCI_OFFSET_HEADER_TYPE) & 0xFF;
 }
-PCI_DEVICE_SUBSYSTEM pci_read_register_subsystem(PCI_DEVICE_ADDRESS address)
+PCI_DEVICE_SUBSYSTEM pci_cfg_get_subsystem(PCI_DEVICE_ADDRESS address)
 {
 	PCI_DEVICE_SUBSYSTEM subsystem;
 	subsystem.value = pci_read_config_dword(address.address, PCI_OFFSET_SUBSYSTEM);
@@ -262,12 +262,12 @@ PCI_DEVICE_SUBSYSTEM pci_read_register_subsystem(PCI_DEVICE_ADDRESS address)
 }
 void pci_enable(PCI_DEVICE_ADDRESS deviceId)
 {
-	DWORD command = pci_read_register_command(deviceId.address);
+	DWORD command = pci_cfg_get_command(deviceId.address);
 	if (command == -1)
 		return;
 
 	command |= (PCI_COMMAND_IO_SPACE | PCI_COMMAND_MEMORY_SPACE);
-	pci_write_register_command(deviceId.address, command);
+	pci_cfg_set_command(deviceId.address, command);
 }
 void setup_pci()
 {
@@ -277,11 +277,11 @@ void setup_pci()
 	DWORD *dvc = SYSTEM_TABLE->DVC;
 	for (; !addr.RSV; addr.address += 0x100)
 	{
-		PCI_DEVICE_VENDOR vendor = pci_read_register_vendor(addr);
+		PCI_DEVICE_VENDOR vendor = pci_cfg_get_vendor(addr);
 		if ((!vendor.VENDOR) || (vendor.VENDOR == 0xFFFF))
 			continue;
-		DWORD classCode = pci_read_register_class(addr);
-		PCI_DEVICE_SUBSYSTEM subsystem = pci_read_register_subsystem(addr);
+		DWORD classCode = pci_cfg_get_class(addr);
+		PCI_DEVICE_SUBSYSTEM subsystem = pci_cfg_get_subsystem(addr);
 		simple_output("PCI @ ");
 		simple_output_address(addr.address, 8);
 		outchar('-');

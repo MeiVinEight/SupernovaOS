@@ -43,10 +43,10 @@ typedef union _PCI_DEVICE_VENDOR
 {
 	struct
 	{
-		WORD VENDOR;
-		WORD DEVICE;
+		volatile WORD VENDOR;
+		volatile WORD DEVICE;
 	};
-	DWORD ID;
+	volatile DWORD ID;
 } PCI_DEVICE_VENDOR;
 typedef union _PCI_DEVICE_SUBSYSTEM
 {
@@ -59,6 +59,7 @@ typedef union _PCI_DEVICE_SUBSYSTEM
 } PCI_DEVICE_SUBSYSTEM;
 typedef struct _PCI_DEVICE
 {
+	PCI_DEVICE_ADDRESS address;
 	PCI_DEVICE_VENDOR vendor;
 	DWORD type;
 	PCI_DEVICE_SUBSYSTEM subsystem;

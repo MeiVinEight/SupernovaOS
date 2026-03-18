@@ -80,3 +80,16 @@ __declspec(allocate(".text")) const char __memset128[] =
 	// LOOP1:
 	0xC3,                   // RET
 };
+int memcmp(const void *a, const void *b, unsigned long long size)
+{
+	char *bufA = (char *) a;
+	char *bufB = (char *) b;
+	while (size--)
+	{
+		if (*bufA != *bufB)
+			return (unsigned char) *bufA - (unsigned char) *bufB;
+		bufA++;
+		bufB++;
+	}
+	return 0;
+}

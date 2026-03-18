@@ -29,6 +29,7 @@ void __outword(unsigned short, unsigned short);
 unsigned long __indword(unsigned short);
 unsigned short __inword(unsigned short);
 void *__memset128(void *dst, void *, unsigned long long);
+int memcmp(const void *, const void *, unsigned long long);
 
 /*
 void *memset128(void *dst, __m128i val, unsigned long long cnt)

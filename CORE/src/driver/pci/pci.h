@@ -64,33 +64,6 @@ typedef struct _PCI_DEVICE
 	DWORD type;
 	PCI_DEVICE_SUBSYSTEM subsystem;
 } PCI_DEVICE;
-typedef struct _PCI_CONFIGURATION_INTERRUPT
-{
-	BYTE line;
-	BYTE pin;
-	BYTE grant;
-	BYTE latency;
-} PCI_CONFIGURATION_INTERRUPT;
-typedef struct _PCI_CONFIGURATION_SPACE
-{
-	WORD vendor;
-	WORD device;
-	WORD command;
-	WORD status;
-	DWORD revision:8;
-	DWORD class:24;
-	BYTE cache;
-	BYTE latency;
-	BYTE type;
-	BYTE bist; // Built-In Self-Test
-	DWORD address[6];
-	DWORD cardbus;
-	DWORD subsystem;
-	DWORD expansion;
-	BYTE capabilities;
-	BYTE resvered0[7];
-	PCI_CONFIGURATION_INTERRUPT interrupt;
-} PCI_CONFIGURATION_SPACE;
 
 const char *pci_vendor_name(DWORD vendorId);
 const char *pci_device_name(PCI_DEVICE_VENDOR device);

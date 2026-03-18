@@ -2,6 +2,7 @@
 #include <interrupt/apic.h>
 #include <console.h>
 #include <interrupt/interrupt.h>
+#include <intrinsic.h>
 
 COREAPI volatile QWORD TSC_FREQUENCY_KHZ = 0;
 
@@ -24,8 +25,8 @@ void setup_timer()
 	setup_apic_timer(TIMER_INT_FREQUENCY);
 
 	DWORD reg[4];
-	__cpuid((int *) reg, (int) 0x80000007);
-	if (!(reg[3] & (1 << 8)))
+	__cpuid((int *) reg, 1);
+	if (!(reg[3] & (1 << 4)))
 		return;
 
 	QWORD start = __rdtsc();

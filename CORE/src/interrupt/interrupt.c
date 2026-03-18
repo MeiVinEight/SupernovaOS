@@ -1,16 +1,13 @@
 #include <interrupt/interrupt.h>
-#include <interrupt/8259a.h>
 #include <console.h>
+#include <core.h>
+#include <intrinsic.h>
+#include <interrupt/apic.h>
 
-COREAPI INTERRUPT64 *IDT = (INTERRUPT64 *) 0x8000;
-COREAPI const BYTE __sti[] =
-{
-	0xFB, // STI
-	0xC3, // RET
-};
+COREAPI volatile INTERRUPT64 * volatile IDT;
 COREAPI void (*(INTERRUPT_ROUTINE[256]))(INTERRUPT_STACK *);
 COREAPI BYTE ISR[256][9];
-COREAPI const BYTE __isr[] =
+COREAPI BYTE __isr[] =
 {
 	0x50,                         // PUSH RAX
 	0x51,                         // PUSH RCX
@@ -59,7 +56,9 @@ void __isr_common(INTERRUPT_STACK *stack)
 		return;
 	}
 
-	simple_output("INT: ");
+	simple_output("CPU #");
+	simple_output_number(apic_current_id());
+	simple_output(" INT: #");
 	simple_output_address(id, 2);
 	simple_output(" @ RIP ");
 	simple_output_address(stack->RIP, 16);
@@ -68,6 +67,7 @@ void __isr_common(INTERRUPT_STACK *stack)
 }
 void setup_interrupe()
 {
+	IDT = (INTERRUPT64 *) SYSTEM_TABLE->IDT;
 	DWORD erc = 0x60227D00; // ERROR CODE Mask
 	// Calculate RVA from __isr+0x1B to __isr_common
 	QWORD rva = (QWORD) (__isr + 0x1C);
@@ -118,7 +118,7 @@ void setup_interrupe()
 	// Setup Interrupt Controller
 
 	// Enable Interrupt
-	((void (*)()) __sti)();
+	__sti();
 }
 void register_interrupt(BYTE id, void (*routine)(INTERRUPT_STACK *))
 {

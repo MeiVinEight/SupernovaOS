@@ -1,6 +1,6 @@
 #pragma once
 
-#include <intrinsic.h>
+#include <types.h>
 
 #define IRQ_INT 0x20
 
@@ -51,6 +51,8 @@ typedef struct _INTERRUPT_STACK
 	QWORD CS;
 	QWORD EFLAGS;
 } INTERRUPT_STACK;
+
+extern volatile INTERRUPT64 * volatile IDT;
 
 void setup_interrupe();
 void register_interrupt(BYTE id, void (*routine)(INTERRUPT_STACK *));

@@ -73,7 +73,7 @@ typedef struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL
 	QWORD Reset;
 	QWORD(*OutputString)(struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *, WORD *);
 	QWORD TestString;
-	QWORD QueryMode;
+	QWORD(*QueryMode)(struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *, QWORD, QWORD *, QWORD *);
 	QWORD(*SetMode)(struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *, QWORD);
 	QWORD SetAttribute;
 	QWORD(*ClearScreen)(struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *);

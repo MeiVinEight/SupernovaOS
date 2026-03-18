@@ -1,22 +1,21 @@
 #include <memory/segment.h>
+#include <core.h>
 
-
-COREAPI BYTE LXS0[] =
-{
-	0x6A, 0x08,                                                 // PUSH 08
-	0x51,                                                       // PUSH RCX
-	0x48, 0xCB,                                                 // RETFQ
-};
 COREAPI BYTE LXS1[] =
 {
-	0x31, 0xC9,                                                 // XOR ECX, ECX
-	0x66, 0x8E, 0xE1,                                           // MOV FS, CX
-	0x66, 0x8E, 0xE9,                                           // MOV GS, CX
-	0x83, 0xC1, 0x10,                                           // ADD ECX, 10
-	0x66, 0x8E, 0xC1,                                           // MOV ES, CX
-	0x66, 0x8E, 0xD1,                                           // MOV SS, CX
-	0x66, 0x8E, 0xD9,                                           // MOV DS, CX
-	0xC3,                                                       // RET
+	0x48, 0x33, 0xC0,       // XOR RAX, RAX
+	0x66, 0x8E, 0xE0,       // MOV FS, AX
+	0x66, 0x8E, 0xE8,       // MOV GS, AX
+	0x48, 0x83, 0xC0, 0x10, // ADD RAX, 10H
+	0x66, 0x8E, 0xC0,       // MOV ES, AX
+	0x66, 0x8E, 0xD0,       // MOV SS, AX
+	0x66, 0x8E, 0xD8,       // MOV DS, AX
+	0x58,                   // POP RAX
+	0x48, 0x0B, 0xE1,       // OR RSP, RCX
+	0x6A, 0x08,             // PUSH 08H
+	0x50,                   // PUSH RAX
+	0x48, 0xCB              // RETFQ
+
 };
 
 void setup_segment()
@@ -28,6 +27,6 @@ void setup_segment()
 	GDTR64 gdtr;
 	gdtr.L = 0x17;
 	gdtr.A = (QWORD) SYSTEM_TABLE->GDT;
-	__lgdt(&gdtr);
-	((void(*)(void *)) LXS0)(LXS1);
+	__lgdt((void *) core_mapping((QWORD) &gdtr));
+	((void(*)(QWORD)) LXS1)(SYSTEM_ADDRESS);
 }

@@ -3,13 +3,18 @@
 #include <arch/ia32_msr.h>
 #include <intrinsic.h>
 #include <console.h>
-#include <timer/8254.h>
+#include <core.h>
+#include <timer/hpet.h>
+#include <timer/rtc.h>
+#include <interrupt/interrupt.h>
+#include <arch/processor.h>
 
 
 #define CPUID_FEAT_EDX_APIC (1 << 9)
 
 COREAPI DWORD USEAPIC = 0;
 COREAPI DWORD(*APIC_REGISTERS)[4];
+COREAPI volatile DWORD(*volatile APIC_REGISTERS)[4];
 
 
 void eoi_apic(BYTE id)
@@ -19,7 +24,7 @@ void eoi_apic(BYTE id)
 }
 int check_apic()
 {
-	DWORD cpui[4] = { 0 };
+	int cpui[4] = { 0 };
 	__cpuid(cpui, 1);
 	return !!(cpui[3] & CPUID_FEAT_EDX_APIC);
 }
@@ -32,18 +37,20 @@ void setup_apic()
 		return;
 	}
 
-	USEAPIC = 1;
-	disable_8259A();
+	if (!USEAPIC)
+	{
+		USEAPIC = 1;
+		disable_8259A();
+	}
+
 	QWORD apicBaseMsr = __readmsr(IA32_APIC_BASE_MSR);
 	QWORD apicBase = apicBaseMsr & (~0xFFFULL);
 
 	// Hardware Enable APIC
 	__writemsr(IA32_APIC_BASE_MSR, apicBaseMsr |= IA32_APIC_BASE_MSR_ENABLE);
 
-	APIC_REGISTERS = (DWORD (*)[4]) apicBase;
-	simple_output("APIC: ");
-	simple_output_address(apicBase, 16);
-	simple_output("\n");
+	if (!APIC_REGISTERS)
+		APIC_REGISTERS = (DWORD (*)[4]) core_mapping(apicBase);
 
 
 	// Set TPR to 0, receive all interrupts
@@ -67,7 +74,7 @@ void setup_apic()
 }
 DWORD apic_current_id()
 {
-	DWORD reg[4];
+	int reg[4];
 	__cpuid(reg, 1);
 	if (APIC_REGISTERS)
 	{
@@ -83,10 +90,7 @@ void setup_apic_timer(DWORD rate)
 	// See Intel® 64 and IA-32 Architectures Software Developer’s Manual. Volume 2. Figure 11.10
 	APIC_REGISTERS[APIC_TDCR][0] = APIC_TIMER_DCR_1;
 
-	simple_output("SETUP APIC TIMER ");
-	simple_output_number(rate);
-	simple_output(" Hz\n");
-
+	/*
 	// Prepare PIT sleep 50 ms
 	__outbyte(PIT2_GATE, (__inbyte(PIT2_GATE) & 0xFD) | 1);
 	__outbyte(PIT_CMD, 0B10110010);
@@ -99,30 +103,65 @@ void setup_apic_timer(DWORD rate)
 	// Reset PIT one-shot counter (start counting)
 	__outbyte(PIT2_GATE, al);
 	__outbyte(PIT2_GATE, al | 1);
-	// Reset APIC timer (set counter to 0xFFFFFFFF)
-	APIC_REGISTERS[APIC_TICR][0] = 0xFFFFFFFFUL;
+	*/
 
-	// Now wait until PIT counter reaches zero
-	while (!(__inbyte(PIT2_GATE) & 0x20)) {}
+	QWORD hpetHwFreq = hpet_query_frequency();
+	if (hpetHwFreq)
+	{
+		simple_output("HPET ");
+		simple_output_number(hpetHwFreq);
+		simple_output(" Hz\n");
+		QWORD startHpet = hpet_get_counter();
+		// Reset APIC timer (set counter to 0xFFFFFFFF)
+		APIC_REGISTERS[APIC_TICR][0] = 0xFFFFFFFFUL;
 
-	// Stop APIC timer
-	APIC_REGISTERS[APIC_LVT0][0] = APIC_LVT_CLR;
+		// Now wait until PIT counter reaches zero
+		// while (!(__inbyte(PIT2_GATE) & 0x20)) {}
+		// Wait HPET for 1 second
+		while (hpet_get_counter() - startHpet < hpetHwFreq) __nop();
+
+		// Stop APIC timer
+		//APIC_REGISTERS[APIC_TICR][0] = 0;
+		APIC_REGISTERS[APIC_LVT0][0] = APIC_LVT_CLR;
+	}
+	else
+	{
+		// USE CMOS RTC Wait for 1 second
+		BYTE rtcSec0 = rtc_get_second();
+		BYTE rtcSec1;
+		while ((rtcSec1 = rtc_get_second()) == rtcSec0) __nop();
+
+		// Reset APIC timer (set counter to 0xFFFFFFFF)
+		APIC_REGISTERS[APIC_TICR][0] = 0xFFFFFFFFUL;
+
+		while (rtc_get_second() == rtcSec1) __nop();
+
+		// Stop APIC timer
+		//APIC_REGISTERS[APIC_TICR][0] = 0;
+		APIC_REGISTERS[APIC_LVT0][0] = APIC_LVT_CLR;
+	}
+
+
+	QWORD apicTick = APIC_REGISTERS[APIC_TCCR][0];
 
 	// Get APIC timer frequency
-	DWORD freq = (-(APIC_REGISTERS[APIC_TCCR][0])) + 1;
-	freq *= rate;
+	QWORD freq = 0xFFFFFFFFU - apicTick;
+
+
+	QWORD freqKHz = freq / 1000;
 	QWORD shift = 1;
-	while (freq >= 99)
+	while (freqKHz > 999)
 	{
-		freq++;
-		freq /= 10;
+		freqKHz++;
+		freqKHz /= 10;
 		shift *= 10;
 	}
-	freq *= shift;
-
-	simple_output("APIC TIMER FREQUENCY ");
-	simple_output_number(freq / 1000000);
-	simple_output(" MHz\n");
+	freqKHz *= shift;
+	simple_output("APIC ");
+	simple_output_number(freqKHz / 1000);
+	simple_output(" MHz (");
+	simple_output_number(freq);
+	simple_output(" Hz)\n");
 
 	// Use it as APIC timer counter initializer
 	APIC_REGISTERS[APIC_TICR][0] = freq / rate;

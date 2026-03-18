@@ -2,6 +2,8 @@
 #include "uefi.h"
 #include "intrinsic.h"
 #include "pci.h"
+#include "ahci.h"
+#include "ntfs.h"
 
 #define PCI_COMMAND         0x04
 #define PCI_BASE_ADDRESS_5	0x24
@@ -46,21 +48,62 @@
 #define CRT_CURSOR_H 0xE
 #define CRT_CURSOR_L 0xF
 
+typedef struct _SUPERNOVA_BOOT_TABLE
+{
+	QWORD GUID0[2];
+	QWORD GUID1[2];
+} SUPERNOVA_BOOT_TABLE;
 typedef struct _MEMORY_REGION
 {
 	QWORD A;
-	QWORD L;
-	DWORD F;
-	DWORD X;
+	QWORD L:56;
+	QWORD F:8;
 } MEMORY_REGION;
+typedef struct _SUPERNOVA_SYSTEM_TABLE
+{
+	BYTE DOSHEAD[0x40];
+	QWORD GUID0[2];
+	QWORD GUID1[2];
+	WORD HRES;
+	WORD VRES;
+	DWORD PPL;
+	QWORD FBB;
+	QWORD GDT[3];
+	QWORD RSDP;
+	BYTE RSV[0x970];
+	DWORD DVC[0x80];
+	MEMORY_REGION MEMORY[64];
+} SUPERNOVA_SYSTEM_TABLE;
 
+extern char __ImageBase;
 UEFIAPI QWORD EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID[2] = { 0x4A3823DC9042A9DE, 0x6A5180D0DE7AFB96 };
 UEFIAPI QWORD EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID[2] = { 0x11d26459964e5b22, 0x3b7269c9a000398e };
 UEFIAPI QWORD EFI_FILE_INFO_GUID[2] = { 0x11d26d3f09576e92, 0x3b7269c9a000398E };
 UEFIAPI QWORD EFI_ACPI_20_TABLE_GUID[2] = { 0x11D3E4F18868E871, 0x81883CC7800022BC };
 //UEFIAPI __declspec(align(4096)) BYTE paging[4096];
-
-extern char __ImageBase;
+UEFIAPI SUPERNOVA_BOOT_TABLE *BOOT_TABLE = (SUPERNOVA_BOOT_TABLE *) ((&__ImageBase) + 0x40);
+UEFIAPI BYTE MFT_RECORD[1024];
+UEFIAPI BYTE CORE_MFT_BUF[1024];
+/*
+UEFIAPI const char MEMORY_TYPE[] =
+"EfiReservedMemoryType     \0"
+"EfiLoaderCode             \0"
+"EfiLoaderData             \0"
+"EfiBootServicesCode       \0"
+"EfiBootServicesData       \0"
+"EfiRuntimeServicesCode    \0"
+"EfiRuntimeServicesData    \0"
+"EfiConventionalMemory     \0"
+"EfiUnusableMemory         \0"
+"EfiACPIReclaimMemory      \0"
+"EfiACPIMemoryNVS          \0"
+"EfiMemoryMappedIO         \0"
+"EfiMemoryMappedIOPortSpace\0"
+"EfiPalCode                \0"
+"EfiPersistentMemory       \0"
+"EfiUnacceptedMemoryType   \0"
+"EfiMaxMemoryType          ";
+*/
 
 void OutputText(const char *s)
 {
@@ -123,8 +166,14 @@ QWORD jmp(QWORD(*entry)(), QWORD stackAddr)
 	if(!entry)
 		while (1) __halt();
 
-	__setrsp(stackAddr - 0x28);
-	return entry();
+	BYTE call[24] = {
+		0x48, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // MOV RSP, stackAddr
+		0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,                         // JMP [RIP+0x00000000]
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,             // entry (8 bytes)
+	};
+	*((QWORD *) (call + 2)) = stackAddr;
+	*((QWORD *) (call + 16)) = (QWORD) entry;
+	return ((QWORD (*)()) call)();
 }
 
 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION DetectingMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics)
@@ -200,11 +249,215 @@ DWORD CompactMemoryMap(QWORD map, DWORD count, QWORD descSize)
 	}
 	return i + 1;
 }
+DWORD ntfs_read_mft_record(HBA_PORT *port, NTFS_BPB *bpb, NTFS_MFT_ATTR_HEADER *attr, DWORD mftNum, QWORD bufAddr)
+{
+	DWORD mftPreClus = bpb->cluster >> 1;
+	DWORD vcn = mftNum / mftPreClus;
+	DWORD lcn = ntfs_logical_cluster_number(attr, vcn);
+	DWORD mftInClus = mftNum % mftPreClus;
+	QWORD sector = bpb->hidden;
+	sector += lcn * bpb->cluster;
+	sector += (QWORD) mftInClus << 1;
+	if (ahci_command(port, sector, 2, (void *) bufAddr, ATA_CMD_READ_DMA_EX))
+	{
+		OutputText("DISK READ ERROR\r\n");
+		return 0;
+	}
+	*((WORD *) (bufAddr + 0x03FE)) = *((WORD *) (bufAddr + 0x34));
+	*((WORD *) (bufAddr + 0x01FE)) = *((WORD *) (bufAddr + 0x32));
+	return 1;
+}
+DWORD loading_core_sata(HBA_PORT *port, QWORD page)
+{
+	// Read LBA 1: GPT Header
+	if (ahci_command(port, 1, 1, (void *) (page), ATA_CMD_READ_DMA_EX))
+	{
+		OutputText("DISK READ ERROR\r\n");
+		return 0;
+	}
+	QWORD efipart = 0x5452415020494645ULL; // "EFI PART"
+	if (efipart != *((QWORD *) page))
+		return 0;
 
+	// Assume GPT and check DISK GUID
+	QWORD *guid = (QWORD *) (page + 0x38);
+	if (guid[0] != BOOT_TABLE->GUID0[0] && guid[1] != BOOT_TABLE->GUID0[1])
+	{
+		return 0;
+	}
+
+	// FIND NTFS SYSTEM PART
+	// Read partition table
+	if (ahci_command(port, *((QWORD *) (page + 0x48)), 1, (void *) (page), ATA_CMD_READ_DMA_EX))
+	{
+		OutputText("DISK READ ERROR\r\n");
+		return 0;
+	}
+
+	memset((void *) (page + 0x200), 0, 0x200);
+	QWORD partEntry = page;
+	for (; partEntry < page + 0x200; partEntry += 0x80)
+	{
+		QWORD *partGUID = (QWORD *) (partEntry + 0x10);
+		if (!(partGUID[0] | partGUID[1]))
+			return 0;
+
+		if (partGUID[0] == BOOT_TABLE->GUID1[0] && partGUID[1] == BOOT_TABLE->GUID1[1])
+			break;
+	}
+
+	QWORD partLBA = *((QWORD *) (partEntry + 0x20));
+	if (ahci_command(port, partLBA, 1, (void *) (page), ATA_CMD_READ_DMA_EX))
+	{
+		OutputText("DISK READ ERROR\r\n");
+		return 0;
+	}
+
+	NTFS_BPB ntfsBpb;
+	memcpy(&ntfsBpb, (void *) page, sizeof(NTFS_BPB));
+
+	// $MFT LBA
+	QWORD mftsector = ntfsBpb.hidden + (ntfsBpb.MFT * ntfsBpb.cluster);
+	if (ahci_command(port, mftsector, 2, (void *) (page), ATA_CMD_READ_DMA_EX))
+	{
+		OutputText("DISK READ ERROR\r\n");
+		return 0;
+	}
+	*((WORD *) (page + 0x03FE)) = *((WORD *) (page + 0x34));
+	*((WORD *) (page + 0x01FE)) = *((WORD *) (page + 0x32));
+	memcpy(MFT_RECORD, (void *) page, 1024);
+
+	NTFS_MFT_ATTR_HEADER *attr = ntfs_attr_data(MFT_RECORD);
+	if (!attr)
+		return 0;
+
+	//logical_cluster_number((NTFS_MFT_ATTR_HEADER *) attribute, 0xFFFF);
+
+	DWORD mftNum = 0;
+	char fileName[256];
+	char *fileNameList[] = {"SUPERNOVA", "SYSTEM", "CORE.DLL"};
+	DWORD coreMFT = 0;
+
+	DWORD mftCount = attr->nonResident.dataSize / 1024;
+	for (; mftNum < mftCount; mftNum++)
+	{
+		DWORD nowMFTNum = mftNum;
+		for (int i = 3; i--;)
+		{
+			if (!ntfs_read_mft_record(port, &ntfsBpb, attr, nowMFTNum, page))
+				return 0;
+			NTFS_MFT_ATTR_FILE_NAME *fnAttr = ntfs_attr_file_name((void *) page);
+			if (!fnAttr)
+				goto NEXT_MFT;
+			DWORD fileNameLen = ntfs_file_name(fnAttr, fileName);
+			if (!fileNameLen)
+				goto NEXT_MFT;
+			if (memcmp(fileName, fileNameList[i], fileNameLen))
+				goto NEXT_MFT;
+
+			//break;
+			nowMFTNum = fnAttr->parentDirMFTNum & 0xFFFFFFFF;
+		}
+		if (nowMFTNum == 5 && mftNum != 5)
+		{
+			coreMFT = mftNum;
+			break;
+		}
+
+		NEXT_MFT:;
+	}
+	if (!coreMFT)
+		return 0;
+
+	if (!ntfs_read_mft_record(port, &ntfsBpb, attr, coreMFT, page))
+		return 0;
+
+	NTFS_MFT_ATTR_HEADER *dataAttr = ntfs_attr_data((void *) page);
+	memcpy(CORE_MFT_BUF, dataAttr, dataAttr->length);
+	dataAttr = (NTFS_MFT_ATTR_HEADER *) CORE_MFT_BUF;
+	QWORD bufAddr = 0;
+	for (DWORD vcn = dataAttr->nonResident.startVCN; vcn <= dataAttr->nonResident.lastVCN; vcn++)
+	{
+		QWORD lcn = ntfs_logical_cluster_number(dataAttr, vcn);
+		if (!lcn)
+			return 0;
+		QWORD sector = ntfsBpb.hidden + lcn * ntfsBpb.cluster;
+		if (ahci_command(port, sector, ntfsBpb.cluster, (void *) bufAddr, ATA_CMD_READ_DMA_EX))
+		{
+			OutputText("DISK READ ERROR\r\n");
+			return 0;
+		}
+		bufAddr += 512 * ntfsBpb.cluster;
+	}
+
+
+	return 1;
+}
+DWORD ahci_controller_setup(DWORD cmdAhci)
+{
+	void *iobase = pci_enable_mmio(cmdAhci, PCI_BASE_ADDRESS_5);
+	if (!iobase)
+	{
+		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
+		return 0;
+	}
+
+	DWORD dvc = cmdAhci;
+	// Enable busmaster
+	// Read Command register and set MASTER bit
+	__outdword(0x0CF8, dvc + PCI_COMMAND);
+	WORD val = __inword(0x0CFC) | PCI_COMMAND_MASTER;
+	// Write to Command register
+	__outdword(0x0CF8, dvc + PCI_COMMAND);
+	__outword(0x0CFC, val);
+
+
+	HBA_MEM *abar = (HBA_MEM *) iobase;
+	abar->ghc |= HOST_CTL_AHCI_EN;
+
+	// State, 0 means success
+	DWORD finding = 1;
+	// Port status, 1 means usable
+	DWORD pi = abar->pi;
+	// AHCI Port
+	HBA_PORT *port = abar->ports;
+	// Use 1 page as buffer
+	QWORD page = (0x00001000);
+	//OutputText("AHCI PORT: ");
+	//OutputAddress((QWORD) port);
+	//OutputText("\r\n");
+
+	int portNum = 0;
+	while (pi && finding)
+	{
+		if (!(pi & 1))
+			goto NEXT_PORT;
+
+		DWORD portType = check_type(port);
+		if (portType == AHCI_DEVICE_NULL)
+			goto NEXT_PORT;
+		if (portType != AHCI_DEVICE_SATA)
+			goto NEXT_PORT;
+
+		// Try to read kernel
+		if (start_cmd(port))
+			goto STOP_READ;
+
+		finding &= (1 ^ loading_core_sata(port, page));
+
+		STOP_READ:
+		stop_cmd(port);
+
+		NEXT_PORT:
+		pi >>= 1;
+		port++;
+		portNum++;
+	}
+	return finding ^ 1;
+}
 DWORD find_pci()
 {
 	// Config Address
-	DWORD cmdAhci = 0;
 	DWORD cmd = 0x80000000;
 	while (cmd < 0x81000000)
 	{
@@ -221,44 +474,18 @@ DWORD find_pci()
 		__outdword(0x0CF8, cmd + 0x08);
 		DWORD classId = __indword(0x0CFC) >> 8;
 
-		OutputAddressX(cmd, 8);
-		OutputText(": ");
-		OutputAddressX(id, 8);
-		OutputText(" - ");
-		OutputAddressX(classId, 6);
-		OutputText("\r\n");
 
 		if (classId == 0x010601) // AHCI
 		{
-			cmdAhci = cmd;
-			OutputText("AHCI CONTROLLER FOUND\r\n");
-			break;
+			//break;
+			DWORD found = ahci_controller_setup(cmd);
+			if (found) return 1;
 		}
 
 		cmd += 0x800;
 	}
-	if (!cmdAhci)
-		return 0;
 
-	void *iobase = pci_enable_mmio(cmdAhci, PCI_BASE_ADDRESS_5);
-	if (!iobase)
-	{
-		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
-		return 0;
-	}
-	OutputText("AHCI CONTROLLER MMIO ADDRESS ");
-	OutputAddress((QWORD) iobase);
-	OutputText("\r\n");
-
-	DWORD dvc = cmdAhci;
-	// Enable busmaster
-	// Read Command register and set MASTER bit
-	__outdword(0x0CF8, dvc + PCI_COMMAND);
-	WORD val = __inword(0x0CFC) | PCI_COMMAND_MASTER;
-	// Write to Command register
-	__outdword(0x0CF8, dvc + PCI_COMMAND);
-	__outword(0x0CFC, val);
-	return 1;
+	return 0;
 }
 
 unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable)
@@ -269,6 +496,20 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	// ENABLE SSE
 	__writecr0((__readcr0() & (~4ULL)) | 2); // CLEAR CR0.EM AND SET CR0.MP
 	__writecr4(__readcr4() | (3 << 9)); // SET CR4.OSFXSR AND CR4.OSXMMEEXCPT
+
+	int maxMode = 0;
+	QWORD chars = 0;
+	for (DWORD i = 0; i < SYSTEM_TABLE->ConOut->Mode->MaxMode; i++)
+	{
+		QWORD cols, rows;
+		SYSTEM_TABLE->ConOut->QueryMode(SYSTEM_TABLE->ConOut, i, &cols, &rows);
+		if (cols * rows > chars)
+		{
+			chars = cols * rows;
+			maxMode = i;
+		}
+	}
+	SYSTEM_TABLE->ConOut->SetMode(SYSTEM_TABLE->ConOut, maxMode);
 
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics = 0;
 	SYSTEM_TABLE->BootServices->LocateProtocol(EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, 0, &graphics);
@@ -283,18 +524,10 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	}
 	*/
 	QWORD buf[2] = { 0x00FFFFFF00FFFFFFULL, 0x00FFFFFF00FFFFFFULL };
-	__memset128((void *) fbb, buf, (info.PixelsPerScanLine * info.VerticalResolution * 4) / 16);
+	//__memset128((void *) fbb, buf, (info.PixelsPerScanLine * info.VerticalResolution * 4) / 16);
 
 
 	OutputText("Supernova-EFI\r\n");
-
-	OutputText("GOP: ");
-	OutputAddress(fbb);
-	OutputText("\r\n");
-
-	OutputText("IMAGE BASE ");
-	OutputAddress((QWORD) &__ImageBase);
-	OutputText("\r\n");
 
 	DWORD cpuid[4] = {0, 0, 0, 0};
 	__cpuid(cpuid, 0x80000001);
@@ -327,10 +560,25 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	OutputText(brand);
 	OutputText("\r\n");
 
+	QWORD rsdp = 0;
+	for (QWORD i = 0; i < SYSTEM_TABLE->NumberOfTableEntries; i++)
+	{
+		if (
+			SYSTEM_TABLE->ConfigurationTable[i].GUID[0] == EFI_ACPI_20_TABLE_GUID[0] &&
+			SYSTEM_TABLE->ConfigurationTable[i].GUID[1] == EFI_ACPI_20_TABLE_GUID[1]
+			)
+		{
+			rsdp = (QWORD) SYSTEM_TABLE->ConfigurationTable[i].TABLE;
+			//OutputText("ACPI 2.0 RSD PTR @ ");
+			//OutputAddress(rsdp);
+			//OutputText("\r\n");
+			break;
+		}
+	}
+	if (!rsdp)
+		OutputText("ACPI 2.0 RSD PTR NOT FOUND\r\n");
+
 	find_pci();
-
-
-	jmp(0, 0);
 
 	QWORD memMapSize = 0;
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = 0;
@@ -350,15 +598,16 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		while (1) __halt();
 	}
 
-
+	SUPERNOVA_SYSTEM_TABLE *SST = (SUPERNOVA_SYSTEM_TABLE *) 0;
+	__assume(SST != 0);
 	QWORD entries = totalSize / MapDescSize;
-	OutputNumber(entries);
-	OutputText(" Memory Map\r\n");
+	//OutputNumber(entries);
+	//OutputText(" Memory Map\r\n");
 	QWORD MMA = (QWORD) MemoryMap;
 	SortMemoryMap(MMA, entries, MapDescSize);
 	entries = CompactMemoryMap(MMA, entries, MapDescSize);
-	MEMORY_REGION **end = (MEMORY_REGION **) 0x3018;
-	MEMORY_REGION *beg = (MEMORY_REGION *) 0x3020;
+	//MEMORY_REGION **end = (MEMORY_REGION **) 0x3018;
+	MEMORY_REGION *beg = SST->MEMORY;
 	memset(beg, 0, sizeof(MEMORY_REGION));
 	beg->F = 0xFF;
 	// OUTPUTTEXT("Base Address       Length             Type\n");
@@ -367,19 +616,16 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		MEMORY_REGION region;
 		EFI_MEMORY_DESCRIPTOR *memory = (EFI_MEMORY_DESCRIPTOR *) MMA;
 		/*
-		PRINTRAX(memory->PhysicalStart, 16);
-		OUTPUTTEXT(" | ");
-		PRINTRAX(memory->NumberOfPages << 12, 16);
-		OUTPUTTEXT(" | ");
-		OUTPUTTEXT(MEMORY_TYPE + 27 * memory->Type);
-		LINEFEED();
+		OutputAddress(memory->PhysicalStart);
+		OutputText(" | ");
+		OutputAddress(memory->NumberOfPages << 12);
+		OutputText(" | ");
+		OutputText(MEMORY_TYPE + 27 * memory->Type);
+		OutputText("\r\n");
 		*/
-		//OutputMemoryMap(memory);
-		//LINEFEED();
 		MMA += MapDescSize;
 		region.A = memory->PhysicalStart;
 		region.L = memory->NumberOfPages * 4096;
-		region.X = 0;
 		switch (memory->Type)
 		{
 			case EfiReservedMemoryType:
@@ -400,6 +646,8 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 				region.F = 1;// Free
 				break;
 		}
+		if (region.A < 0x10000)
+			region.F = 1;// Force to free if below 64KB
 		if (beg->F == 0xFF || (beg->F == region.F && beg->A + beg->L == region.A))
 		{
 			if (beg->F == 0xFF)
@@ -415,11 +663,14 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		}
 	}
 	beg++;
-	*end = beg;
-	beg = (MEMORY_REGION *) 0x3020;
-	OutputText("Base Address       Length             Type\r\n");
+	beg->A = -1ULL;
+	//*end = beg;
+	/*
+	beg = SST->MEMORY;
 	//          0000000000000000 | 0000000000000000 | 00000000
-	while (beg < *end)
+
+	OutputText("Base Address       Length             Type\r\n");
+	while (~beg->A)
 	{
 		OutputAddress(beg->A);
 		OutputText(" | ");
@@ -429,9 +680,28 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		OutputText("\r\n");
 		beg++;
 	}
+	*/
 	SYSTEM_TABLE->BootServices->ExitBootServices(handle, MapKey);
 
+	SST->GUID0[0] = BOOT_TABLE->GUID0[0];
+	SST->GUID0[1] = BOOT_TABLE->GUID0[1];
+	SST->GUID1[0] = BOOT_TABLE->GUID1[0];
+	SST->GUID1[1] = BOOT_TABLE->GUID1[1];
+	SST->HRES = info.HorizontalResolution;
+	SST->VRES = info.VerticalResolution;
+	SST->PPL = info.PixelsPerScanLine;
+	SST->FBB = graphics->Mode->FrameBufferBase;
+	SST->RSDP = rsdp;
 
-	jmp(0, 0);
+
+	QWORD stackPoint = SST->MEMORY[0].L;
+	QWORD base = 0;
+	__assume (base != 0);
+	QWORD ntHeader = *((DWORD *) (base + 0x3C));
+	QWORD entry = *((DWORD *) (ntHeader + 0x28));
+
+
+	jmp((QWORD(*)()) entry, stackPoint);
+	//jmp(0, 0);
 	return 0;
 }

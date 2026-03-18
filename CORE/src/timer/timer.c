@@ -16,7 +16,7 @@ void setup_timer()
 	// APIC timer is set up in apic.c
 	if (!USEAPIC)
 	{
-		simple_output("TIMER: APIC OFFLINED\n");
+		simple_output("TIMER: APIC OFFLINE\n");
 		return;
 	}
 

@@ -1,3 +1,4 @@
+#include <memory/paging.h>
 #include <intrinsic.h>
 
 void setup_paging()

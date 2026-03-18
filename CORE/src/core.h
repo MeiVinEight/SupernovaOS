@@ -1,0 +1,45 @@
+//
+// Created by MeiVi on 2026/03/11.
+//
+
+#ifndef SUPERNOVA_CORE_H
+#define SUPERNOVA_CORE_H
+
+#define SYSTEM_ADDRESS 0xFFFF800000000000ULL
+
+#include <types.h>
+#include <file/pe32x.h>
+
+typedef struct _MEMORY_REGION
+{
+	QWORD A;
+	QWORD L : 56;
+	QWORD F : 8;
+} MEMORY_REGION;
+typedef struct _SUPERNOVA_SYSTEM_TABLE
+{
+	IMAGE_DOS_HEADER DOS;
+	QWORD GUID0[2];
+	QWORD GUID1[2];
+	WORD HRES;
+	WORD VRES;
+	DWORD PPL;
+	QWORD FBB;
+	QWORD GDT[3];
+	QWORD RSDP;
+	BYTE RSV[0x970];
+	DWORD DVC[0x80];
+	MEMORY_REGION MEMORY[64];
+	QWORD PAGING[6][512];
+	BYTE FONT[256][16];
+	QWORD IDT[256][2];
+	volatile BYTE APC[0x1000];
+} SUPERNOVA_SYSTEM_TABLE;
+
+
+extern SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE;
+
+QWORD core_mapping(QWORD addr);
+void kprint_cpu();
+
+#endif //SUPERNOVA_CORE_H

@@ -31,6 +31,9 @@
     <Filter Include="Source Files\timer">
       <UniqueIdentifier>{340403bd-1218-4139-82b6-1d2772b949c3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\acpi">
+      <UniqueIdentifier>{784a1ccb-ac5d-4a54-ae4c-cb14ea0318a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.c">
@@ -96,6 +99,12 @@
       <Filter>Header Files\timer</Filter>
     </ClInclude>
     <ClInclude Include="src\timer\8254.h">
+      <Filter>Header Files\timer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\acpi\acpi.h">
+      <Filter>Header Files\acpi</Filter>
+    </ClInclude>
+    <ClInclude Include="src\timer\hpet.h">
       <Filter>Header Files\timer</Filter>
     </ClInclude>
   </ItemGroup>

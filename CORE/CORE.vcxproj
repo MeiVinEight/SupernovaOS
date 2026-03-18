@@ -278,6 +278,7 @@
     <ClCompile Include="src\timer\timer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\acpi\acpi.h" />
     <ClInclude Include="src\arch\ia32_msr.h" />
     <ClInclude Include="src\arch\processor.h" />
     <ClInclude Include="src\console.h" />
@@ -288,6 +289,7 @@
     <ClInclude Include="src\memory\paging.h" />
     <ClInclude Include="src\memory\segment.h" />
     <ClInclude Include="src\timer\8254.h" />
+    <ClInclude Include="src\timer\hpet.h" />
     <ClInclude Include="src\timer\timer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -296,10 +296,6 @@ void apic_startup_ap(BYTE apicid, void (*apEntry)(void))
 }
 void setup_madt(ACPI_MADT *madt)
 {
-	simple_output("MADT @ ");
-	simple_output_address((QWORD) madt, 16);
-	outchar('\n');
-
 	/*
 	QWORD apPhyAddr = ((QWORD) SYSTEM_TABLE->APC) & 0xFFFFF;
 	__memcpy(SYSTEM_TABLE->APC, AP_BOOT_CODE, sizeof(AP_BOOT_CODE));

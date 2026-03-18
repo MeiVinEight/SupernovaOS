@@ -1,5 +1,4 @@
 #include <timer/hpet.h>
-#include <console.h>
 #include <core.h>
 #include <intrinsic.h>
 
@@ -9,10 +8,6 @@ COREAPI HPET_REGISTER *volatile HPET_REGISTERS = 0;
 void setup_hpet(ACPI_HPET *hpet)
 {
 	HPET_TABLE = *hpet;
-
-	simple_output("HPET @ ");
-	simple_output_address(HPET_TABLE.ADDR.ADDR, 16);
-	outchar('\n');
 
 	QWORD hpetAddr = core_mapping(HPET_TABLE.ADDR.ADDR);
 	HPET_REGISTERS = (HPET_REGISTER *) hpetAddr;

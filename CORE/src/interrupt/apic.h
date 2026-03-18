@@ -1,6 +1,6 @@
 #pragma once
 
-#include <intrinsic.h>
+#include <acpi/acpi.h>
 
 #define CPUID_FEAT_EDX_APIC (1 << 9)
 
@@ -58,11 +58,31 @@
 #define APIC_TIMER_DCR_64  0x9
 #define APIC_TIMER_DCR_128 0xA
 
+typedef struct _ACPI_MADT
+{
+	ACPI_SDT_HEADER HEAD;
+	DWORD LAAA; // Local APIC Address
+	DWORD FLAG; // 1 = Dual 8259 Legacy PICs Instlled
+	BYTE  DATA[];
+} ACPI_MADT;
+typedef struct _APIC_MADT_LAPIC
+{
+	BYTE  TYP; // Type, 0 is Local APIC
+	BYTE  SZE; // Always 8
+	BYTE  PID; // APIC Processor ID
+	BYTE  AID; // APIC ID
+	DWORD FLG; // Flags
+} APIC_MADT_LAPIC;
+
 extern DWORD USEAPIC;
-extern DWORD (*APIC_REGISTERS)[4];
+extern volatile DWORD (*volatile APIC_REGISTERS)[4];
 
 int check_apic();
 void setup_apic();
 DWORD apic_current_id();
 void setup_apic_timer(DWORD rate);
 void eoi_apic(BYTE id);
+void apic_ipi(BYTE apicId, BYTE intr);
+void apic_startup_ap(BYTE apicid, void (*apEntry)(void));
+void setup_madt(ACPI_MADT *madt);
+void apic_setup_multiprocessor();

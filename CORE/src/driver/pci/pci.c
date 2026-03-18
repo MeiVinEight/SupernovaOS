@@ -40,12 +40,17 @@ COREAPI char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
 COREAPI char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
 
 COREAPI char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
+COREAPI char PCI_DEVICE_808610D3[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
 COREAPI char PCI_DEVICE_80861901[] = "6th-9th Gen Core Processor PCIe Controller (x16)";
 COREAPI char PCI_DEVICE_80861911[] = "Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model";
 COREAPI char PCI_DEVICE_8086272B[] = "Wi-Fi 7(802.11be) AX1775*/AX1790*/BE20*/BE401/BE1750* 2x2";
+COREAPI char PCI_DEVICE_808627B9[] = "VirtualBox ISA Bridge";
 COREAPI char PCI_DEVICE_80862829[] = "82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode]";
+COREAPI char PCI_DEVICE_80862918[] = "QEMU Virtual Machine ISA Bridge";
 COREAPI char PCI_DEVICE_80862922[] = "QEMU Virtual Machine SATA Controller [AHCI 1.0]";
+COREAPI char PCI_DEVICE_80862930[] = "QEMU Virtual Machine SMBus Controller";
+COREAPI char PCI_DEVICE_808629C0[] = "QEMU Virtual Machine Host Bridge";
 COREAPI char PCI_DEVICE_80863EC2[] = "8th Gen Core Processor Host Bridge/DRAM Registers";
 COREAPI char PCI_DEVICE_80867000[] = "82371SB PIIX3 ISA [Natoma/Triton II]";
 COREAPI char PCI_DEVICE_80867010[] = "QEMU Virtual Machine IDE Controller";
@@ -141,12 +146,17 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	if (device.VENDOR == 0x8086)
 	{
 		if (device.DEVICE == 0x100E) return PCI_DEVICE_8086100E;
+		if (device.DEVICE == 0x10D3) return PCI_DEVICE_808610D3;
 		if (device.DEVICE == 0x1237) return PCI_DEVICE_80861237;
 		if (device.DEVICE == 0x1901) return PCI_DEVICE_80861901;
 		if (device.DEVICE == 0x1911) return PCI_DEVICE_80861911;
 		if (device.DEVICE == 0x272B) return PCI_DEVICE_8086272B;
+		if (device.DEVICE == 0x27B9) return PCI_DEVICE_808627B9;
 		if (device.DEVICE == 0x2829) return PCI_DEVICE_80862829;
+		if (device.DEVICE == 0x2918) return PCI_DEVICE_80862918;
 		if (device.DEVICE == 0x2922) return PCI_DEVICE_80862922;
+		if (device.DEVICE == 0x2930) return PCI_DEVICE_80862930;
+		if (device.DEVICE == 0x29C0) return PCI_DEVICE_808629C0;
 		if (device.DEVICE == 0x3EC2) return PCI_DEVICE_80863EC2;
 		if (device.DEVICE == 0x7000) return PCI_DEVICE_80867000;
 		if (device.DEVICE == 0x7010) return PCI_DEVICE_80867010;

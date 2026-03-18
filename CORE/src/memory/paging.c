@@ -1,6 +1,20 @@
 #include <memory/paging.h>
 #include <intrinsic.h>
+#include <console.h>
 
+void INT0E(INTERRUPT_STACK *stack)
+{
+	simple_output("CPU #");
+	simple_output_number(cpu_local_apic_id());
+	simple_output(" INT: #PF @ RIP ");
+	simple_output_address(stack->RIP, 16);
+	simple_output("\n");
+	simple_output("CODE: ");
+	simple_output_address(stack->ERROR, 16);
+	simple_output("\n");
+
+	while (1) __halt();
+}
 void setup_paging()
 {
 	// Setup Paging
@@ -23,4 +37,8 @@ void setup_paging()
 		}
 	}
 	__writecr3(0x1000);
+}
+void setup_page_fault()
+{
+	register_interrupt(0x0E, INT0E);
 }

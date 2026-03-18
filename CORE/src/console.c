@@ -1,7 +1,9 @@
 #include <console.h>
+#include <intrinsic.h>
+#include <core.h>
+#include <memory/prealloc.h>
 
-
-__declspec(allocate(".text")) const char draw_char_lines[] = {
+COREAPI char draw_char_lines[] = {
 	0xB8, 0x10, 0x00, 0x00, 0x00, // MOV EAX, 10H
 
 	// LOOP0:
@@ -19,6 +21,23 @@ __declspec(allocate(".text")) const char draw_char_lines[] = {
 
 	// LOOP1:
 	0xC3                          // RET
+};
+COREAPI char scroll_text_line[] = {
+	// LOOP0:
+	0x48, 0x85, 0xC9,             // TEST RCX, RCX
+	0x74, 0x1F,                   // JZ LOOP1
+
+	0xF3, 0x0F, 0x6F, 0x02,       // MOVDQU XMM0, XMMWORD PTR [RDX]
+	0xF3, 0x41, 0x0F, 0x7F, 0x00, // MOVDQU XMMWORD PTR [R8], XMM0
+	0xF3, 0x41, 0x0F, 0x7F, 0x01, // MOVDQU XMMWORD PTR [R9], XMM0
+	0x48, 0x83, 0xC2, 0x10,       // ADD RDX, 10H
+	0x49, 0x83, 0xC0, 0x10,       // ADD R8, 10H
+	0x49, 0x83, 0xC1, 0x10,       // ADD R9, 10H
+	0x48, 0xFF, 0xC9,             // DEC RCX
+	0xEB, 0xDC,                   // JMP LOOP0
+
+	// LOOP1:
+	0xC3,                   // RET
 };
 
 COREAPI DWORD CHAR_BUFFER[128];

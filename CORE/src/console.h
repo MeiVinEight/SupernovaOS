@@ -1,5 +1,5 @@
 #pragma once
-#include <intrinsic.h>
+#include <types.h>
 
 typedef struct _SIMPLE_TEXT_MODE
 {

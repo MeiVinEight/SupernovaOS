@@ -9,7 +9,7 @@ void setup_processor()
 
 	// CHECK SSE
 	DWORD cpuid[4] = { 0 };
-	__cpuid(cpuid, 1);
+	__cpuid((int *) cpuid, 1);
 	QWORD sse = 0;
 	sse |= cpuid[2] & (1 << 20); // SSE 4.2
 	sse |= cpuid[2] & (1 << 19); // SSE 4.1
@@ -35,4 +35,16 @@ void setup_processor()
 		CR4 |= 0x600;
 		__writecr4(CR4);
 	}
+}
+BYTE cpu_local_apic_id()
+{
+	int cpuid[4] = { 0, 0, 0, 0 };
+	__cpuid(cpuid, 1);
+	return (cpuid[1] >> 24) & 0xFF;
+}
+void cpuid_brand(char *buf)
+{
+	__cpuid((int *) (buf + 0x00), (int) 0x80000002);
+	__cpuid((int *) (buf + 0x10), (int) 0x80000003);
+	__cpuid((int *) (buf + 0x20), (int) 0x80000004);
 }

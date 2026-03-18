@@ -27,6 +27,9 @@
     <ClInclude Include="src\pci.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ntfs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.c">
@@ -39,6 +42,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\pci.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ahci.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ntfs.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

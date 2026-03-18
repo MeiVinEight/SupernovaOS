@@ -183,6 +183,7 @@
       <LinkTimeCodeGenerationObjectFile />
       <TypeLibraryResourceID />
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <AdditionalOptions>/STUB:$(ProjectDir)DOS.EXE %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -242,17 +243,21 @@
       <LinkTimeCodeGenerationObjectFile />
       <TypeLibraryResourceID />
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <AdditionalOptions>/STUB:$(ProjectDir)DOS.EXE %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\ahci.h" />
     <ClInclude Include="src\intrinsic.h" />
+    <ClInclude Include="src\ntfs.h" />
     <ClInclude Include="src\pci.h" />
     <ClInclude Include="src\uefi.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\ahci.c" />
     <ClCompile Include="src\intrinsic.c" />
     <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\ntfs.c" />
     <ClCompile Include="src\pci.c" />
     <ClCompile Include="src\uefi.c" />
   </ItemGroup>

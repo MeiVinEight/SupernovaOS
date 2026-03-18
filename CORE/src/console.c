@@ -64,10 +64,20 @@ COREAPI SIMPLE_TEXT_MODE SIMPLE_TEXT = {
 	.POS = 0,
 	.COLOR = 0x0F
 };
+COREAPI volatile QWORD FRAME_BUFFER = 0;
+COREAPI volatile QWORD FLUSH_BUFFER = 0;
 
+void setup_console()
+{
+	FRAME_BUFFER = core_mapping(SYSTEM_TABLE->FBB);
+	FLUSH_BUFFER = core_mapping(PREALLOC_FLUSH_BUFFER);
+	QWORD buf[2] = { 0, 0 };
+	__memset128((void *) FRAME_BUFFER, buf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
+	__memset128((void *) FLUSH_BUFFER, buf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
+}
 void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 {
-	BYTE(*fontMap)[16] = (BYTE(*)[16]) 0x7000;
+	BYTE(*fontMap)[16] = SYSTEM_TABLE->FONT;
 	BYTE *font = fontMap[ch];
 	DWORD colorMap[2] = {COLOR_PLAETTE[(color >> 4) & 0xF], COLOR_PLAETTE[(color >> 0) & 0xF]};
 	for (int i = 0; i < 16; i++)
@@ -81,7 +91,8 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 	}
 	QWORD pixelPos = y * 16 * SYSTEM_TABLE->PPL;
 	pixelPos += x * 8;
-	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(SYSTEM_TABLE->FBB + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
+	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(FRAME_BUFFER + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
+	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(FLUSH_BUFFER + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
 }
 void outchar(char ch)
 {
@@ -103,19 +114,23 @@ void outchar(char ch)
 	DWORD lines = SIMPLE_TEXT.POS / charPreLine;
 	if (lines >= maxLines)
 	{
-		QWORD copySize = (SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL / 2;
-		QWORD *dst = (QWORD *) (SYSTEM_TABLE->FBB);
-		QWORD *src = (QWORD *) (SYSTEM_TABLE->FBB + SYSTEM_TABLE->PPL * 16 * 4);
-		while (copySize--)
-			*(dst++) = *(src++);
+		QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
+		QWORD src = (FLUSH_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
+		//while (copySize--)
+		//	*(dst++) = *(src++);
+		//__memcpy128(dst, src, copySize);
+		((void (*)(QWORD, QWORD, QWORD, QWORD)) scroll_text_line)(copySize, src, FRAME_BUFFER, FLUSH_BUFFER);
+		//dst = (QWORD *) FLUSH_BUFFER;
+		//__memcpy128(dst, src, copySize);
 		QWORD buf[2] = { 0, 0 };
-		__memset128((void *) (SYSTEM_TABLE->FBB + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
+		__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
+		__memset128((void *) (FLUSH_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
 		SIMPLE_TEXT.POS -= charPreLine;
 	}
 }
 void simple_output(const void *buf)
 {
-	const char *str = (const char *) buf;
+	const char *str = buf;
 	while (*str)
 		outchar(*str++);
 }
@@ -129,7 +144,7 @@ void simple_output_number(QWORD x)
 		int idx = 19;
 		while (idx && x)
 		{
-			buf[--idx] = '0' + (x % 10);
+			buf[--idx] = (char) ('0' + (x % 10));
 			x /= 10;
 		}
 		num += idx;

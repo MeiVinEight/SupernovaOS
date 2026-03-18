@@ -274,42 +274,33 @@ void setup_pci()
 	PCI_DEVICE_ADDRESS addr;
 	addr.address = 0;
 	addr.ENABLE = 1;
+	DWORD *dvc = SYSTEM_TABLE->DVC;
 	for (; !addr.RSV; addr.address += 0x100)
 	{
-
 		PCI_DEVICE_VENDOR vendor = pci_read_register_vendor(addr);
-		DWORD classCode = pci_read_register_class(addr);
 		if ((!vendor.VENDOR) || (vendor.VENDOR == 0xFFFF))
 			continue;
-
-		PCI_DEVICE device;
-		device.vendor = vendor;
-		device.type = pci_read_register_header_type(addr);
-		device.subsystem.value = 0;
-		if (device.type == 0)
-			device.subsystem = pci_read_register_subsystem(addr);
-
-		simple_output("PCI ");
+		DWORD classCode = pci_read_register_class(addr);
+		PCI_DEVICE_SUBSYSTEM subsystem = pci_read_register_subsystem(addr);
+		simple_output("PCI @ ");
 		simple_output_address(addr.address, 8);
-		outchar(':');
-		//simple_output_address(vendor.ID, 8);
-		//outchar('-');
+		outchar('-');
+		simple_output_address(subsystem.value, 8);
+		simple_output(": ");
 		simple_output_address(classCode, 6);
-		outchar(':');
+		simple_output(" - ");
 		const char *vendorName = pci_vendor_name(vendor.VENDOR);
 		const char *deviceName = pci_device_name(vendor);
-		if ((!vendorName) || (!deviceName))
-		{
-			simple_output_address(device.subsystem.value, 8);
-			outchar('-');
-			simple_output_address(vendor.ID, 8);
-		}
-		else
+		if (vendorName && deviceName)
 		{
 			simple_output(vendorName);
 			outchar(' ');
 			simple_output(deviceName);
 		}
+		else
+			simple_output_address(vendor.ID, 8);
 		outchar('\n');
+		*dvc++ = addr.address;
 	}
+	*dvc = 0;
 }

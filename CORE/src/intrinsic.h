@@ -31,8 +31,10 @@ void  __writecr3(QWORD);
 void  __writecr4(QWORD);
 void  __writemsr(DWORD, QWORD);
 
-QWORD __lgdt();
+QWORD __lgdt(void *);
 QWORD __getrsp();
 void *__memset128(void *, void *, unsigned long long);
-
-extern SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE;
+void *__memcpy128(void *, void *, unsigned long long);
+void __sti();
+void *__memcpy(volatile void *, const void *, QWORD);
+void __stdcall __int(BYTE x);

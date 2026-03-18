@@ -1,12 +1,14 @@
 #include  <driver/pci/pci.h>
-
-#include "console.h"
+#include <console.h>
+#include <core.h>
 
 COREAPI const char PCI_VENDOR_10DE[] = "NVIDIA Corporation";
+COREAPI const char PCI_VENDOR_1234[] = "QEMU Virtual Machine";
 COREAPI const char PCI_VENDOR_15AD[] = "VMware";
 COREAPI const char PCI_VENDOR_1969[] = "Qualcomm Atheros";
 COREAPI const char PCI_VENDOR_1987[] = "Phison Electronics Corporation";
 COREAPI const char PCI_VENDOR_1B21[] = "ASMedia Technology Inc.";
+COREAPI const char PCI_VENDOR_1B36[] = "Red Hat Inc";
 COREAPI const char PCI_VENDOR_1DEE[] = "Biwin Storage Technology Co., Ltd.";
 COREAPI const char PCI_VENDOR_8086[] = "Intel Corporation";
 COREAPI const char PCI_VENDOR_80EE[] = "InnoTek Systemberatung GmbH";
@@ -15,6 +17,8 @@ COREAPI const char PCI_DEVICE_10DE10F7[] = "TU102 High Definition Audio Controll
 COREAPI const char PCI_DEVICE_10DE1AD6[] = "TU102 USB 3.1 Host Controller";
 COREAPI const char PCI_DEVICE_10DE1AD7[] = "TU102 USB Type-C UCSI Controller";
 COREAPI const char PCI_DEVICE_10DE1E07[] = "TU102 [GeForce RTX 2080 Ti Rev. A]";
+
+COREAPI const char PCI_DEVICE_12341111[] = "VGA Controller";
 
 COREAPI const char PCI_DEVICE_15AD0405[] = "SVGA II Adapter";
 COREAPI const char PCI_DEVICE_15AD0740[] = "Virtual Machine Communication Interface";
@@ -31,15 +35,20 @@ COREAPI const char PCI_DEVICE_19875013[] = "PS5013 E13 NVMe Controller";
 
 COREAPI const char PCI_DEVICE_1B212142[] = "ASM2142/ASM3142 USB 3.1 Host Controller";
 
+COREAPI const char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
+
 COREAPI const char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
 
+COREAPI const char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI const char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
 COREAPI const char PCI_DEVICE_80861901[] = "6th-9th Gen Core Processor PCIe Controller (x16)";
 COREAPI const char PCI_DEVICE_80861911[] = "Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model";
 COREAPI const char PCI_DEVICE_8086272B[] = "Wi-Fi 7(802.11be) AX1775*/AX1790*/BE20*/BE401/BE1750* 2x2";
 COREAPI const char PCI_DEVICE_80862829[] = "82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode]";
+COREAPI const char PCI_DEVICE_80862922[] = "QEMU Virtual Machine SATA Controller [AHCI 1.0]";
 COREAPI const char PCI_DEVICE_80863EC2[] = "8th Gen Core Processor Host Bridge/DRAM Registers";
 COREAPI const char PCI_DEVICE_80867000[] = "82371SB PIIX3 ISA [Natoma/Triton II]";
+COREAPI const char PCI_DEVICE_80867010[] = "QEMU Virtual Machine IDE Controller";
 COREAPI const char PCI_DEVICE_80867110[] = "82371AB/EB/MB PIIX4 ISA";
 COREAPI const char PCI_DEVICE_80867111[] = "82371AB/EB/MB PIIX4 IDE";
 COREAPI const char PCI_DEVICE_80867113[] = "82371AB/EB/MB PIIX4 ACPI";
@@ -73,10 +82,12 @@ const char *pci_vendor_name(DWORD vendorId)
 	switch (vendorId)
 	{
 		case 0x10DE: return PCI_VENDOR_10DE;
+		case 0x1234: return PCI_VENDOR_1234;
 		case 0x15AD: return PCI_VENDOR_15AD;
 		case 0x1969: return PCI_VENDOR_1969;
 		case 0x1987: return PCI_VENDOR_1987;
 		case 0x1B21: return PCI_VENDOR_1B21;
+		case 0x1B36: return PCI_VENDOR_1B36;
 		case 0x1DEE: return PCI_VENDOR_1DEE;
 		case 0x8086: return PCI_VENDOR_8086;
 		case 0x80EE: return PCI_VENDOR_80EE;
@@ -92,6 +103,10 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 		if (device.DEVICE == 0x1AD7) return PCI_DEVICE_10DE1AD7;
 		if (device.DEVICE == 0x1E07) return PCI_DEVICE_10DE1E07;
 	}
+	if (device.VENDOR == 0x1234)
+	{
+		if (device.DEVICE == 0x1111) return PCI_DEVICE_12341111;
+	}
 	if (device.VENDOR == 0x1969)
 	{
 		if (device.DEVICE == 0xE0B1) return PCI_DEVICE_1969E0B1;
@@ -103,6 +118,10 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	if (device.VENDOR == 0x1B21)
 	{
 		if (device.DEVICE == 0x2142) return PCI_DEVICE_1B212142;
+	}
+	if (device.VENDOR == 0x1B36)
+	{
+		if (device.DEVICE == 0x000D) return PCI_DEVICE_1B36000D;
 	}
 	if (device.VENDOR == 0x1DEE)
 	{
@@ -121,13 +140,16 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	}
 	if (device.VENDOR == 0x8086)
 	{
+		if (device.DEVICE == 0x100E) return PCI_DEVICE_8086100E;
 		if (device.DEVICE == 0x1237) return PCI_DEVICE_80861237;
 		if (device.DEVICE == 0x1901) return PCI_DEVICE_80861901;
 		if (device.DEVICE == 0x1911) return PCI_DEVICE_80861911;
 		if (device.DEVICE == 0x272B) return PCI_DEVICE_8086272B;
 		if (device.DEVICE == 0x2829) return PCI_DEVICE_80862829;
+		if (device.DEVICE == 0x2922) return PCI_DEVICE_80862922;
 		if (device.DEVICE == 0x3EC2) return PCI_DEVICE_80863EC2;
 		if (device.DEVICE == 0x7000) return PCI_DEVICE_80867000;
+		if (device.DEVICE == 0x7010) return PCI_DEVICE_80867010;
 		if (device.DEVICE == 0x7110) return PCI_DEVICE_80867110;
 		if (device.DEVICE == 0x7111) return PCI_DEVICE_80867111;
 		if (device.DEVICE == 0x7113) return PCI_DEVICE_80867113;

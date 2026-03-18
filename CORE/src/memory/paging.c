@@ -1,6 +1,8 @@
 #include <memory/paging.h>
 #include <intrinsic.h>
+#include <interrupt/interrupt.h>
 #include <console.h>
+#include <arch/processor.h>
 
 void INT0E(INTERRUPT_STACK *stack)
 {

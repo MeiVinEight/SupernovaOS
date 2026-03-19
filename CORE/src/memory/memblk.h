@@ -7,8 +7,6 @@
 
 #include <types.h>
 
-#define MEMBLK_NODE_PRE_PAGE 0x7F
-
 #define MEMBLK_LROTATE 0
 #define MEMBLK_RROTATE 1
 
@@ -52,6 +50,8 @@ void memblk_adjust_tree(volatile DWORD *root, volatile MEMORY_BLOCK *blk);
 volatile MEMORY_BLOCK *memblk_search_node(volatile DWORD *root, QWORD address, DWORD type);
 void memblk_delete_node(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *));
 void memblk_insert_node(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *));
+void memblk_delete_link(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *));
+void memblk_insert_link(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *));
 
 
 #endif //SUPERNOVA_MEMBLK_H

@@ -71,6 +71,18 @@ volatile DWORD *memblk_rref(DWORD addr)
 		return &memblk_mapping_node(addr)->R;
 	return 0;
 }
+int memblk_merge(volatile MEMORY_BLOCK *dst, volatile MEMORY_BLOCK *src)
+{
+	if ((src->A >= dst->A) && (src->A <= (dst->A + dst->S)))
+	{
+		QWORD z = src->A + src->S;
+		if (dst->A + dst->S > z)
+			z = dst->A + dst->S;
+		dst->S = z - dst->A;
+		return 1;
+	}
+	return 0;
+}
 
 volatile DWORD *memblk_node_reference(volatile DWORD *rootref, volatile MEMORY_BLOCK *blk)
 {
@@ -274,4 +286,53 @@ void memblk_insert_node(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (
 	blk->P = memblk_node_addr(parn);
 	*ref = memblk_node_addr(blk);
 	memblk_adjust_tree(root, blk);
+}
+
+void memblk_delete_link(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *))
+{
+	volatile MEMORY_BLOCK *lnode = memblk_mapping_node(blk->L);
+	volatile MEMORY_BLOCK *rnode = memblk_mapping_node(blk->R);
+	volatile DWORD *lref = root;
+	if (lnode)
+		lref = &lnode->R;
+	*lref = blk->R;
+	if (rnode)
+		rnode->L = blk->L;
+	freeNode(blk);
+}
+void memblk_insert_link(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *))
+{
+	volatile DWORD *lref = root;
+	volatile MEMORY_BLOCK *volatile prev = 0;
+	while (*lref)
+	{
+		volatile MEMORY_BLOCK *node = memblk_mapping_node(*lref);
+		if (memblk_merge(node, blk))
+		{
+			freeNode(blk);
+			volatile MEMORY_BLOCK *next = memblk_mapping_node(node->R);
+			if (next && memblk_merge(node, next))
+				memblk_delete_link(root, blk, freeNode);
+			return;
+		}
+		if (memblk_merge(blk, node))
+		{
+			node->A = blk->A;
+			node->S = blk->S;
+			freeNode(blk);
+			return;
+		}
+		if (node->A >= blk->A)
+		{
+			*lref = memblk_node_addr(blk);
+			blk->L = memblk_node_addr(prev);
+			blk->R = memblk_node_addr(node);
+			node->L = memblk_node_addr(blk);
+			return;
+		}
+		prev = node;
+		lref = &node->R;
+	}
+	*lref = memblk_node_addr(blk);
+	blk->L = memblk_node_addr(prev);
 }

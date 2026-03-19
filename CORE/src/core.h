@@ -37,7 +37,7 @@ typedef struct _SUPERNOVA_SYSTEM_TABLE
 } SUPERNOVA_SYSTEM_TABLE;
 
 
-extern SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE;
+extern volatile SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE;
 
 QWORD core_mapping(QWORD addr);
 void kprint_cpu();

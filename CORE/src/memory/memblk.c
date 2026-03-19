@@ -302,7 +302,7 @@ void memblk_delete_link(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (
 }
 void memblk_insert_link(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *))
 {
-	volatile DWORD *lref = root;
+	volatile DWORD *volatile lref = root;
 	volatile MEMORY_BLOCK *volatile prev = 0;
 	while (*lref)
 	{

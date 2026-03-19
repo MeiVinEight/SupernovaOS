@@ -1,7 +1,7 @@
 #include <console.h>
 #include <intrinsic.h>
 #include <core.h>
-#include <memory/prealloc.h>
+#include <memory/virtmem.h>
 
 COREAPI char draw_char_lines[] = {
 	0xB8, 0x10, 0x00, 0x00, 0x00, // MOV EAX, 10H
@@ -67,18 +67,47 @@ COREAPI SIMPLE_TEXT_MODE SIMPLE_TEXT = {
 COREAPI volatile QWORD FRAME_BUFFER = 0;
 COREAPI volatile QWORD FLUSH_BUFFER = 0;
 
+void setup_basic_console()
+{
+	QWORD buf[3] = { 0, 0, 0 };
+	QWORD *avxBuf = buf;
+	if (((QWORD) avxBuf) & 0xF)
+		avxBuf++;
+
+	FRAME_BUFFER = core_mapping(SYSTEM_TABLE->FBB);
+	__memset128((void *) FRAME_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
+
+}
 void setup_console()
 {
-	FRAME_BUFFER = core_mapping(SYSTEM_TABLE->FBB);
-	FLUSH_BUFFER = core_mapping(PREALLOC_FLUSH_BUFFER);
-	QWORD buf[2] = { 0, 0 };
-	__memset128((void *) FRAME_BUFFER, buf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
-	__memset128((void *) FLUSH_BUFFER, buf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
+	QWORD memSpace = SYSTEM_TABLE->VRES * SYSTEM_TABLE->PPL * 4;
+	memSpace += 0x1FFFFF;
+	memSpace >>= 21;
+	QWORD virtualAddr = 0xFFFF808000000000ULL;
+	QWORD flushAddr = virtualAddr;
+	QWORD pageCount = 512;
+	while (memSpace--)
+	{
+		QWORD phyAddr = alloc_physical_memory(&pageCount, 21, 1);
+		if (!phyAddr)
+		{
+			simple_output("INSUFFICIENT MEMORY FOR VIDEO");
+			while (1) __halt();
+		}
+		virtual_mapping(phyAddr, virtualAddr, 1, PAGE_2M);
+		virtualAddr += (1 << 21);
+	}
+	FLUSH_BUFFER = flushAddr;
+	QWORD buf[3] = { 0, 0, 0 };
+	QWORD *avxBuf = buf;
+	if (((QWORD) avxBuf) & 0xF)
+		avxBuf++;
+	__memset128((void *) FLUSH_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
 }
 void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 {
-	BYTE(*fontMap)[16] = SYSTEM_TABLE->FONT;
-	BYTE *font = fontMap[ch];
+	volatile BYTE(*fontMap)[16] = SYSTEM_TABLE->FONT;
+	volatile BYTE *font = fontMap[ch];
 	DWORD colorMap[2] = {COLOR_PLAETTE[(color >> 4) & 0xF], COLOR_PLAETTE[(color >> 0) & 0xF]};
 	for (int i = 0; i < 16; i++)
 	{
@@ -92,6 +121,8 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 	QWORD pixelPos = y * 16 * SYSTEM_TABLE->PPL;
 	pixelPos += x * 8;
 	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(FRAME_BUFFER + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
+	if (!FLUSH_BUFFER)
+		return;
 	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(FLUSH_BUFFER + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
 }
 void outchar(char ch)
@@ -114,6 +145,17 @@ void outchar(char ch)
 	DWORD lines = SIMPLE_TEXT.POS / charPreLine;
 	if (lines >= maxLines)
 	{
+		if (!FLUSH_BUFFER)
+		{
+			QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
+			QWORD *src = (QWORD *) (FRAME_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
+			QWORD *dst = (QWORD *) (FRAME_BUFFER);
+			__memcpy128(dst, src, copySize);
+			SIMPLE_TEXT.POS -= charPreLine;
+			QWORD buf[2] = { 0, 0 };
+			__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
+			return;
+		}
 		QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
 		QWORD src = (FLUSH_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
 		//while (copySize--)

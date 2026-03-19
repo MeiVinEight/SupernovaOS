@@ -9,10 +9,11 @@
 #include <timer/timer.h>
 #include <acpi/acpi.h>
 #include <driver/pci/pcie.h>
+#include <memory/virtmem.h>
 
 QWORD __stdcall coreCRTStartup();
 
-COREAPI SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE = (SUPERNOVA_SYSTEM_TABLE *) SYSTEM_ADDRESS;
+COREAPI volatile SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE = (SUPERNOVA_SYSTEM_TABLE *) SYSTEM_ADDRESS;
 
 void kprint_cpu()
 {
@@ -39,6 +40,8 @@ QWORD coreCRTStartup()
 {
 	setup_interrupe();
 	setup_page_fault();
+	setup_basic_console();
+	setup_memory();
 	setup_console();
 
 	simple_output("Supernova OS\n");
@@ -53,22 +56,6 @@ QWORD coreCRTStartup()
 	apic_setup_multiprocessor();
 	setup_pcie();
 
-	/*
-	MEMORY_REGION *beg = SYSTEM_TABLE->MEMORY;
-	EFI_MEMORY_REGION *beg = SYSTEM_TABLE->MEMORY;
-	//             0000000000000000 | 0000000000000000 | 00000000
-	simple_output("Base Address       Length             Type\r\n");
-	while (~beg->A)
-	{
-		simple_output_address(beg->A, 16);
-		simple_output(" | ");
-		simple_output_address(beg->L, 16);
-		simple_output(" | ");
-		simple_output_address(beg->F, 2);
-		simple_output("\r\n");
-		beg++;
-	}
-	*/
 
 	simple_output("OK\n");
 

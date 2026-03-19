@@ -47,6 +47,11 @@ volatile QWORD *memblk_sref(DWORD addr);
 volatile DWORD *memblk_node_reference(volatile DWORD *rootref, volatile MEMORY_BLOCK *blk);
 WORD memblk_tree_height(volatile MEMORY_BLOCK *blk);
 void memblk_adjust_height(volatile MEMORY_BLOCK *blk);
+void memblk_rotate(volatile DWORD *ref, DWORD type);
+void memblk_adjust_tree(volatile DWORD *root, volatile MEMORY_BLOCK *blk);
+volatile MEMORY_BLOCK *memblk_search_node(volatile DWORD *root, QWORD address, DWORD type);
+void memblk_delete_node(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *));
+void memblk_insert_node(volatile DWORD *root, volatile MEMORY_BLOCK *blk, void (*freeNode)(volatile MEMORY_BLOCK *));
 
 
 #endif //SUPERNOVA_MEMBLK_H

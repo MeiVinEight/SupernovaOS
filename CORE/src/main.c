@@ -55,6 +55,7 @@ QWORD coreCRTStartup()
 
 	/*
 	MEMORY_REGION *beg = SYSTEM_TABLE->MEMORY;
+	EFI_MEMORY_REGION *beg = SYSTEM_TABLE->MEMORY;
 	//             0000000000000000 | 0000000000000000 | 00000000
 	simple_output("Base Address       Length             Type\r\n");
 	while (~beg->A)

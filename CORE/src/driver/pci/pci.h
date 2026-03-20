@@ -25,6 +25,9 @@
 #define PCI_COMMAND_MEMORY_SPACE     (1 << 1)
 #define PCI_COMMAND_BUS_MASTER       (1 << 2)
 
+// BAR register bits
+#define PCI_BAR_IO_SPACE             (1 << 0)
+
 typedef union _PCI_DEVICE_ADDRESS
 {
 	struct
@@ -70,6 +73,7 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device);
 DWORD pci_read_config_word(DWORD deviceId, DWORD offset);
 DWORD pci_read_config_dword(DWORD deviceId, DWORD offset);
 void pci_write_config_word(DWORD deviceId, DWORD offset, DWORD value);
+void pci_write_config_dword(DWORD deviceId, DWORD offset, DWORD value);
 PCI_DEVICE_VENDOR pci_cfg_get_vendor(PCI_DEVICE_ADDRESS address);
 DWORD pci_cfg_get_class(PCI_DEVICE_ADDRESS address);
 DWORD pci_cfg_get_command(DWORD deviceId);

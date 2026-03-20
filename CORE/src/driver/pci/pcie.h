@@ -46,10 +46,20 @@ typedef struct _PCI_CONFIGURATION_SPACE
 	BYTE resvered0[7];
 	PCI_CONFIGURATION_INTERRUPT interrupt;
 } PCI_CONFIGURATION_SPACE;
+typedef struct _PCIE_DEVICE
+{
+	DWORD offset:8;
+	DWORD function:3;
+	DWORD device:5;
+	DWORD bus:8;
+	DWORD reserve:8;
+	volatile PCI_CONFIGURATION_SPACE *configuration;
+} PCIE_DEVICE;
 
 extern volatile ACPI_MCFG *volatile MCFG;
 
 void setup_pcie_mcfg(ACPI_MCFG *mcfg);
 void setup_pcie();
+QWORD pcie_cfg_get_base_address(volatile PCIE_DEVICE *device, DWORD addrIdx);
 
 #endif

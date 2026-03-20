@@ -26,7 +26,9 @@ COREAPI BYTE __isr[] =
 	0x41, 0x56,                   // PUSH R14
 	0x41, 0x57,                   // PUSH R15
 	0x48, 0x8B, 0xCC,             // MOV RCX, RSP
+	0x48, 0x83, 0xEC, 0x10,       // SUB RSP, 10H
 	0xE8, 0x00, 0x00, 0x00, 0x00, // CALL 00000000
+	0x48, 0x83, 0xC4, 0x10,       // ADD RSP, 10H
 	0x41, 0x5F,                   // POP R15
 	0x41, 0x5E,                   // POP R14
 	0x41, 0x5D,                   // POP R13
@@ -47,7 +49,7 @@ COREAPI BYTE __isr[] =
 	0x48, 0xCF,                   // IRETQ
 };
 
-void __isr_common(INTERRUPT_STACK *stack)
+void __stdcall __isr_common(INTERRUPT_STACK *stack)
 {
 	BYTE id = stack->INT;
 	if (INTERRUPT_ROUTINE[id])
@@ -70,7 +72,7 @@ void setup_interrupe()
 	IDT = (INTERRUPT64 *) SYSTEM_TABLE->IDT;
 	DWORD erc = 0x60227D00; // ERROR CODE Mask
 	// Calculate RVA from __isr+0x1B to __isr_common
-	QWORD rva = (QWORD) (__isr + 0x1C);
+	QWORD rva = (QWORD) (__isr + 0x20);
 	*((DWORD *) rva) = (DWORD) (((QWORD) __isr_common) - (rva + 4));
 
 	for (DWORD i = 0; i < 256; i++)
@@ -98,7 +100,7 @@ void setup_interrupe()
 		// JMP __isr
 		isrx[4] = 0xE9;
 		// RVA __isr
-		QWORD rva = (QWORD) (isrx + 5);
+		rva = (QWORD) (isrx + 5);
 		*((DWORD *) rva) = (DWORD) (((QWORD) __isr) - (rva + 4));
 		QWORD isr0a = (QWORD) isrx;
 

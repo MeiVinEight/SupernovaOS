@@ -242,6 +242,19 @@ void pci_write_config_word(DWORD deviceId, DWORD offset, DWORD value)
 	__outdword(PCI_CONFIG_ADDRESS, newVal);
 	__outdword(PCI_CONFIG_DATA, newVal);
 }
+void pci_write_config_dword(DWORD deviceId, DWORD offset, DWORD value)
+{
+	if (offset & 3)
+		return;
+	if (offset > 0xFF)
+		return;
+	if (deviceId & 0xFF)
+		return;
+
+	DWORD address = deviceId | offset;
+	__outdword(PCI_CONFIG_ADDRESS, address);
+	__outdword(PCI_CONFIG_DATA, value);
+}
 DWORD pci_cfg_get_command(DWORD deviceId)
 {
 	return pci_read_config_word(deviceId, PCI_OFFSET_COMMAND);
@@ -284,7 +297,7 @@ void setup_pci()
 	PCI_DEVICE_ADDRESS addr;
 	addr.address = 0;
 	addr.ENABLE = 1;
-	DWORD *dvc = SYSTEM_TABLE->DVC;
+	volatile DWORD *dvc = SYSTEM_TABLE->DVC;
 	for (; !addr.RSV; addr.address += 0x100)
 	{
 		PCI_DEVICE_VENDOR vendor = pci_cfg_get_vendor(addr);

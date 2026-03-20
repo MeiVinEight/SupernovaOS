@@ -20,9 +20,9 @@ set_target_properties(CORE PROPERTIES
 	SUFFIX ".DLL"
 )
 
-target_compile_options(CORE PUBLIC /GS-)
+target_compile_options(CORE PUBLIC /GS- /Gz)
 target_link_options(CORE PUBLIC
-	/BASE:0
+	/BASE:0xFFFF800000000000
 	/MANIFEST:NO    # Anti .rsrc section
 	/INCREMENTAL:NO
 	/MANIFESTUAC:NO

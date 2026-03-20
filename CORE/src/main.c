@@ -32,6 +32,7 @@ QWORD core_mapping(QWORD addr)
 }
 unsigned long long _DllMainCRTStartup()
 {
+	__setrbp(__getrsp() & ~((1ULL << 12) - 1));
 	setup_paging();
 	setup_segment();
 	return ((QWORD (*)()) core_mapping((QWORD) coreCRTStartup))();

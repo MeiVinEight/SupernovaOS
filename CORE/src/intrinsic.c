@@ -74,3 +74,11 @@ void __int(BYTE)
 	0xCD, 0x00,                         // INT 00H
 	0xC3,                               // RET
 };
+__declspec(allocate(".text")) char __setrbp[] =
+/*
+void __setrbp(QWORD)
+*/
+{
+	0x48, 0x8B, 0xE9, // MOV RBP, RCX
+	0xC3,             // RET
+};

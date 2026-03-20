@@ -33,6 +33,7 @@ void  __writemsr(DWORD, QWORD);
 
 QWORD __lgdt(void *);
 QWORD __getrsp();
+void __setrbp(QWORD);
 void *__memset128(void *, void *, unsigned long long);
 void *__memcpy128(void *, void *, unsigned long long);
 void __sti();

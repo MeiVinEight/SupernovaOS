@@ -3,9 +3,22 @@
 #include <interrupt/interrupt.h>
 #include <console.h>
 #include <arch/processor.h>
+#include <memory/virtmem.h>
 
 void INT0E(INTERRUPT_STACK *stack)
 {
+	QWORD addr = __readcr2();
+	if (addr >= 0xFFFF800000000000ULL)
+	{
+		if (addr < 0xFFFF808000000000ULL)
+		{
+			QWORD phyAddr = addr & 0x0000007FFFE00000ULL;
+			addr &= ~((1ULL << 21) - 1);
+			virtual_mapping(phyAddr, addr, 1, PAGE_2M);
+			return;
+		}
+	}
+
 	simple_output("CPU #");
 	simple_output_number(cpu_local_apic_id());
 	simple_output(" INT: #PF @ RIP ");
@@ -14,6 +27,9 @@ void INT0E(INTERRUPT_STACK *stack)
 	simple_output("CODE: ");
 	simple_output_address(stack->ERROR, 16);
 	simple_output("\n");
+	simple_output("ADDR: ");
+	simple_output_address(__readcr2(), 16);
+	outchar('\n');
 
 	while (1) __halt();
 }

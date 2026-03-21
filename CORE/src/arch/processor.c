@@ -48,3 +48,10 @@ void cpuid_brand(char *buf)
 	__cpuid((int *) (buf + 0x10), (int) 0x80000003);
 	__cpuid((int *) (buf + 0x20), (int) 0x80000004);
 }
+int cpu_supports_huge_page()
+{
+	int cpuid[4] = { 0 };
+	__cpuid((int *) cpuid, (int) 0x80000001);
+	DWORD edx = cpuid[3];
+	return (edx & (1 << 26)) != 0;
+}

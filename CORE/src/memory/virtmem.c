@@ -247,3 +247,25 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		va.address += page;
 	}
 }
+QWORD physical_address(QWORD virtAddr)
+{
+	QWORD addrMask = ~0xFFFULL;
+	volatile VIRTUAL_ADDRESS va;
+	va.address = virtAddr;
+	QWORD *pml4 = (QWORD *) core_mapping(__readcr3() & addrMask);
+	QWORD offset4 = va.offset4;
+	QWORD *pdpt = (QWORD *) core_mapping(pml4[offset4] & addrMask);
+	QWORD offset3 = va.offset3;
+	QWORD pdpte = pdpt[offset3];
+	if (pdpte & 0x80)
+		return (pdpte & ~(0x3FFFFFFFULL)) | (virtAddr & 0x3FFFFFFF);
+	QWORD *pd = (QWORD *) core_mapping(pdpte & addrMask);
+	QWORD offset2 = va.offset2;
+	QWORD pde = pd[offset2];
+	if (pde & 0x80)
+		return (pde & ~(0x001FFFFFULL)) | (virtAddr & 0x001FFFFF);
+	QWORD *pt = (QWORD *) core_mapping(pde & addrMask);
+	QWORD offset1 = va.offset1;
+	QWORD pte = pt[offset1];
+	return (pte & ~(0x00000FFFULL)) | va.offset0;
+}

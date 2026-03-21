@@ -20,5 +20,6 @@ void setup_memory();
 QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu);
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount);
 void virtual_mapping(QWORD phyAddr, QWORD virtualAddr, QWORD pageCount, int pageType);
+QWORD physical_address(QWORD virtAddr);
 
 #endif //SUPERNOVA_VIRTMEM_H

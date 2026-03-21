@@ -312,6 +312,8 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 			break;
 	}
 
+	OutputText("PARTITION FOUND\r\n");
+
 	QWORD partLBA = *((QWORD *) (partEntry + 0x20));
 	if (ahci_command(port, partLBA, 1, (void *) (page), ATA_CMD_READ_DMA_EX))
 	{
@@ -324,6 +326,9 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 
 	// $MFT LBA
 	QWORD mftsector = ntfsBpb.hidden + (ntfsBpb.MFT * ntfsBpb.cluster);
+	OutputText("$MFT @ ");
+	OutputNumber(mftsector);
+	OutputText("\r\n");
 	if (ahci_command(port, mftsector, 2, (void *) (page), ATA_CMD_READ_DMA_EX))
 	{
 		OutputText("DISK READ ERROR\r\n");
@@ -341,7 +346,7 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 
 	DWORD mftNum = 0;
 	char fileName[256];
-	char *fileNameList[] = {"SUPERNOVA", "SYSTEM", "CORE.DLL"};
+	char *fileNameList[] = {"Supernova", "SYSTEM", "CORE.DLL"};
 	DWORD coreMFT = 0;
 
 	DWORD mftCount = attr->nonResident.dataSize / 1024;
@@ -375,6 +380,10 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 	if (!coreMFT)
 		return 0;
 
+	OutputText("CORE.DLL @ ");
+	OutputNumber(coreMFT);
+	OutputText("\r\n");
+
 	if (!ntfs_read_mft_record(port, &ntfsBpb, attr, coreMFT, page))
 		return 0;
 
@@ -382,6 +391,12 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 	memcpy(CORE_MFT_BUF, dataAttr, dataAttr->length);
 	dataAttr = (NTFS_MFT_ATTR_HEADER *) CORE_MFT_BUF;
 	QWORD bufAddr = 0;
+
+	OutputText("CORE.DLL cluster ");
+	OutputNumber(dataAttr->nonResident.startVCN);
+	OutputText(" - ");
+	OutputNumber(dataAttr->nonResident.lastVCN);
+	OutputText("\r\n");
 	for (DWORD vcn = dataAttr->nonResident.startVCN; vcn <= dataAttr->nonResident.lastVCN; vcn++)
 	{
 		QWORD lcn = ntfs_logical_cluster_number(dataAttr, vcn);
@@ -506,6 +521,11 @@ DWORD find_pcie(ACPI_RSDP *rsdp)
 			ACPI_SDT_HEADER *entry = (ACPI_SDT_HEADER *) entryPhyAddr;
 			*dwSign = *((DWORD *) entry->SIGN);
 
+			OutputText(signName);
+			OutputText(" @ ");
+			OutputAddressX(entryPhyAddr, 8);
+			OutputText("\r\n");
+
 			if (*dwSign == ACPI_SIGNATURE_MCFG)
 				mcfg = (ACPI_MCFG *) entry;
 		}
@@ -548,15 +568,6 @@ DWORD find_pcie(ACPI_RSDP *rsdp)
 					volatile PCI_DEVICE_VENDOR vendor;
 					vendor.VENDOR = conf->vendor;
 					vendor.DEVICE = conf->device;
-					OutputText("PCI @ ");
-					OutputAddressX(funcAddr, 16);
-					OutputText(" - ");
-					OutputAddressX(conf->subsystem, 8);
-					OutputText(": ");
-					OutputAddressX(conf->class, 6);
-					OutputText(" - ");
-					OutputAddressX(vendor.ID, 8);
-					OutputText("\r\n");
 
 					if (conf->class == 0x010601) // AHCI
 					{
@@ -572,23 +583,23 @@ DWORD find_pcie(ACPI_RSDP *rsdp)
 }
 DWORD find_pci()
 {
+	OutputText("PCI Enumerate\r\n");
 	// Config Address
 	volatile DWORD cmd = 0x80000000;
 	while (cmd < 0x81000000)
 	{
 		__outdword(0x0CF8, cmd);
-		DWORD id = __indword(0x0CFC);
-		WORD vendor = id & 0xFFFF;
+		volatile DWORD id = __indword(0x0CFC);
+		volatile WORD vendor = id & 0xFFFF;
 		if (!vendor || (vendor == 0xFFFF))
 		{
-			cmd += 0x800;
+			cmd += 0x100;
 			continue;
 		}
 
 		// Read class code
 		__outdword(0x0CF8, cmd + 0x08);
 		DWORD classId = __indword(0x0CFC) >> 8;
-
 
 		if (classId == 0x010601) // AHCI
 		{

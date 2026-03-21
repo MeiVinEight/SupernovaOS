@@ -34,3 +34,11 @@ typedef struct _ACPI_RSDT
 	ACPI_SDT_HEADER HEAD;
 	DWORD TABLE[];
 } ACPI_RSDT;
+
+#pragma pack(push, 4)
+typedef struct _ACPI_XSDT
+{
+	ACPI_SDT_HEADER HEAD;
+	QWORD TABLE[];
+} ACPI_XSDT;
+#pragma pack(pop)

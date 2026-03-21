@@ -54,7 +54,10 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 	BYTE id = stack->INT;
 	if (INTERRUPT_ROUTINE[id])
 	{
+		QWORD rsp = stack->RSP;
+		stack->RSI -= sizeof(INTERRUPT_STACK);
 		INTERRUPT_ROUTINE[id](stack);
+		stack->RSP = rsp;
 		return;
 	}
 
@@ -67,7 +70,7 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 	simple_output("\n");
 	while (1) __halt();
 }
-void setup_interrupe()
+void __stdcall setup_interrupe()
 {
 	IDT = (INTERRUPT64 *) SYSTEM_TABLE->IDT;
 	DWORD erc = 0x60227D00; // ERROR CODE Mask

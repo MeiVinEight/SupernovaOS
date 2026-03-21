@@ -35,12 +35,12 @@ typedef struct _ACPI_ADDRESS
 #pragma pack(pop)
 typedef struct _ACPI_SDT_HEADER
 {
-	BYTE SIGN[4];
+	BYTE  SIGN[4];
 	DWORD LENG;
-	BYTE RVSN;
-	BYTE CSUM;
-	BYTE OEMD[6];
-	BYTE OEMT[8];
+	BYTE  RVSN;
+	BYTE  CSUM;
+	BYTE  OEMD[6];
+	BYTE  OEMT[8];
 	DWORD OEMR;
 	DWORD CRTI;
 	DWORD CRTR;

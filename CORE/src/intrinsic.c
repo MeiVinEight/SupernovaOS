@@ -82,3 +82,22 @@ void __setrbp(QWORD)
 	0x48, 0x8B, 0xE9, // MOV RBP, RCX
 	0xC3,             // RET
 };
+__declspec(allocate(".text")) char __memset[] =
+/*
+void *__memset(volatile void *, BYTE, QWORD);
+*/
+{
+	0x48, 0x8B, 0xC1, // MOV RAX, RCX
+
+	// LOOP1:
+	0x4D, 0x85, 0xC0, // TEST R8, R8
+	0x74, 0x0A,       // JZ LOOP2
+
+	0x88, 0x11,       // MOV BYTE PTR [RCX], DL
+	0x48, 0xFF, 0xC1, // INC RCX
+	0x49, 0xFF, 0xC8, // DEC R8
+	0xEB, 0xF1,       // JMP LOOP1
+
+	// LOOP2:
+	0xC3,             // RET
+};

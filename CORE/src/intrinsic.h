@@ -38,4 +38,5 @@ void *__memset128(void *, void *, unsigned long long);
 void *__memcpy128(void *, void *, unsigned long long);
 void __sti();
 void *__memcpy(volatile void *, const void *, QWORD);
+void *__memset(volatile void *, BYTE, QWORD);
 void __stdcall __int(BYTE x);

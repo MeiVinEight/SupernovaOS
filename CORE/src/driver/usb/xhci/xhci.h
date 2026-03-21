@@ -6,6 +6,7 @@
 #define SUPERNOVA_XHCI_H
 
 #include <driver/pci/pcie.h>
+#include <driver/usb/xhci/xhc_ring.h>
 
 typedef struct _XHCI_CAPABILITY_SPACE
 {
@@ -78,7 +79,7 @@ typedef struct _XHCI_OPERATIONAL_SPACE
 	DWORD RSV5:19;
 	DWORD PAGE;
 	DWORD RSV6[2];
-	DWORD DNCR;
+	DWORD DNCR; // Device Notification Control Register
 	QWORD CRCR;
 	DWORD RSV7[4];
 	QWORD CBAA;
@@ -94,6 +95,8 @@ typedef struct _PCIE_XHCI_DEVICE
 	volatile PCIE_DEVICE *pcie;
 	volatile XHCI_CAPABILITY_SPACE *capability;
 	volatile XHCI_OPERATIONAL_SPACE *operational;
+	volatile QWORD *context;
+	XHCI_TRANSFER_RING CMMD;
 } PCIE_XHCI_DEVICE;
 
 void setup_usb_xhci_pcie(volatile PCIE_DEVICE *device);
@@ -102,5 +105,6 @@ DWORD xhci_operational_command(volatile PCIE_XHCI_DEVICE *device);
 DWORD xhci_operational_status(volatile PCIE_XHCI_DEVICE *device);
 DWORD xhci_operational_config(volatile PCIE_XHCI_DEVICE *device);
 DWORD xhci_reset_controller(volatile PCIE_XHCI_DEVICE *device);
+void xhci_configure_operational(volatile PCIE_XHCI_DEVICE *device);
 
 #endif //SUPERNOVA_XHCI_H

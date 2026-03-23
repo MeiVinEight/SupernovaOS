@@ -182,13 +182,11 @@ QWORD jmp(QWORD(*entry)(), QWORD stackAddr)
 	return ((QWORD (*)()) call)();
 }
 
-EFI_GRAPHICS_OUTPUT_MODE_INFORMATION DetectingMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics)
+void DetectingMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics)
 {
 	int defaultMode = graphics->Mode->Mode;
 	QWORD sqr = graphics->Mode->Info->HorizontalResolution * graphics->Mode->Info->VerticalResolution;
 	int usedMode = defaultMode;
-	char sep[2] = { 0, 0 };
-	EFI_GRAPHICS_OUTPUT_MODE_INFORMATION ret = {0, 0, 0, 0, 0};
 	for (int i = 0; i < graphics->Mode->MaxMode; i++)
 	{
 		EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
@@ -200,11 +198,9 @@ EFI_GRAPHICS_OUTPUT_MODE_INFORMATION DetectingMode(EFI_GRAPHICS_OUTPUT_PROTOCOL 
 		{
 			sqr = x;
 			usedMode = i;
-			ret = *info;
 		}
 	}
 	graphics->SetMode(graphics, usedMode);
-	return ret;
 }
 void SortMemoryMap(QWORD map, DWORD count, QWORD descSize)
 {
@@ -639,7 +635,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics = 0;
 	SYSTEM_TABLE->BootServices->LocateProtocol(EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, 0, &graphics);
-	EFI_GRAPHICS_OUTPUT_MODE_INFORMATION info = DetectingMode(graphics);
+	DetectingMode(graphics);
 	QWORD fbb = graphics->Mode->FrameBufferBase;
 
 	/*
@@ -656,12 +652,6 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	OutputText("Supernova-EFI\r\n");
 
 	DWORD cpuid[4] = {0, 0, 0, 0};
-	__cpuid(cpuid, 0x80000001);
-	DWORD edx = cpuid[3];
-	DWORD _1gbpage = edx & (1 << 26) ? 0 : 1;
-	if (_1gbpage)
-		OutputText("CPU NOT SUPPORTED 1GB PAGING\r\n");
-
 	char brand[51];
 	brand[48] = '\r';
 	brand[49] = '\n';
@@ -684,6 +674,15 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	brandx[11] = cpuid[3];
 	OutputText("CPU: ");
 	OutputText(brand);
+	OutputText("\r\n");
+
+	OutputText("Video Memory @ ");
+	OutputAddress(fbb);
+	OutputText("\r\n");
+	OutputText("Video ");
+	OutputNumber(graphics->Mode->Info->HorizontalResolution);
+	OutputText("x");
+	OutputNumber(graphics->Mode->Info->VerticalResolution);
 	OutputText("\r\n");
 
 	QWORD rsdp = 0;
@@ -813,15 +812,14 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		beg++;
 	}
 	*/
-	SYSTEM_TABLE->BootServices->ExitBootServices(handle, MapKey);
 
 	SST->GUID0[0] = BOOT_TABLE->GUID0[0];
 	SST->GUID0[1] = BOOT_TABLE->GUID0[1];
 	SST->GUID1[0] = BOOT_TABLE->GUID1[0];
 	SST->GUID1[1] = BOOT_TABLE->GUID1[1];
-	SST->HRES = info.HorizontalResolution;
-	SST->VRES = info.VerticalResolution;
-	SST->PPL = info.PixelsPerScanLine;
+	SST->HRES = graphics->Mode->Info->HorizontalResolution;
+	SST->VRES = graphics->Mode->Info->VerticalResolution;
+	SST->PPL = graphics->Mode->Info->PixelsPerScanLine;
 	SST->FBB = graphics->Mode->FrameBufferBase;
 	SST->RSDP = rsdp;
 
@@ -833,6 +831,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	QWORD entry = *((DWORD *) (ntHeader + 0x28));
 
 
+	SYSTEM_TABLE->BootServices->ExitBootServices(handle, MapKey);
 	jmp((QWORD(*)()) entry, stackPoint);
 	//jmp(0, 0);
 	return 0;

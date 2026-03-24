@@ -89,8 +89,7 @@ COREAPI BYTE AP_BOOT_CODE[] =
 
 void eoi_apic(BYTE id)
 {
-	if (id >= IRQ_INT && id < (IRQ_INT + 0x10))
-		APIC_REGISTERS[APIC_EOI][0] = 0;
+	APIC_REGISTERS[APIC_EOI][0] = 0;
 }
 int check_apic()
 {

@@ -48,6 +48,7 @@ COREAPI BYTE __isr[] =
 	0x48, 0x83, 0xC4, 0x10,       // ADD RSP, 10
 	0x48, 0xCF,                   // IRETQ
 };
+COREAPI volatile DWORD INTE_VECTOR[32];
 
 void __stdcall __isr_common(INTERRUPT_STACK *stack)
 {
@@ -121,6 +122,13 @@ void __stdcall setup_interrupe()
 	__lidt(&idtr);
 
 	// Setup Interrupt Controller
+	// APIC
+
+
+	// Reserve int ids
+	for (int i = 0; i < 6; i++)
+		INTE_VECTOR[i] = 0xFF;
+	interrupt_set_intx(0x80); // Reserved for syscall
 
 	// Enable Interrupt
 	__sti();
@@ -128,4 +136,24 @@ void __stdcall setup_interrupe()
 void register_interrupt(BYTE id, void (*routine)(INTERRUPT_STACK *))
 {
 	INTERRUPT_ROUTINE[id] = routine;
+}
+void interrupt_set_intx(BYTE id)
+{
+	INTE_VECTOR[id >> 3] |= (1 << (id & 7));
+}
+void interrupt_free_intx(BYTE id)
+{
+	INTE_VECTOR[id >> 3] &= ~(1 << (id & 7));
+}
+BYTE interrupt_alloc_intx()
+{
+	for (int id = 0; i < 256; i++)
+	{
+		if (!(INTE_VECTOR[id >> 3] & (1 << (id & 7))))
+		{
+			interrupt_set_intx(id);
+			return id;
+		}
+	}
+	return 0;
 }

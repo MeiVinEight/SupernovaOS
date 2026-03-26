@@ -56,7 +56,7 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 	if (INTERRUPT_ROUTINE[id])
 	{
 		QWORD rsp = stack->RSP;
-		stack->RSI -= sizeof(INTERRUPT_STACK);
+		stack->RSP = ((QWORD) stack) - sizeof(INTERRUPT_STACK);
 		INTERRUPT_ROUTINE[id](stack);
 		stack->RSP = rsp;
 		return;
@@ -147,7 +147,7 @@ void interrupt_free_intx(BYTE id)
 }
 BYTE interrupt_alloc_intx()
 {
-	for (int id = 0; i < 256; i++)
+	for (int id = 0; id < 256; id++)
 	{
 		if (!(INTE_VECTOR[id >> 3] & (1 << (id & 7))))
 		{

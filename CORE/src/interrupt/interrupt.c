@@ -83,7 +83,7 @@ void __stdcall setup_interrupe()
 	{
 		// Setup Interrupt common
 		BYTE *isrx = ISR[i];
-		if ((erc >> i) & 1)
+		if ((i < 32) && ((erc >> i) & 1))
 		{
 			// Have error code
 			// NOP

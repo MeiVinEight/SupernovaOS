@@ -35,6 +35,7 @@ unsigned long long _DllMainCRTStartup()
 	__setrbp(__getrsp() & ~((1ULL << 12) - 1));
 	setup_paging();
 	setup_segment();
+	setup_processor();
 	return ((QWORD (*)()) core_mapping((QWORD) coreCRTStartup))();
 }
 QWORD coreCRTStartup()
@@ -47,7 +48,6 @@ QWORD coreCRTStartup()
 
 	simple_output("Supernova OS\n");
 
-	setup_processor();
 	setup_apic();
 
 	kprint_cpu();

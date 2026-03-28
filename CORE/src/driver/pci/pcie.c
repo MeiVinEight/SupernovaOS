@@ -3,6 +3,8 @@
 #include <core.h>
 #include <driver/pci/pci.h>
 #include <driver/usb/xhci/xhci.h>
+#include <driver/pci/msi/msix.h>
+#include <driver/pci/msi/msi.h>
 #include <console.h>
 
 COREAPI volatile ACPI_MCFG *volatile MCFG = 0;
@@ -42,6 +44,7 @@ void setup_pcie()
 					if ((!conf->device) || (conf->device == 0xFFFF))
 						continue;
 
+					/*
 					volatile PCI_DEVICE_VENDOR vendor;
 					vendor.VENDOR = conf->vendor;
 					vendor.DEVICE = conf->device;
@@ -63,8 +66,9 @@ void setup_pcie()
 					else
 						simple_output_address(vendor.ID, 8);
 					outchar('\n');
+					*/
 
-					volatile PCIE_DEVICE pcie;
+					volatile PCI_EXPRESS_DEVICE pcie;
 					pcie.bus = bus;
 					pcie.device = device;
 					pcie.function = func;
@@ -76,7 +80,7 @@ void setup_pcie()
 		}
 	}
 }
-QWORD pcie_cfg_get_base_address(volatile PCIE_DEVICE *device, DWORD addrIdx)
+QWORD pcie_cfg_get_base_address(volatile PCI_EXPRESS_DEVICE *device, DWORD addrIdx)
 {
 	QWORD bar = device->configuration->address[addrIdx];
 	DWORD isIo = bar & PCI_BAR_IO_SPACE;
@@ -111,5 +115,48 @@ QWORD pcie_cfg_get_base_address(volatile PCIE_DEVICE *device, DWORD addrIdx)
 	if (type == 2)
 		return (bar | ((QWORD) (device->configuration->address[addrIdx + 1]) << 32));
 
+	return 0;
+}
+DWORD pcie_bar_cound(volatile PCI_EXPRESS_DEVICE *device)
+{
+	if (device->configuration->type & 0x7F)
+		return 2;
+	return 6;
+}
+PCI_EXPRESS_CAPABILITY *__stdcall pcie_capability(volatile PCI_EXPRESS_DEVICE *device, DWORD capa)
+{
+	BYTE capId = capa;
+	QWORD baseAddr = (QWORD) device->configuration;
+	/*
+	The bottom two bits are Reserved and must be set to 00b. Software must mask these bits
+	off before using this register as a pointer in Configuration Space to the first entry of a linked
+	list of new capabilities.
+	*/
+	BYTE capaOff = device->configuration->capability & 0xFC;
+	DWORD maxCapCount = 48;
+	while (capaOff && maxCapCount--)
+	{
+		volatile PCI_EXPRESS_CAPABILITY *cap = (PCI_EXPRESS_CAPABILITY *) (baseAddr + capaOff);
+		if (cap->CAID == capId)
+			return (PCI_EXPRESS_CAPABILITY *) cap;
+		capaOff = cap->NEXT;
+	}
+	return 0;
+}
+DWORD pcie_setup_interrupt(volatile PCI_EXPRESS_DEVICE *device, void (*irq)(INTERRUPT_STACK *stack), BYTE intx)
+{
+	if (pcie_setup_msix(device, intx))
+	{
+		register_interrupt(intx, irq);
+		return 1;
+	}
+	if (pcie_setup_msi(device, intx))
+	{
+		register_interrupt(intx, irq);
+		return 1;
+	}
+	if (device->configuration->interrupt.line && (~device->configuration->interrupt.line))
+	{
+	}
 	return 0;
 }

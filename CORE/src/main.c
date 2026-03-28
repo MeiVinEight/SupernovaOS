@@ -40,7 +40,7 @@ unsigned long long _DllMainCRTStartup()
 }
 QWORD coreCRTStartup()
 {
-	setup_interrupe();
+	setup_interrupt();
 	setup_page_fault();
 	setup_basic_console();
 	setup_memory();

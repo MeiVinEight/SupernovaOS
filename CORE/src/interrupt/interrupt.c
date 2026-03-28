@@ -71,7 +71,7 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 	simple_output("\n");
 	while (1) __halt();
 }
-void __stdcall setup_interrupe()
+void __stdcall setup_interrupt()
 {
 	IDT = (INTERRUPT64 *) SYSTEM_TABLE->IDT;
 	DWORD erc = 0x60227D00; // ERROR CODE Mask

@@ -3,63 +3,95 @@
 #include <core.h>
 #include <intrinsic.h>
 #include <memory/virtmem.h>
+#include <driver/usb/xhci/xhc_regs.h>
+#include <driver/pci/pci.h>
+#include <interrupt/apic.h>
+#include <arch/processor.h>
 
-void setup_usb_xhci_pcie(volatile PCIE_DEVICE *dev)
+COREAPI volatile PCI_EXPRESS_XHCI_DEVICE DEVICE;
+
+void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 {
-	volatile PCIE_XHCI_DEVICE device;
-	device.pcie = dev;
+	volatile PCI_DEVICE_VENDOR vendor;
+	vendor.VENDOR = dev->configuration->vendor;
+	vendor.DEVICE = dev->configuration->device;
+	simple_output("PCI @ ");
+	simple_output_address((QWORD) dev->configuration, 16);
+	simple_output(" - ");
+	simple_output_address(dev->configuration->subsystem, 8);
+	simple_output(": ");
+	simple_output_address(dev->configuration->class, 6);
+	simple_output(" - ");
+	const char *vendorName = pci_vendor_name(vendor.VENDOR);
+	const char *deviceName = pci_device_name(vendor);
+	if (vendorName && deviceName)
+	{
+		simple_output(vendorName);
+		outchar(' ');
+		simple_output(deviceName);
+	}
+	else
+		simple_output_address(vendor.ID, 8);
+	outchar('\n');
+
+	pcie_setup_interrupt(dev, xhci_interrupt, interrupt_alloc_intx());
+
+	//device.pcie = *dev;
+	__memcpy(&DEVICE.pcie, (void *) dev, sizeof(PCI_EXPRESS_DEVICE));
 
 	QWORD xhciBase = pcie_cfg_get_base_address(dev, 0);
-	device.capability = (XHCI_CAPABILITY_SPACE *) core_mapping(xhciBase);
+	DEVICE.capability = (XHCI_CAPABILITY_SPACE *) core_mapping(xhciBase);
+	DEVICE.operational = (XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + DEVICE.capability->SIZE);
+	DEVICE.runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + DEVICE.capability->RTME);
+	DEVICE.doorbell = (XHCI_DOORBELL *) core_mapping(xhciBase + DEVICE.capability->BELL);
+
 	simple_output("==== xHCI Capability Address ");
-	simple_output_address((QWORD) device.capability, 16);
+	simple_output_address((QWORD) DEVICE.capability, 16);
 	simple_output(" ====\n");
 	simple_output("    Length: ");
-	simple_output_number(device.capability->SIZE);
+	simple_output_number(DEVICE.capability->SIZE);
 	outchar('\n');
 	simple_output("    Max Device Slots: ");
-	simple_output_number(device.capability->SLOT);
+	simple_output_number(DEVICE.capability->SLOT);
 	outchar('\n');
 	simple_output("    Max Interrupters: ");
-	simple_output_number(device.capability->INTE);
+	simple_output_number(DEVICE.capability->INTE);
 	outchar('\n');
 	simple_output("    Max Ports: ");
-	simple_output_number(device.capability->PORT);
+	simple_output_number(DEVICE.capability->PORT);
 	outchar('\n');
 
 	simple_output("    IST: ");
-	simple_output_number(device.capability->ISTH);
+	simple_output_number(DEVICE.capability->ISTH);
 	outchar('\n');
 	simple_output("    ERST Max Size: ");
-	simple_output_number(device.capability->ERST);
+	simple_output_number(DEVICE.capability->ERST);
 	outchar('\n');
 	simple_output("    Scratchpad Buffers: ");
-	simple_output_address(xhci_get_scratchpad_buffer(&device), 8);
+	simple_output_address(xhci_get_scratchpad_buffer(&DEVICE), 8);
 	outchar('\n');
 
 	simple_output("    64-bit Addressing: ");
-	simple_output(device.capability->AC64 ? "yes\n" : "no\n");
+	simple_output(DEVICE.capability->AC64 ? "yes\n" : "no\n");
 	simple_output("    Bandwidth Negotiation: ");
-	simple_output_number(device.capability->BWNC);
+	simple_output_number(DEVICE.capability->BWNC);
 	outchar('\n');
 	simple_output("    64-Byte Context Size: ");
-	simple_output(device.capability->CX64 ? "yes\n" : "no\n");
+	simple_output(DEVICE.capability->CX64 ? "yes\n" : "no\n");
 	simple_output("    Port Power Control: ");
-	simple_output_number(device.capability->PPWC);
+	simple_output_number(DEVICE.capability->PPWC);
 	outchar('\n');
 	simple_output("    Port Indicators: ");
-	simple_output_number(device.capability->PIND);
+	simple_output_number(DEVICE.capability->PIND);
 	outchar('\n');
 	simple_output("    Light HC Reset Available: ");
-	simple_output_number(device.capability->LHCR);
+	simple_output_number(DEVICE.capability->LHCR);
 	outchar('\n');
 	simple_output("    xHCI Extended Capability: ");
-	simple_output_number(device.capability->XECP);
+	simple_output_number(DEVICE.capability->XECP);
 	outchar('\n');
 
-	device.operational = (volatile XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + device.capability->SIZE);
-
-	DWORD reset = xhci_reset_controller(&device);
+	DWORD reset = xhci_reset_controller(&DEVICE);
 	if (!reset)
 	{
 		simple_output("Reset failed\n");
@@ -68,50 +100,95 @@ void setup_usb_xhci_pcie(volatile PCIE_DEVICE *dev)
 
 	simple_output("Successful reset\n");
 
-	xhci_configure_operational(&device);
+	xhci_configure_controller(&DEVICE);
 	simple_output("==== xHCI Operational Address ");
-	simple_output_address((QWORD) device.operational, 16);
+	simple_output_address((QWORD) DEVICE.operational, 16);
 	simple_output(" ====\n");
 
 	simple_output("    command: ");
-	simple_output_address(xhci_operational_command(&device), 8);
+	simple_output_address(xhci_operational_command(&DEVICE), 8);
 	outchar('\n');
 	simple_output("    status: ");
-	simple_output_address(xhci_operational_status(&device), 8);
+	simple_output_address(xhci_operational_status(&DEVICE), 8);
 	outchar('\n');
 	simple_output("    pagesize: ");
-	simple_output_address(device.operational->PAGE, 8);
+	simple_output_address(DEVICE.operational->PAGE, 8);
 	outchar('\n');
 	simple_output("    notify: ");
-	simple_output_address(device.operational->DNCR, 8);
+	simple_output_address(DEVICE.operational->DNCR, 8);
 	outchar('\n');
 	simple_output("    Context Ring: ");
-	simple_output_address(device.operational->CRCR, 16);
+	simple_output_address(DEVICE.operational->CRCR, 16);
 	outchar('\n');
 	simple_output("    Context Base Address Array: ");
-	simple_output_address(device.operational->CBAA, 16);
+	simple_output_address(DEVICE.operational->CBAA, 16);
 	outchar('\n');
 	simple_output("    config: ");
-	simple_output_address(xhci_operational_config(&device), 8);
+	simple_output_address(xhci_operational_config(&DEVICE), 8);
 	outchar('\n');
+
+	if (!xhci_start_controller(&DEVICE))
+	{
+		simple_output("XHCI start failed\n");
+		return;
+	}
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	simple_output("Controller started!\n");
+
+	// Test xHCI Event
+	XHCI_TRB_ENABLE_SLOT trb;
+	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
+	trb.TYPE = XHCI_TRB_TYPE_ENABLE_SLOT;
+	// Send the command twice, and it should trigger the interrupt twice.
+	xhc_queue_command(&DEVICE.command, &trb);
+	xhc_command_doorbell(DEVICE.doorbell);
+
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+
+	xhc_queue_command(&DEVICE.command, &trb);
+	xhc_command_doorbell(DEVICE.doorbell);
+
+	__halt();
+	__halt();
+	__halt();
+	__halt();
+
 }
-QWORD xhci_get_scratchpad_buffer(volatile PCIE_XHCI_DEVICE *device)
+QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	return (device->capability->MSBH << 5) | device->capability->MSBL;
 }
-DWORD xhci_operational_command(volatile PCIE_XHCI_DEVICE *device)
+DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	return *((volatile DWORD *) ((QWORD) device->operational));
 }
-DWORD xhci_operational_status(volatile PCIE_XHCI_DEVICE *device)
+DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	return *((volatile DWORD *) (((QWORD) device->operational) + 4));
 }
-DWORD xhci_operational_config(volatile PCIE_XHCI_DEVICE *device)
+DWORD xhci_operational_config(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	return *((volatile DWORD *) (((QWORD) device->operational) + 0x38));
 }
-DWORD xhci_reset_controller(volatile PCIE_XHCI_DEVICE *device)
+DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	// Clear Run/Stop bit
 	device->operational->RNST = 0;
@@ -146,8 +223,25 @@ DWORD xhci_reset_controller(volatile PCIE_XHCI_DEVICE *device)
 
 	return 1;
 }
-void xhci_configure_operational(volatile PCIE_XHCI_DEVICE *device)
+DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
+	// Ensure USBCMD bit for RUN/STOP is properly set
+	device->operational->INTE = 1;
+	device->operational->RNST = 1;
+
+	// Ensure the controller transistions out of the halted state
+	while (device->operational->HALT) __halt();
+
+	// Verify CNR (Controller Not Ready) bit is clear
+	if (device->operational->HCNR)
+		return 0;
+
+	// Controller started successfully
+	return 1;
+}
+void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+{
+	/* ==== Operational ==== */
 	// Enable device notification
 	device->operational->DNCR = 0xFFFF;
 
@@ -179,9 +273,11 @@ void xhci_configure_operational(volatile PCIE_XHCI_DEVICE *device)
 		// TODO Check PAGESIZE in operational registers
 		QWORD pcnt = maxScratchpadBuf << 3;
 		pcnt += 0xFFF;
+		pcnt >>= 12;
 		QWORD scrArrAddr = alloc_physical_memory(&pcnt, 0, 0);
 		volatile QWORD *scrpadArr = (QWORD *) core_mapping(scrArrAddr);
 		// Create scratchpad pages
+		pcnt = 1;
 		for (DWORD i = 0; i < maxScratchpadBuf; i++)
 			scrpadArr[i] = alloc_physical_memory(&pcnt, 0, 0);
 
@@ -193,7 +289,60 @@ void xhci_configure_operational(volatile PCIE_XHCI_DEVICE *device)
 	device->operational->CBAA = dcbaAddr;
 
 	// Setup command ring, CRCR
-	xhc_ring_create((XHCI_TRANSFER_RING *) &device->CMMD);
-	device->operational->CRCR = physical_address((QWORD) device->CMMD.RING) | 1;
+	xhc_command_ring_create((XHCI_COMMAND_RING *) &device->command);
+	device->operational->CRCR = physical_address((QWORD) device->command.RING) | 1;
+	/* ==== Operational ==== */
 
+
+	/* ==== Runtime ==== */
+	// Get the primary interrupter registers
+	volatile XHCI_INTERRUPTER *intr = device->runtime->INTR;
+
+	// Enable interrupts
+	intr->IENA = 1;
+
+	// Setup the event ring and write to interrupter
+	// registers to se ERSTSZ, ERDP, and ERSTBA.
+	xhc_event_ring_create(&device->event, intr);
+
+	simple_output("    Event Ring Address: ");
+	simple_output_address(intr->STBA, 16);
+	outchar('\n');
+	simple_output("    Event Ring Size: ");
+	simple_output_number(intr->STSZ);
+	outchar('\n');
+	simple_output("    Dequeue Pointer: ");
+	simple_output_address(intr->ERDP << 4, 16);
+	outchar('\n');
+
+	// Clear and pending interrupts for the primary interrupter
+	xhci_interrupt_ack(device, 0);
+	/* ==== Runtime ==== */
+
+}
+void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intx)
+{
+	// Clear the EINT bit in USBSYS by writting '1' to it
+	device->operational->USTS = XHCI_USBSTS_EINT;
+
+	// Get the interrupter registers
+	volatile XHCI_INTERRUPTER *intr = device->runtime->INTR + intx;
+
+	// Set the IP bit to '1' to clear it, preserve other bits including IE
+	intr->IPEN = 1;
+}
+void xhci_interrupt(INTERRUPT_STACK *stack)
+{
+	simple_output("CPU #");
+	simple_output_number(cpu_local_apic_id());
+	simple_output(" INT: #");
+	simple_output_address(stack->INT, 2);
+	simple_output(" @ RIP ");
+	simple_output_address(stack->RIP, 16);
+	simple_output(": xHCI Message Event\n");
+
+	xhc_event_ring_process(&DEVICE.event);
+
+	xhci_interrupt_ack(&DEVICE, 0);
+	eoi_apic(0);
 }

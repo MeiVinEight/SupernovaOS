@@ -7,7 +7,11 @@
 
 #include <types.h>
 
-#define XHCI_TRB_TYPE_LINK 6
+#define XHCI_TRB_TYPE_LINK         6
+#define XHCI_TRB_TYPE_ENABLE_SLOT  9
+#define XHCI_TRB_TYPE_DISABLE_SLOT 10
+
+#define XHCI_TRB_CTRL_CYCLE 1
 
 typedef struct _XHCI_TRB_GENERIC
 {
@@ -50,5 +54,26 @@ typedef struct _XHCI_TRB_LINK
 	DWORD TYPE:6; // TRB Type
 	DWORD RSV3:16;
 } XHCI_TRB_LINK;
+typedef struct _XHCI_TRB_ENABLE_SLOT
+{
+	QWORD RSV0;
+	DWORD RSV1;
+	/**
+	 * Cycle bit (C). This bit is used to mark the Enqueue Pointer of a Command Ring.
+	 */
+	DWORD CYCL:1;
+	DWORD RSV2:9;
+	/**
+	 * TRB Type. This field identifies the type of the TRB. Refer to Table 6-91 for the definition of the
+	 * Enable Slot Command TRB type ID.
+	 */
+	DWORD TYPE:6;
+	/**
+	 * Slot Type. This field identifies the type of Slot that will be enabled by this command. Refer to
+	 * Table 7-9 for more information on the usage of Slot Type.
+	 */
+	DWORD SLOT:5;
+	DWORD RSV3:11;
+} XHCI_TRB_ENABLE_SLOT;
 
 #endif //SUPERNOVA_XHC_TRB_H

@@ -171,6 +171,15 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	__halt();
 	__halt();
 
+	// Foreach xECP
+	volatile QWORD xadr = xhciBase;
+	volatile DWORD xecp = DEVICE.capability->XECP << 2;
+	while (xecp)
+	{
+		xadr = xadr + xecp;
+		volatile XHCI_EXTENDED_CAPABILITY *xcap = (XHCI_EXTENDED_CAPABILITY *) core_mapping(xadr);
+		xecp = xcap->NEXT << 2;
+	}
 }
 QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {

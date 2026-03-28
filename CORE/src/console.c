@@ -3,6 +3,12 @@
 #include <core.h>
 #include <memory/virtmem.h>
 
+typedef struct _SIMPLE_TEXT_MODE
+{
+	DWORD POS;
+	DWORD COLOR;
+} SIMPLE_TEXT_MODE;
+
 COREAPI char draw_char_lines[] = {
 	0xB8, 0x10, 0x00, 0x00, 0x00, // MOV EAX, 10H
 
@@ -102,7 +108,9 @@ void setup_console()
 	QWORD *avxBuf = buf;
 	if (((QWORD) avxBuf) & 0xF)
 		avxBuf++;
+	__memset128((void *) FRAME_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
 	__memset128((void *) FLUSH_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
+	((volatile SIMPLE_TEXT_MODE *) &SIMPLE_TEXT)->POS = 0;
 }
 void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 {
@@ -127,22 +135,23 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 }
 void outchar(char ch)
 {
+	volatile SIMPLE_TEXT_MODE *text = &SIMPLE_TEXT;
 	DWORD charPreLine = SYSTEM_TABLE->HRES / 8;
 	if (ch == '\r')
 	{
-		SIMPLE_TEXT.POS -= SIMPLE_TEXT.POS % charPreLine;
+		text->POS -= text->POS % charPreLine;
 	}
 	else if (ch == '\n')
 	{
-		SIMPLE_TEXT.POS += charPreLine - (SIMPLE_TEXT.POS % charPreLine);
+		text->POS += charPreLine - (text->POS % charPreLine);
 	}
 	else
 	{
-		draw_char(ch, SIMPLE_TEXT.COLOR, SIMPLE_TEXT.POS % charPreLine, SIMPLE_TEXT.POS / charPreLine);
-		SIMPLE_TEXT.POS++;
+		draw_char(ch, text->COLOR, text->POS % charPreLine, text->POS / charPreLine);
+		text->POS++;
 	}
 	DWORD maxLines = SYSTEM_TABLE->VRES / 16;
-	DWORD lines = SIMPLE_TEXT.POS / charPreLine;
+	DWORD lines = text->POS / charPreLine;
 	if (lines >= maxLines)
 	{
 		if (!FLUSH_BUFFER)
@@ -151,7 +160,7 @@ void outchar(char ch)
 			QWORD *src = (QWORD *) (FRAME_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
 			QWORD *dst = (QWORD *) (FRAME_BUFFER);
 			__memcpy128(dst, src, copySize);
-			SIMPLE_TEXT.POS -= charPreLine;
+			text->POS -= charPreLine;
 			QWORD buf[2] = { 0, 0 };
 			__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
 			return;
@@ -167,7 +176,7 @@ void outchar(char ch)
 		QWORD buf[2] = { 0, 0 };
 		__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
 		__memset128((void *) (FLUSH_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
-		SIMPLE_TEXT.POS -= charPreLine;
+		text->POS -= charPreLine;
 	}
 }
 void simple_output(const void *buf)

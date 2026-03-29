@@ -317,6 +317,35 @@ void setup_madt(ACPI_MADT *madt)
 			if ((lapic->FLG & 1) && (apicId != bsp))
 				CPU_MASK |= (1ULL << apicId);
 		}
+		else if (lapic->TYP == 1)
+		{
+			volatile APIC_MADT_IOAPIC *ioapic = (APIC_MADT_IOAPIC *) lapic;
+			DWORD version = ioapic_read((DWORD *) core_mapping(ioapic->ADR), IOAPIC_VER);
+			DWORD count = (version >> 16) & 0xFF;
+
+			simple_output("I/O APIC #");
+			simple_output_address(ioapic->AID, 2);
+			simple_output(" @ ");
+			simple_output_address((QWORD) ioapic, 16);
+			simple_output(": ");
+			simple_output_address(ioapic->ADR, 8);
+			simple_output(" -> ");
+			simple_output_address(ioapic->GSI, 8);
+			outchar('+');
+			simple_output_address(count, 2);
+			outchar('\n');
+		}
+		else if (lapic->TYP == 2)
+		{
+			volatile APIC_MADT_IOAPIC_OVERRIDE *ioapic = (APIC_MADT_IOAPIC_OVERRIDE *) lapic;
+			simple_output("I/O APIC Override @ ");
+			simple_output_address((QWORD) ioapic, 16);
+			simple_output(": ");
+			simple_output_address(ioapic->IRQ, 2);
+			simple_output("->");
+			simple_output_address(ioapic->GSI, 8);
+			outchar('\n');
+		}
 		// else // I/O APIC
 		read += lapic->SZE;
 		data += lapic->SZE;
@@ -343,4 +372,9 @@ void apic_setup_multiprocessor()
 	for (int i = 0; i < 64; i++)
 		if (CPU_MASK & (1ULL << i))
 			apic_startup_ap(i, aproc_startup);
+}
+DWORD ioapic_read(volatile DWORD *base, int idx)
+{
+	base[0] = idx;
+	return base[4];
 }

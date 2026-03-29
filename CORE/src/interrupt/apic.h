@@ -65,6 +65,8 @@
 #define APIC_TIMER_DCR_64  0x9
 #define APIC_TIMER_DCR_128 0xA
 
+#define IOAPIC_VER  1
+
 typedef struct _ACPI_MADT
 {
 	ACPI_SDT_HEADER HEAD;
@@ -80,6 +82,24 @@ typedef struct _APIC_MADT_LAPIC
 	BYTE  AID; // APIC ID
 	DWORD FLG; // Flags
 } APIC_MADT_LAPIC;
+typedef struct _APIC_MADT_IOAPIC
+{
+	BYTE  TYP; // Type, 1 is I/O APIC
+	BYTE  SZE; // Always 12
+	BYTE  AID;
+	BYTE  RSV;
+	DWORD ADR;
+	DWORD GSI;
+} APIC_MADT_IOAPIC;
+typedef struct _APIC_MADT_IOAPIC_OVERRIDE
+{
+	BYTE  TYP; // Type, 2 is I/O APIC Interrupt Source Override
+	BYTE  SZE; // Always 10
+	BYTE  BUS;
+	BYTE  IRQ;
+	DWORD GSI;
+	WORD  FLG;
+} APIC_MADT_IOAPIC_OVERRIDE;
 
 extern DWORD USEAPIC;
 extern volatile DWORD (*volatile APIC_REGISTERS)[4];
@@ -93,3 +113,4 @@ void apic_ipi(BYTE apicId, BYTE intr);
 void apic_startup_ap(BYTE apicid, void (*apEntry)(void));
 void setup_madt(ACPI_MADT *madt);
 void apic_setup_multiprocessor();
+DWORD ioapic_read(volatile DWORD *base, int idx);

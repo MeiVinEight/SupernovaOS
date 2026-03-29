@@ -8,6 +8,7 @@
 #include  <types.h>
 
 #define ACPI_SIGNATURE_MADT 0x43495041 // APIC
+#define ACPI_SIGNATURE_FADT 0x50434146 // FACP
 #define ACPI_SIGNATURE_MCFG 0x4746434D // MCFG
 
 typedef struct _ACPI_RSDP

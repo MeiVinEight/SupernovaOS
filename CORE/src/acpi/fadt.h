@@ -8,6 +8,9 @@
 #include <types.h>
 #include <acpi/acpi.h>
 
+#define FADT_PM1_EN_PWRBTN_EN (1 << 8)
+#define FADT_PM1_ST_SCI_EN    (1 << 0)
+
 typedef struct _ACPI_FADT_PM1
 {
 	/**
@@ -224,5 +227,7 @@ typedef struct _ACPI_FADT
 	 */
 	BYTE  CSTC;
 } ACPI_FADT;
+
+void setup_fadt(volatile ACPI_FADT *fadt);
 
 #endif //SUPERNOVA_FADT_H

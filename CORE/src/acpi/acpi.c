@@ -1,4 +1,5 @@
 #include <acpi/acpi.h>
+#include <acpi/fadt.h>
 #include <core.h>
 #include <timer/hpet.h>
 #include <interrupt/apic.h>
@@ -27,6 +28,8 @@ void setup_acpi()
 			setup_madt((ACPI_MADT *) entry);
 		if (*dwSign == ACPI_SIGNATURE_MCFG)
 			setup_pcie_mcfg((ACPI_MCFG *) entry);
+		if (*dwSign == ACPI_SIGNATURE_FADT)
+			setup_fadt((ACPI_FADT *) entry);
 	}
 	/*
 	ACPI_XSDT *xsdt = (ACPI_XSDT *) core_mapping(rsdp->XSDT);

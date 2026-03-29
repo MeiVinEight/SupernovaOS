@@ -36,10 +36,12 @@ void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRU
 	QWORD pc = 1;
 	QWORD erdp = alloc_physical_memory(&pc, 0, 0);
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(erdp);
+	__memset(ring->RING, 0, pc << 12);
 
 	// Create the event ring segment table
 	QWORD erstba = alloc_physical_memory(&pc, 0, 0);
 	ring->ERST = (XHCI_EVENT_RING_SEGMENT *) core_mapping(erstba);
+	__memset(ring->ERST, 0, pc << 12);
 
 	// Construct the segment table entry
 	ring->ERST->RSBA = erdp;

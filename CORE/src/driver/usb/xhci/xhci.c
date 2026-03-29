@@ -285,10 +285,14 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 		pcnt >>= 12;
 		QWORD scrArrAddr = alloc_physical_memory(&pcnt, 0, 0);
 		volatile QWORD *scrpadArr = (QWORD *) core_mapping(scrArrAddr);
+		__memset(scrpadArr, 0, pcnt << 12);
 		// Create scratchpad pages
 		pcnt = 1;
 		for (DWORD i = 0; i < maxScratchpadBuf; i++)
+		{
 			scrpadArr[i] = alloc_physical_memory(&pcnt, 0, 0);
+			__memset((void *) core_mapping(scrpadArr[i]), 0, pcnt << 12);
+		}
 
 		// Set the first slot in the DCBAA to point to the scratchpad array
 		device->context[0] = scrArrAddr;

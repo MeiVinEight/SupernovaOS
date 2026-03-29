@@ -453,5 +453,54 @@ typedef struct _XHCI_EXTENDED_CAPABILITY
 	 */
 	BYTE NEXT;
 } XHCI_EXTENDED_CAPABILITY;
+typedef struct _XHCI_CAPABILITY_SUPPORTED_PROTOCOL
+{
+	XHCI_EXTENDED_CAPABILITY XECP;
+	/**
+	 * Minor Revision – RO. Minor Specification Release Number in Binary-Coded Decimal (i.e., version
+	 * x.10 is 10h). This field identifies the minor release number component of the specification with
+	 * which the xHC is compliant.
+	 */
+	BYTE  MINV;
+	/**
+	 * Major Revision – RO. Major Specification Release Number in Binary-Coded Decimal (i.e., version
+	 * 3.x is 03h). This field identifies the major release number component of the specification with
+	 * which the xHC is compliant.
+	 */
+	BYTE  MAJV;
+	/**
+	 * Name String – RO. This field is a mnemonic name string that references the specification with
+	 * which the xHC is compliant. Four ASCII characters may be defined. Allowed characters are:
+	 * alphanumeric, space, and underscore. Alpha characters are case sensitive. Refer to section 7.2.2
+	 * for defined values.
+	 */
+	DWORD NAME;
+	/**
+	 * Compatible Port Offset – RO. This field specifies the starting Port Number of Root Hub Ports
+	 * that support this protocol. Valid values are ‘1’ to MaxPorts.
+	 */
+	BYTE  CPOF;
+	/**
+	 * Compatible Port Count – RO. This field identifies the number of consecutive Root Hub Ports
+	 * (starting at the Compatible Port Offset) that support this protocol. Valid values are 1 to
+	 * MaxPorts.
+	 */
+	BYTE  CPCN;
+	/**
+	 * Protocol Defined. This field is reserved for protocol specific definitions. Refer to section
+	 * 7.2.2.1.3.
+	 */
+	WORD  POTO:12;
+	/**
+	 * Protocol Speed ID Count (PSIC) – RO. This field indicates the number of Protocol Speed ID (PSI)
+	 * Dwords that the xHCI Supported Protocol Capability data structure contains.
+	 *
+	 * If this field is non-zero, then all speeds supported by the protocol shall be defined using PSI
+	 * Dwords, i.e. no implied Speed ID mappings apply.
+	 *
+	 * Refer to section 7.2.2 and its subsections for protocol specific requirements related to this field.
+	 */
+	WORD  PSIC:4;
+} XHCI_CAPABILITY_SUPPORTED_PROTOCOL;
 
 #endif //SUPERNOVA_XHC_REGS_H

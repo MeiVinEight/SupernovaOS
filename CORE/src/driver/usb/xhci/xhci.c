@@ -178,6 +178,18 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	{
 		xadr = xadr + xecp;
 		volatile XHCI_EXTENDED_CAPABILITY *xcap = (XHCI_EXTENDED_CAPABILITY *) core_mapping(xadr);
+		simple_output("xHCI Extended Capability @ ");
+		simple_output_address((QWORD) xcap, 16);
+		simple_output(": ");
+		simple_output_address(xcap->CAID, 2);
+		outchar('\n');
+		if (xcap->CAID == XHCI_XECP_SUPPORTED_PROTOCOL)
+		{
+			volatile XHCI_CAPABILITY_SUPPORTED_PROTOCOL *supp = (XHCI_CAPABILITY_SUPPORTED_PROTOCOL *) xcap;
+			QWORD name = supp->NAME;
+			simple_output(&name);
+			outchar('\n');
+		}
 		xecp = xcap->NEXT << 2;
 	}
 }

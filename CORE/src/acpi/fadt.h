@@ -8,6 +8,46 @@
 #include <types.h>
 #include <acpi/acpi.h>
 
+typedef struct _ACPI_FADT_PM1
+{
+	/**
+	 * System port address of the PM1a Event Register Block.
+	 * See Section 4.8.3.1 for a hardware description layout
+	 * of this register block. This is a required field. If the
+	 * X_PM1a_CNT_BLK field contains a non zero value
+	 * which can be used by the OSPM, then this field must
+	 * be ignored by the OSPM.
+	 */
+	DWORD EVTA;
+	/**
+	 * System port address of the PM1b Event Register Block.
+	 * See Section 4.8.3.1 for a hardware description layout of
+	 * this register block. This field is optional; if this register block is not supported, this field contains zero. If
+	 * the X_PM1b_EVT_BLK field contains a non zero value
+	 * which can be used by the OSPM, then this field must be
+	 * ignored by the OSPM.
+	 */
+	DWORD EVTB;
+	/**
+	 * System port address of the PM1a Control Register
+	 * Block. See Section 4.8.3.1 for a hardware description
+	 * layout of this register block. This is a required field. If
+	 * the X_PM1a_CNT_BLK field contains a non zero value
+	 * which can be used by the OSPM, then this field must be
+	 * ignored by the OSPM.
+	 */
+	DWORD CNTA;
+	/**
+	 * System port address of the PM1b Control Register
+	 * Block. See Section 4.8.3.1 for a hardware description
+	 * layout of this register block. This field is optional; if this
+	 * register block is not supported, this field contains zero. If
+	 * the X_PM1b_CNT_BLK field contains a non zero value
+	 * which can be used by the OSPM, then this field must be
+	 * ignored by the OSPM.
+	 */
+	DWORD CNTB;
+} ACPI_FADT_PM1;
 typedef struct _ACPI_FADT
 {
 	ACPI_SDT_HEADER HEAD;
@@ -104,6 +144,85 @@ typedef struct _ACPI_FADT
 	 * to the SMI_CMD register to assume processor performance state control responsibility.
 	 */
 	BYTE  PSCN;
+	ACPI_FADT_PM1 PM1X;
+	/**
+	 * System port address of the PM2 Control Register Block.
+	 * See Table 4.4 for a hardware description layout of this
+	 * register block. This field is optional; if this register block is not supported, this field contains zero. If
+	 * the X_PM2_CNT_BLK field contains a non zero value
+	 * which can be used by the OSPM, then this field must be
+	 * ignored by the OSPM.
+	 */
+	DWORD PM2C;
+	/**
+	 * System port address of the Power Management Timer
+	 * Control Register Block. See the Section 4.8.3.3 for a
+	 * hardware description layout of this register block. This
+	 * is an optional field; if this register block is not supported,
+	 * this field contains zero. If the X_PM_TMR_BLK field
+	 * contains a non-zero value which can be used by the
+	 * OSPM, then this field must be ignored by the OSPM.
+	 */
+	DWORD PMTB;
+	/**
+	 * System port address of General-Purpose Event 0 Register Block. See Section 4.8.4.1 for more information.
+	 * If this register block is not supported, this field contains zero. If the X_GPE0_BLK field contains a nonzero
+	 * value which can be used by the OSPM, then this field
+	 * must be ignored by the OSPM.
+	 */
+	DWORD GPE0;
+	/**
+	 * System port address of General-Purpose Event 1 Register Block. See Section 4.8.4.1 for more information.
+	 * This is an optional field; if this register block is not supported, this field contains zero. If the X_GPE1_BLK
+	 * field contains a nonzero value which can be used by the
+	 * OSPM, then this field must be ignored by the OSPM.
+	 */
+	DWORD GPE1;
+	/**
+	 * Number of bytes decoded by PM1a_EVT_BLK and, if
+	 * supported, PM1b_ EVT_BLK. This value is >= 4.
+	 */
+	BYTE  P1EL;
+	/**
+	 * Number of bytes decoded by PM1a_CNT_BLK and, if
+	 * supported, PM1b_CNT_BLK. This value is >= 2.
+	 */
+	BYTE  P1CL;
+	/**
+	 * Number of bytes decoded by PM2_CNT_BLK. Support
+	 * for the PM2 register block is optional. If supported, this
+	 * value is >= 1. If not supported, this field contains zero.
+	 */
+	BYTE  P2CL;
+	/**
+	 * Number of bytes decoded by PM_TMR_BLK. If the PM
+	 * Timer is supported, this field’s value must be 4. If not
+	 * supported, this field contains zero.
+	 */
+	BYTE  PMTL;
+	/**
+	 * The length of the register whose address is given by
+	 * X_GPE0_BLK (if nonzero) or by GPE0_BLK (otherwise) in bytes. The value is a non-negative multiple of
+	 * 2.
+	 */
+	BYTE  G0BL;
+	/**
+	 * The length of the register whose address is given by
+	 * X_GPE1_BLK (if nonzero) or by GPE1_BLK (otherwise) in bytes. The value is a non-negative multiple of
+	 * 2.
+	 */
+	BYTE  G1BL;
+	/**
+	 * Offset within the ACPI general-purpose event model
+	 * where GPE1 based events start.
+	 */
+	BYTE  GP1A;
+	/**
+	 * If non-zero, this field contains the value OSPM writes
+	 * to the SMI_CMD register to indicate OS support for the
+	 * _CST object and C States Changed notification.
+	 */
+	BYTE  CSTC;
 } ACPI_FADT;
 
 #endif //SUPERNOVA_FADT_H

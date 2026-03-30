@@ -453,6 +453,67 @@ typedef struct _XHCI_EXTENDED_CAPABILITY
 	 */
 	BYTE NEXT;
 } XHCI_EXTENDED_CAPABILITY;
+typedef struct _XHCI_PROTOCOL_SPEED_ID
+{
+	/**
+	 * Protocol Speed ID Value (PSIV) – RO. If a device is attached that operates at the bit rate defined
+	 * by this PSI Dword, then the value of this field shall be reported in the Port Speed field of
+	 * PORTSC register (5.4.8) of a compatible port.
+	 * Note, the PSIV value of ‘0’ is reserved and shall not be defined by a PSI
+	 */
+	DWORD PSIV:4;
+	/**
+	 * Protocol Speed ID Exponent (PSIE) – RO. This field defines the base 10 exponent times 3, that
+	 * shall be applied to the Protocol Speed ID Mantissa when calculating the maximum bit rate
+	 * represented by this PSI Dword.
+	 *
+	 * PSIE Value Bit Rate:
+	 * - 0 Bits per second
+	 * - 1 Kb/s
+	 * - 2 Mb/s
+	 * - 3 Gb/s
+	 */
+	DWORD PSIE:2;
+	/**
+	 * PSI Type (PLT) – RO. This field identifies whether the PSI Dword defines a symmetric or
+	 * asymmetric bit rate, and if asymmetric, then this field also indicates if this Dword defines the
+	 * receive or transmit bit rate.
+	 *
+	 * Note that the Asymmetric PSI Dwords shall be paired, i.e. an Rx immediately followed by a Tx,
+	 * and both Dwords shall define the same value for the PSIV.
+	 *
+	 * PLT Value Bit Rate Note
+	 * - 0 Symmetric Single PSI Dword
+	 * - 1 Reserved
+	 * - 2 Asymmetric Rx Paired with Asymmetric Tx PSI Dword
+	 * - 3 Asymmetric Tx Immediately follows Rx Asymmetric PSI Dword
+	 */
+	DWORD PSIT:2;
+	/**
+	 * PSI Full-duplex (PFD) – RO. If this bit is ‘1’ the link is full-duplex (dual-simplex), and if ‘0’ the link
+	 * is half-duplex (simplex).
+	 */
+	DWORD PSFD:1;
+	DWORD RSV0:5;
+	/**
+	 * Link Protocol (LP) - RO. if xHCI Protocol Extended Capability:Major Revision = 03h, then this
+	 * field identifies the link-level protocol supported by the ports associated with this PSI Dword.
+	 * Refer to section 8.5.6.7 in the USB3 spec for more information. If xHCI Protocol Extended
+	 * Capability:Major Revision = 02h, then this field shall be ‘0’, and the link protocol (LS, FS, or HS)
+	 * depends on the reported link speed.
+	 *
+	 *  LP Value Protocol
+	 *  - 0 SuperSpeed
+	 *  - 1 SuperSpeedPlus
+	 *  - 3-2 Reserved
+	 */
+	DWORD LINK:2;
+	/**
+	 * Protocol Speed ID Mantissa (PSIM) – RO. This field defines the mantissa that shall be applied to
+	 * the PSIE when calculating the maximum bit rate represented by this PSI Dword.
+	 */
+	DWORD PSIM:16;
+} XHCI_PROTOCOL_SPEED_ID;
 typedef struct _XHCI_CAPABILITY_SUPPORTED_PROTOCOL
 {
 	XHCI_EXTENDED_CAPABILITY XECP;
@@ -501,6 +562,19 @@ typedef struct _XHCI_CAPABILITY_SUPPORTED_PROTOCOL
 	 * Refer to section 7.2.2 and its subsections for protocol specific requirements related to this field.
 	 */
 	WORD  PSIC:4;
+	/**
+	 * Protocol Slot Type – RO. This field specifies the Slot Type value which may be specified
+	 * when allocating Device Slots that support this protocol. Valid values are ‘0’ to ‘31’. Refer to
+	 * sections 4.6.3 and 7.2.2.1.4.
+	 */
+	DWORD PSTY:5;
+	DWORD RSV0:27;
+	/**
+	 * Protocol Speed ID (PSI) Dwords immediately follow the Dword at offset 10h in
+	 * an xHCI Supported Protocol Capability data structure. Table 7-10 defines the
+	 * fields of a PSI Dword.
+	 */
+	XHCI_PROTOCOL_SPEED_ID PSIS[];
 } XHCI_CAPABILITY_SUPPORTED_PROTOCOL;
 
 #endif //SUPERNOVA_XHC_REGS_H

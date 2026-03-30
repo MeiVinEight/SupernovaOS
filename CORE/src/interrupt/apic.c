@@ -16,6 +16,7 @@ COREAPI DWORD USEAPIC = 0;
 COREAPI volatile DWORD(*volatile APIC_REGISTERS)[4];
 COREAPI volatile QWORD CPU_MASK = 0;
 COREAPI volatile DWORD APIC_BSP_LOCK = 0;
+COREAPI volatile ACPI_MADT *volatile MADT = 0;
 /*
 COREAPI BYTE AP_BOOT_CODE[] =
 {
@@ -241,7 +242,7 @@ void setup_apic_timer(DWORD rate)
 }
 void apic_write_interrupt_command(QWORD x)
 {
-	while (APIC_REGISTERS[APIC_ICRL][0] & APIC_ICR_DELIVERY_STATUS);
+	while (APIC_REGISTERS[APIC_ICRL][0] & APIC_ICR_DELIVERY_STATUS) {}
 	APIC_REGISTERS[APIC_ICRH][0] = (x >> 32) & 0xFFFFFFFF;
 	APIC_REGISTERS[APIC_ICRL][0] = (x >>  0) & 0xFFFFFFFF;
 	while (APIC_REGISTERS[APIC_ICRL][0] & APIC_ICR_DELIVERY_STATUS);
@@ -295,6 +296,7 @@ void apic_startup_ap(BYTE apicid, void (*apEntry)(void))
 }
 void setup_madt(ACPI_MADT *madt)
 {
+	MADT = madt;
 	/*
 	QWORD apPhyAddr = ((QWORD) SYSTEM_TABLE->APC) & 0xFFFFF;
 	__memcpy(SYSTEM_TABLE->APC, AP_BOOT_CODE, sizeof(AP_BOOT_CODE));
@@ -377,4 +379,58 @@ DWORD ioapic_read(volatile DWORD *base, int idx)
 {
 	base[0] = idx;
 	return base[4];
+}
+void ioapic_write_redirect(volatile DWORD *base, DWORD idx, QWORD value)
+{
+	base[0] = 0x10 + (idx << 1) + 0;
+	base[4] = (value >>  0) & 0xFFFFFFFF;
+	base[0] = 0x10 + (idx << 1) + 1;
+	base[4] = (value >> 32) & 0xFFFFFFFF;
+}
+BYTE ioapic_override(BYTE irq)
+{
+	QWORD size = MADT->HEAD.LENG - sizeof(ACPI_MADT);
+	volatile BYTE *data = MADT->DATA;
+	QWORD read = 0;
+	while (read < size)
+	{
+		APIC_MADT_LAPIC *lapic = (APIC_MADT_LAPIC *) data;
+		if (lapic->TYP == 2)
+		{
+			volatile APIC_MADT_IOAPIC_OVERRIDE *ioapic = (APIC_MADT_IOAPIC_OVERRIDE *) lapic;
+			if (ioapic->IRQ == irq)
+				return ioapic->GSI;
+		}
+		// else // I/O APIC
+		read += lapic->SZE;
+		data += lapic->SZE;
+	}
+	return irq;
+}
+DWORD ioapic_redirect(BYTE irq, BYTE vec)
+{
+	irq = ioapic_override(irq);
+
+	QWORD size = MADT->HEAD.LENG - sizeof(ACPI_MADT);
+	volatile BYTE *data = MADT->DATA;
+	QWORD read = 0;
+	while (read < size)
+	{
+		APIC_MADT_LAPIC *lapic = (APIC_MADT_LAPIC *) data;
+		if (lapic->TYP == 1)
+		{
+			volatile APIC_MADT_IOAPIC *ioapic = (APIC_MADT_IOAPIC *) lapic;
+			DWORD version = ioapic_read((DWORD *) core_mapping(ioapic->ADR), IOAPIC_VER);
+			DWORD count = (version >> 16) & 0xFF;
+			if ((ioapic->GSI <= irq) && ((ioapic->GSI + count) > irq))
+			{
+				ioapic_write_redirect((DWORD *) core_mapping(ioapic->ADR), irq - ioapic->GSI, vec | (((QWORD) apic_current_id() << 56)));
+				return 0;
+			}
+		}
+		// else // I/O APIC
+		read += lapic->SZE;
+		data += lapic->SZE;
+	}
+	return 1;
 }

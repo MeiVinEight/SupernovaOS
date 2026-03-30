@@ -114,3 +114,4 @@ void apic_startup_ap(BYTE apicid, void (*apEntry)(void));
 void setup_madt(ACPI_MADT *madt);
 void apic_setup_multiprocessor();
 DWORD ioapic_read(volatile DWORD *base, int idx);
+DWORD ioapic_redirect(BYTE irq, BYTE vec);

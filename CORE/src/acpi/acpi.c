@@ -31,6 +31,7 @@ void setup_acpi()
 		if (*dwSign == ACPI_SIGNATURE_FADT)
 			setup_fadt((ACPI_FADT *) entry);
 	}
+	setup_fadt(0);
 	/*
 	ACPI_XSDT *xsdt = (ACPI_XSDT *) core_mapping(rsdp->XSDT);
 	entryCount = (xsdt->HEAD.LENG - sizeof(ACPI_SDT_HEADER)) >> 3;

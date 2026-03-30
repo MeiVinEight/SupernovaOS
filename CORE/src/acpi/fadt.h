@@ -8,8 +8,16 @@
 #include <types.h>
 #include <acpi/acpi.h>
 
-#define FADT_PM1_EN_PWRBTN_EN (1 << 8)
-#define FADT_PM1_ST_SCI_EN    (1 << 0)
+#define FADT_PM1E_ST_SCI_EN     (1 << 0)
+#define FADT_PM1E_ST_PWRBTN_STS (1 << 8)
+#define FADT_PM1E_EN_PWRBTN_EN  (1 << 8)
+#define FADT_PM1C_SLP_EN        (1 << 13)
+
+#define FADT_STAT_S5 (1ULL << 0)
+
+extern volatile QWORD FADT_STATUS;
+extern volatile DWORD PM1_SLP_TYPE5_A;
+extern volatile DWORD PM1_SLP_TYPE5_B;
 
 typedef struct _ACPI_FADT_PM1
 {
@@ -51,6 +59,7 @@ typedef struct _ACPI_FADT_PM1
 	 */
 	DWORD CNTB;
 } ACPI_FADT_PM1;
+#pragma pack(push, 4)
 typedef struct _ACPI_FADT
 {
 	ACPI_SDT_HEADER HEAD;
@@ -226,8 +235,16 @@ typedef struct _ACPI_FADT
 	 * _CST object and C States Changed notification.
 	 */
 	BYTE  CSTC;
+	DWORD RSV1[11];
+	/**
+	 * Extended physical address of the DSDT. If this field contains a nonzero value which can be used by the OSPM,
+	 * then the DSDT field must be ignored by the OSPM.
+	 */
+	QWORD XDSD;
 } ACPI_FADT;
+#pragma pack(pop)
 
-void setup_fadt(volatile ACPI_FADT *fadt);
+void setup_fadt(volatile ACPI_FADT *FADT);
+void acpi_shutdown();
 
 #endif //SUPERNOVA_FADT_H

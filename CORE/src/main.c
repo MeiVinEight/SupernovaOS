@@ -60,8 +60,5 @@ QWORD coreCRTStartup()
 
 	simple_output("OK\n");
 
-	*((DWORD *) 0x100000000ULL) = 1;
-
 	while (1) __halt();
-	return 0;
 }

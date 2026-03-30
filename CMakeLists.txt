@@ -4,3 +4,4 @@ set(CMAKE_CXX_STANDARD 11)
 project(SUPERNOVA)
 
 add_subdirectory(CORE)
+add_subdirectory(EFI)

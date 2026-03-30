@@ -39,6 +39,7 @@ COREAPI char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
 
 COREAPI char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
 
+COREAPI char PCI_DEVICE_808606ED[] = "Comet Lake USB 3.1 xHCI Host Controller";
 COREAPI char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_808610D3[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
@@ -145,6 +146,7 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	}
 	if (device.VENDOR == 0x8086)
 	{
+		if (device.DEVICE == 0x06ED) return PCI_DEVICE_808606ED;
 		if (device.DEVICE == 0x100E) return PCI_DEVICE_8086100E;
 		if (device.DEVICE == 0x10D3) return PCI_DEVICE_808610D3;
 		if (device.DEVICE == 0x1237) return PCI_DEVICE_80861237;

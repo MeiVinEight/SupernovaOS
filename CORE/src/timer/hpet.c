@@ -29,6 +29,8 @@ QWORD hpet_query_frequency()
 	// Convert the period from femproseconds to HZ
 	if (period)
 		period = (1000000000000000ULL) / period;
+	if (((100000000000000000ULL / (gcir >> 32)) % 100) >= 50)
+		period++;
 	return period;
 }
 QWORD hpet_get_counter()

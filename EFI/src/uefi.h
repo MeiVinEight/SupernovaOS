@@ -209,13 +209,23 @@ typedef struct _EFI_DEVICE_PATH_TO_TEXT_PROTOCOL
 typedef struct _EFI_BLOCK_IO_MEDIA
 {
 	DWORD MediaId;
+	BYTE  RemovableMedia;
+	BYTE  MediaPresent;
+	BYTE  LogicalPartition;
+	BYTE  ReadOnly;
+	BYTE  WriteCaching;
+	DWORD BlockSize;
+	DWORD IoAlign;
+	QWORD LastBlock;
+	QWORD LowestAlignedLba;
+	DWORD LogicalBlockPerPhysicalBlock;
 } EFI_BLOCK_IO_MEDIA;
 typedef struct _EFI_BLOCK_IO_PROTOCOL
 {
 	DWORD Revision;
 	EFI_BLOCK_IO_MEDIA *Meida;
 	QWORD(*Reset);
-	QWORD(*ReadBlocks)(struct _EFI_BLOCK_IO_PROTOCOL *, DWORD, QWORD, QWORD, void *);
+	QWORD (*ReadBlocks)(struct _EFI_BLOCK_IO_PROTOCOL *This, DWORD MediaId, QWORD LBA, QWORD BufferSize, void *Buffer);
 } EFI_BLOCK_IO_PROTOCOL;
 typedef struct _EFI_PIXEL_BITMASK
 {

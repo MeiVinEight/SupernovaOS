@@ -1,6 +1,6 @@
 #pragma section(".text")
 
-__declspec(allocate(".text")) char memset[] =
+__declspec(allocate(".text")) char __memset[] =
 /*
 void *__cdecl memset(void *, int, unsigned long long)
 */
@@ -36,7 +36,7 @@ void *__cdecl memset(void *, int, unsigned long long)
 	0x48, 0x8B, 0xC1, // MOV    RAX, RCX
 	0xC3,             // RETN
 };
-__declspec(allocate(".text")) char memcpy[] =
+__declspec(allocate(".text")) char __memcpy[] =
 /*
 void *__cdecl memcpy(void *, const void *, unsigned long long)
 */
@@ -52,18 +52,18 @@ void *__cdecl memcpy(void *, const void *, unsigned long long)
 	0x5E,             // POP  RSI
 	0xC3,             // RETN
 };
-__declspec(allocate(".text")) const char __cli[] =
+__declspec(allocate(".text")) char __cli[] =
 {
 	0xFA, // CLI
 	0xC3, // RET
 };
-__declspec(allocate(".text")) const char __setrsp[] =
+__declspec(allocate(".text")) char __setrsp[] =
 {
 	0x58,             // POP RAX
 	0x48, 0x8B, 0xE1, // MOV RSP, RCX
 	0x48, 0xFF, 0xE0, // JMP RAX
 };
-__declspec(allocate(".text")) const char __memset128[] =
+__declspec(allocate(".text")) char __memset128[] =
 {
 	0x48, 0x8B, 0xC1,       // MOV    RAX,  RCX
 	0xF3, 0x0F, 0x6F, 0x02, // MOVDQU XMM0, XMMWORD PTR [RDX]
@@ -80,7 +80,7 @@ __declspec(allocate(".text")) const char __memset128[] =
 	// LOOP1:
 	0xC3,                   // RET
 };
-int memcmp(const void *a, const void *b, unsigned long long size)
+int __memcmp(const void *a, const void *b, unsigned long long size)
 {
 	char *bufA = (char *) a;
 	char *bufB = (char *) b;

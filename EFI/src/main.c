@@ -1,11 +1,7 @@
 
 #include "uefi.h"
 #include "intrinsic.h"
-#include "pci.h"
-#include "ahci.h"
 #include "ntfs.h"
-#include "acpi.h"
-#include "pcie.h"
 
 #define PCI_COMMAND         0x04
 #define PCI_BASE_ADDRESS_5	0x24
@@ -183,6 +179,16 @@ QWORD jmp(QWORD(*entry)(), QWORD stackAddr)
 	return ((QWORD (*)()) call)();
 }
 
+void BlockIORead(EFI_BLOCK_IO_PROTOCOL *proto, QWORD lba, QWORD scnt, QWORD buffer)
+{
+	DWORD stat;
+	if ((stat = proto->ReadBlocks(proto, proto->Meida->MediaId, lba, scnt << 9, (void *) buffer)))
+	{
+		OutputText("DISK READ ERROR: ");
+		OutputNumber(stat);
+		jmp(0, 0);
+	}
+}
 void DetectingMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics)
 {
 	int defaultMode = graphics->Mode->Mode;
@@ -222,9 +228,9 @@ void SortMemoryMap(QWORD map, DWORD count, QWORD descSize)
 		}
 		if (min != i)
 		{
-			memcpy(desc, (void *) (map + i * descSize), descSize);
-			memcpy((void *) (map + i * descSize), minEntry, descSize);
-			memcpy(minEntry, desc, descSize);
+			__memcpy(desc, (void *) (map + i * descSize), descSize);
+			__memcpy((void *) (map + i * descSize), minEntry, descSize);
+			__memcpy(minEntry, desc, descSize);
 		}
 	}
 	SYSTEM_TABLE->BootServices->FreePool(desc);
@@ -246,13 +252,13 @@ DWORD CompactMemoryMap(QWORD map, DWORD count, QWORD descSize)
 			ei = (EFI_MEMORY_DESCRIPTOR *) (map + i * descSize);
 			if (i != j)
 			{
-				memcpy(ei, ej, descSize);
+				__memcpy(ei, ej, descSize);
 			}
 		}
 	}
 	return i + 1;
 }
-DWORD ntfs_read_mft_record(HBA_PORT *port, NTFS_BPB *bpb, NTFS_MFT_ATTR_HEADER *attr, DWORD mftNum, QWORD bufAddr)
+DWORD ntfs_read_mft_record(EFI_BLOCK_IO_PROTOCOL *proto, NTFS_BPB *bpb, NTFS_MFT_ATTR_HEADER *attr, DWORD mftNum, QWORD bufAddr)
 {
 	DWORD mftPreClus = bpb->cluster >> 1;
 	DWORD vcn = mftNum / mftPreClus;
@@ -261,23 +267,15 @@ DWORD ntfs_read_mft_record(HBA_PORT *port, NTFS_BPB *bpb, NTFS_MFT_ATTR_HEADER *
 	QWORD sector = bpb->hidden;
 	sector += lcn * bpb->cluster;
 	sector += (QWORD) mftInClus << 1;
-	if (ahci_command(port, sector, 2, (void *) bufAddr, ATA_CMD_READ_DMA_EX))
-	{
-		OutputText("DISK READ ERROR\r\n");
-		return 0;
-	}
+	BlockIORead(proto, sector, 2, bufAddr);
 	*((WORD *) (bufAddr + 0x03FE)) = *((WORD *) (bufAddr + 0x34));
 	*((WORD *) (bufAddr + 0x01FE)) = *((WORD *) (bufAddr + 0x32));
 	return 1;
 }
-DWORD loading_core_sata(HBA_PORT *port, QWORD page)
+DWORD loading_core_sata(EFI_BLOCK_IO_PROTOCOL *port, QWORD page)
 {
 	// Read LBA 1: GPT Header
-	if (ahci_command(port, 1, 1, (void *) (page), ATA_CMD_READ_DMA_EX))
-	{
-		OutputText("DISK READ ERROR\r\n");
-		return 0;
-	}
+	BlockIORead(port, 1, 1, page);
 	QWORD efipart = 0x5452415020494645ULL; // "EFI PART"
 	if (efipart != *((QWORD *) page))
 		return 0;
@@ -291,13 +289,9 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 
 	// FIND NTFS SYSTEM PART
 	// Read partition table
-	if (ahci_command(port, *((QWORD *) (page + 0x48)), 1, (void *) (page), ATA_CMD_READ_DMA_EX))
-	{
-		OutputText("DISK READ ERROR\r\n");
-		return 0;
-	}
+	BlockIORead(port, *((QWORD *) (page + 0x48)), 1, page);
 
-	memset((void *) (page + 0x200), 0, 0x200);
+	__memset((void *) (page + 0x200), 0, 0x200);
 	QWORD partEntry = page;
 	for (; partEntry < page + 0x200; partEntry += 0x80)
 	{
@@ -312,28 +306,20 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 	OutputText("PARTITION FOUND\r\n");
 
 	QWORD partLBA = *((QWORD *) (partEntry + 0x20));
-	if (ahci_command(port, partLBA, 1, (void *) (page), ATA_CMD_READ_DMA_EX))
-	{
-		OutputText("DISK READ ERROR\r\n");
-		return 0;
-	}
+	BlockIORead(port, partLBA, 1, page);
 
 	NTFS_BPB ntfsBpb;
-	memcpy(&ntfsBpb, (void *) page, sizeof(NTFS_BPB));
+	__memcpy(&ntfsBpb, (void *) page, sizeof(NTFS_BPB));
 
 	// $MFT LBA
 	QWORD mftsector = ntfsBpb.hidden + (ntfsBpb.MFT * ntfsBpb.cluster);
 	OutputText("$MFT @ ");
 	OutputNumber(mftsector);
 	OutputText("\r\n");
-	if (ahci_command(port, mftsector, 2, (void *) (page), ATA_CMD_READ_DMA_EX))
-	{
-		OutputText("DISK READ ERROR\r\n");
-		return 0;
-	}
+	BlockIORead(port, mftsector, 2, page);
 	*((WORD *) (page + 0x03FE)) = *((WORD *) (page + 0x34));
 	*((WORD *) (page + 0x01FE)) = *((WORD *) (page + 0x32));
-	memcpy(MFT_RECORD, (void *) page, 1024);
+	__memcpy(MFT_RECORD, (void *) page, 1024);
 
 	NTFS_MFT_ATTR_HEADER *attr = ntfs_attr_data(MFT_RECORD);
 	if (!attr)
@@ -352,15 +338,14 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 		DWORD nowMFTNum = mftNum;
 		for (int i = 3; i--;)
 		{
-			if (!ntfs_read_mft_record(port, &ntfsBpb, attr, nowMFTNum, page))
-				return 0;
+			ntfs_read_mft_record(port, &ntfsBpb, attr, nowMFTNum, page);
 			NTFS_MFT_ATTR_FILE_NAME *fnAttr = ntfs_attr_file_name((void *) page);
 			if (!fnAttr)
 				goto NEXT_MFT;
 			DWORD fileNameLen = ntfs_file_name(fnAttr, fileName);
 			if (!fileNameLen)
 				goto NEXT_MFT;
-			if (memcmp(fileName, fileNameList[i], fileNameLen))
+			if (__memcmp(fileName, fileNameList[i], fileNameLen))
 				goto NEXT_MFT;
 
 			//break;
@@ -381,11 +366,10 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 	OutputNumber(coreMFT);
 	OutputText("\r\n");
 
-	if (!ntfs_read_mft_record(port, &ntfsBpb, attr, coreMFT, page))
-		return 0;
+	ntfs_read_mft_record(port, &ntfsBpb, attr, coreMFT, page);
 
 	NTFS_MFT_ATTR_HEADER *dataAttr = ntfs_attr_data((void *) page);
-	memcpy(CORE_MFT_BUF, dataAttr, dataAttr->length);
+	__memcpy(CORE_MFT_BUF, dataAttr, dataAttr->length);
 	dataAttr = (NTFS_MFT_ATTR_HEADER *) CORE_MFT_BUF;
 	QWORD bufAddr = 0;
 
@@ -400,215 +384,65 @@ DWORD loading_core_sata(HBA_PORT *port, QWORD page)
 		if (!lcn)
 			return 0;
 		QWORD sector = ntfsBpb.hidden + lcn * ntfsBpb.cluster;
-		if (ahci_command(port, sector, ntfsBpb.cluster, (void *) bufAddr, ATA_CMD_READ_DMA_EX))
-		{
-			OutputText("DISK READ ERROR\r\n");
-			return 0;
-		}
+		BlockIORead(port, sector, ntfsBpb.cluster, page);
+		__memcpy((void *) bufAddr, (void *) page, (QWORD) ntfsBpb.cluster << 9);
 		bufAddr += 512 * ntfsBpb.cluster;
 	}
 
 
 	return 1;
 }
-DWORD ahci_controller_load(void *iobase)
+DWORD DetectingDisk(EFI_SYSTEM_TABLE *table)
 {
-	HBA_MEM *abar = (HBA_MEM *) iobase;
-	abar->ghc |= HOST_CTL_AHCI_EN;
-
-	// State, 0 means success
-	DWORD finding = 1;
-	// Port status, 1 means usable
-	DWORD pi = abar->pi;
-	// AHCI Port
-	HBA_PORT *port = abar->ports;
-	// Use 1 page as buffer
-	QWORD page = (0x00001000);
-	//OutputText("AHCI PORT: ");
-	//OutputAddress((QWORD) port);
-	//OutputText("\r\n");
-
-	int portNum = 0;
-	while (pi && finding)
+	void **handleBuffer = 0;
+	QWORD handleNum = 0;
+	DWORD stat = table->BootServices->LocateHandleBuffer(ByProtocol, EFI_BLOCK_IO_PROTOCOL_GUID, 0, &handleNum, (void **) &handleBuffer);
+	if (stat)
 	{
-		if (!(pi & 1))
-			goto NEXT_PORT;
-
-		DWORD portType = check_type(port);
-		if (portType == AHCI_DEVICE_NULL)
-			goto NEXT_PORT;
-		if (portType != AHCI_DEVICE_SATA)
-			goto NEXT_PORT;
-
-		// Try to read kernel
-		if (start_cmd(port))
-			goto STOP_READ;
-
-		finding &= (1 ^ loading_core_sata(port, page));
-
-	STOP_READ:
-		stop_cmd(port);
-
-	NEXT_PORT:
-		pi >>= 1;
-		port++;
-		portNum++;
-	}
-	return finding ^ 1;
-}
-DWORD ahci_controller_setup(DWORD cmdAhci)
-{
-	OutputText("PCI @ ");
-	OutputAddressX(cmdAhci, 8);
-	OutputText(" AHCI CONTROLLER\r\n");
-	void *iobase = pci_enable_mmio(cmdAhci, PCI_BASE_ADDRESS_5);
-	if (!iobase)
-	{
-		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
+		OutputText("Cannot locate handle\r\n");
 		return 0;
 	}
 
-	DWORD dvc = cmdAhci;
-	// Enable busmaster
-	// Read Command register and set MASTER bit
-	__outdword(0x0CF8, dvc + PCI_COMMAND);
-	WORD val = __inword(0x0CFC) | PCI_COMMAND_MASTER;
-	// Write to Command register
-	__outdword(0x0CF8, dvc + PCI_COMMAND);
-	__outword(0x0CFC, val);
+	OutputText("Locate ");
+	OutputNumber(handleNum);
+	OutputText(" Handles\r\n");
 
-	return ahci_controller_load(iobase);
-}
-DWORD pcie_ahci_controller_setup(volatile PCI_CONFIGURATION_SPACE *configSpec)
-{
-	OutputText("PCI Express @ ");
-	OutputAddressX((QWORD) configSpec, 8);
-	OutputText(" AHCI CONTROLLER\r\n");
-	void *iobase = pcie_enable_mmio(configSpec, 5);
-	if (!iobase)
+	if (handleNum > 256)
+		handleNum = 256;
+
+	QWORD *pageBuf = (QWORD *) 0x1000;
+	stat = SYSTEM_TABLE->BootServices->AllocatePages(AllocateAnyPages, EfiBootServicesData, 1, (void *) &pageBuf);
+	if (stat)
 	{
-		OutputText("AHCI CONTROLLER MMIO NOT SUPPORTED\r\n");
+		OutputText("Cannot allocate\r\n");
 		return 0;
 	}
-
-	// Enable busmaster
-	WORD cmd = configSpec->command | PCI_COMMAND_MASTER;
-	// Write to Command Register
-	configSpec->command = cmd;
-
-	return ahci_controller_load(iobase);
-}
-DWORD find_pcie(ACPI_RSDP *rsdp)
-{
-	// Find RSDT
-	if (!rsdp)
-		return 0;
-
-	ACPI_MCFG *mcfg = 0;
-
+	EFI_BLOCK_IO_PROTOCOL *proto = 0;
+	DWORD finding = 0;
+	for (QWORD i = 0; i < handleNum; i++)
 	{
-		QWORD sign = 0;
-		volatile DWORD *dwSign = (DWORD *) &sign;
-		char *signName = (char *) dwSign;
-		ACPI_RSDT *rsdt = (ACPI_RSDT *) (QWORD) rsdp->RSDT;
-		DWORD entryCount = (rsdt->HEAD.LENG - sizeof(ACPI_SDT_HEADER)) >> 2;
-		for (DWORD entryIdx = 0; (entryIdx < entryCount) && (!mcfg); entryIdx++)
-		{
-			QWORD entryPhyAddr = rsdt->TABLE[entryIdx];
-			ACPI_SDT_HEADER *entry = (ACPI_SDT_HEADER *) entryPhyAddr;
-			*dwSign = *((DWORD *) entry->SIGN);
+		SYSTEM_TABLE->BootServices->HandleProtocol(handleBuffer[i], EFI_BLOCK_IO_PROTOCOL_GUID, (void **) &proto);
 
-			OutputText(signName);
-			OutputText(" @ ");
-			OutputAddressX(entryPhyAddr, 8);
-			OutputText("\r\n");
-
-			if (*dwSign == ACPI_SIGNATURE_MCFG)
-				mcfg = (ACPI_MCFG *) entry;
-		}
-
-		if (!mcfg)
-		{
-			OutputText("PCI Express Address Not Found\r\n");
-			return 0;
-		}
-	}
-
-	OutputText("PCI Express @ ");
-	OutputAddressX((QWORD) mcfg, 8);
-	OutputText("\r\n");
-
-	QWORD length = mcfg->HEAD.LENG;
-	DWORD entryCount = (length - /*sizeof(ACPI_MCFG)*/ 44) / sizeof(PCIE_SEGMENT_ADDRESS);
-
-	for (volatile DWORD entryIdx = 0; entryIdx < entryCount; entryIdx++)
-	{
-		volatile QWORD segAddr = core_mapping(mcfg->ECAM[entryIdx].ECAM);
-
-		for (volatile BYTE bus = 0; (bus + mcfg->ECAM[entryIdx].SBUS) < mcfg->ECAM[entryIdx].EBUS; bus++)
-		{
-			// Enumerate BUS
-			volatile QWORD busAddr = segAddr + ((QWORD) bus << 20);
-
-			for (volatile BYTE device = 0; device < 32; device++)
-			{
-				// Enumerate DEVICE
-				volatile QWORD devAddr = busAddr + ((QWORD) device << 15);
-				for (volatile BYTE func = 0; func < 8; func++)
-				{
-					// Enumerate function
-					volatile QWORD funcAddr = devAddr + ((QWORD) func << 12);
-					volatile PCI_CONFIGURATION_SPACE *conf = (PCI_CONFIGURATION_SPACE *) funcAddr;
-					if ((!conf->device) || (conf->device == 0xFFFF))
-						continue;
-
-					volatile PCI_DEVICE_VENDOR vendor;
-					vendor.VENDOR = conf->vendor;
-					vendor.DEVICE = conf->device;
-
-					if (conf->class == 0x010601) // AHCI
-					{
-						DWORD found = pcie_ahci_controller_setup(conf);
-						if (found) return 1;
-					}
-				}
-			}
-		}
-	}
-
-	return 0;
-}
-DWORD find_pci()
-{
-	OutputText("PCI Enumerate\r\n");
-	// Config Address
-	volatile DWORD cmd = 0x80000000;
-	while (cmd < 0x81000000)
-	{
-		__outdword(0x0CF8, cmd);
-		volatile DWORD id = __indword(0x0CFC);
-		volatile WORD vendor = id & 0xFFFF;
-		if (!vendor || (vendor == 0xFFFF))
-		{
-			cmd += 0x100;
+		if (proto->Meida->LogicalPartition)
 			continue;
-		}
 
-		// Read class code
-		__outdword(0x0CF8, cmd + 0x08);
-		DWORD classId = __indword(0x0CFC) >> 8;
+		OutputAddress((QWORD) handleBuffer[i]);
+		OutputText(" ");
+		OutputNumber(proto->Meida->MediaId);
+		OutputText(": ");
+		OutputNumber(proto->Meida->LogicalPartition);
+		OutputText("\r\n");
 
-		if (classId == 0x010601) // AHCI
-		{
-			//break;
-			DWORD found = ahci_controller_setup(cmd);
-			if (found) return 1;
-		}
+		proto->ReadBlocks(proto, proto->Meida->MediaId, 1, 512, pageBuf);
+		OutputText((char *) pageBuf);
+		OutputText("\r\n");
 
-		cmd += 0x800;
+		if ((finding = loading_core_sata(proto, (QWORD) pageBuf)))
+			break;
 	}
-
-	return 0;
+	SYSTEM_TABLE->BootServices->FreePages((QWORD) pageBuf, 1);
+	SYSTEM_TABLE->BootServices->FreePool(handleBuffer);
+	return finding;
 }
 
 unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable)
@@ -635,7 +469,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	SYSTEM_TABLE->ConOut->SetMode(SYSTEM_TABLE->ConOut, maxMode);
 
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics = 0;
-	SYSTEM_TABLE->BootServices->LocateProtocol(EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, 0, &graphics);
+	SYSTEM_TABLE->BootServices->LocateProtocol(EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, 0, (void **) &graphics);
 	DetectingMode(graphics);
 	QWORD fbb = graphics->Mode->FrameBufferBase;
 
@@ -652,23 +486,23 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 
 	OutputText("Supernova-EFI\r\n");
 
-	DWORD cpuid[4] = {0, 0, 0, 0};
+	int cpuid[4] = {0, 0, 0, 0};
 	char brand[51];
 	brand[48] = '\r';
 	brand[49] = '\n';
 	brand[50] = 0;
 	DWORD *brandx = (DWORD *) brand;
-	__cpuid(cpuid, 0x80000002);
+	__cpuid(cpuid, (int) 0x80000002);
 	brandx[0] = cpuid[0];
 	brandx[1] = cpuid[1];
 	brandx[2] = cpuid[2];
 	brandx[3] = cpuid[3];
-	__cpuid(cpuid, 0x80000003);
+	__cpuid(cpuid, (int) 0x80000003);
 	brandx[4] = cpuid[0];
 	brandx[5] = cpuid[1];
 	brandx[6] = cpuid[2];
 	brandx[7] = cpuid[3];
-	__cpuid(cpuid, 0x80000004);
+	__cpuid(cpuid, (int) 0x80000004);
 	brandx[8] = cpuid[0];
 	brandx[9] = cpuid[1];
 	brandx[10] = cpuid[2];
@@ -701,15 +535,10 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 			break;
 		}
 	}
-	if (!rsdp)
-		OutputText("ACPI 2.0 RSD PTR NOT FOUND\r\n");
-	if (!find_pcie((ACPI_RSDP *) rsdp))
+	if (!DetectingDisk(systemTable))
 	{
-		if (!find_pci())
-		{
-			OutputText("CORE.DLL NOT FOUND");
-			jmp(0, 0);
-		}
+		OutputText("CORE.DLL NOT FOUND");
+		jmp(0, 0);
 	}
 
 	QWORD memMapSize = 0;
@@ -720,8 +549,8 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	SYSTEM_TABLE->BootServices->GetMemoryMap(&memMapSize, MemoryMap, &MapKey, &MapDescSize, &MapVersion);
 
 	QWORD totalSize = memMapSize + sizeof(EFI_MEMORY_DESCRIPTOR) * 20;
-	SYSTEM_TABLE->BootServices->AllocatePool(EfiRuntimeServicesData, totalSize, &MemoryMap);
-	memset(MemoryMap, 0, totalSize);
+	SYSTEM_TABLE->BootServices->AllocatePool(EfiRuntimeServicesData, totalSize, (void **) &MemoryMap);
+	__memset(MemoryMap, 0, totalSize);
 	QWORD ret = SYSTEM_TABLE->BootServices->GetMemoryMap(&totalSize, MemoryMap, &MapKey, &MapDescSize, &MapVersion);
 	if (ret)
 	{
@@ -730,7 +559,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		while (1) __halt();
 	}
 
-	SUPERNOVA_SYSTEM_TABLE *SST = (SUPERNOVA_SYSTEM_TABLE *) 0;
+	SUPERNOVA_SYSTEM_TABLE *SST = 0;
 	__assume(SST != 0);
 	QWORD entries = totalSize / MapDescSize;
 	//OutputNumber(entries);
@@ -740,7 +569,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	entries = CompactMemoryMap(MMA, entries, MapDescSize);
 	//MEMORY_REGION **end = (MEMORY_REGION **) 0x3018;
 	MEMORY_REGION *beg = SST->MEMORY;
-	memset(beg, 0, sizeof(MEMORY_REGION));
+	__memset(beg, 0, sizeof(MEMORY_REGION));
 	beg->F = 0xFF;
 	// OUTPUTTEXT("Base Address       Length             Type\n");
 	for (QWORD i = 0; i < entries; i++)
@@ -791,7 +620,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		else
 		{
 			beg++;
-			memcpy(beg, &region, sizeof(MEMORY_REGION));
+			__memcpy(beg, &region, sizeof(MEMORY_REGION));
 		}
 	}
 	beg++;
@@ -830,6 +659,9 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	__assume (base != 0);
 	QWORD ntHeader = *((DWORD *) (base + 0x3C));
 	QWORD entry = *((DWORD *) (ntHeader + 0x28));
+	OutputText("CORE ENTRY: ");
+	OutputAddress(entry);
+	OutputText("\r\n");
 
 
 	SYSTEM_TABLE->BootServices->ExitBootServices(handle, MapKey);

@@ -11,16 +11,16 @@ typedef unsigned long DWORD;
 typedef unsigned long long QWORD;
 
 void __halt();
-void __cpuid(void *, DWORD);
+void __cpuid(int *, int);
 QWORD __readcr0(void);
 void __writecr0(QWORD);
 QWORD __readcr3(void);
 QWORD __readcr4(void);
 void __writecr4(QWORD);
 void __lidt(void *);
-void *memset(void *, int, unsigned long long);
+void *__memset(void *, int, unsigned long long);
 void *memset64(void *, QWORD, unsigned long long);
-void *__cdecl memcpy(void *, const void *, unsigned long long);
+void *__memcpy(void *, const void *, unsigned long long);
 void __cli();
 void __setrsp(unsigned long long);
 QWORD __lgdt();
@@ -29,7 +29,7 @@ void __outword(unsigned short, unsigned short);
 unsigned long __indword(unsigned short);
 unsigned short __inword(unsigned short);
 void *__memset128(void *dst, void *, unsigned long long);
-int memcmp(const void *, const void *, unsigned long long);
+int __memcmp(const void *, const void *, unsigned long long);
 
 /*
 void *memset128(void *dst, __m128i val, unsigned long long cnt)

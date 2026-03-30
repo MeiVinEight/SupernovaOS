@@ -116,7 +116,7 @@ typedef struct _EFI_BOOT_SERVICES
 	QWORD *InstallProtocolInterface;
 	QWORD *ReinstallProtocolInterface;
 	QWORD *UninstallProtocolInterface;
-	QWORD *HandleProtocol;
+	QWORD(*HandleProtocol)(void *handle, void *protocol, void **interface);
 	QWORD *Reserved;
 	QWORD *RegisterProtocolNotify;
 	QWORD(*LocateHandle)(EFI_LOCATE_SEARCH_TYPE, void *, void *, QWORD *, void **);
@@ -146,7 +146,7 @@ typedef struct _EFI_BOOT_SERVICES
 
 	// Library Services
 	QWORD(*ProtocolPerHandle);
-	QWORD(*LocateHandleBuffer);
+	QWORD(*LocateHandleBuffer)(DWORD searchType, void *protocol, void *searchKey, QWORD *noHandles, void **buffer);
 	QWORD(*LocateProtocol)(void *, void *, void **);
 
 	// Library Services

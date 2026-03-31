@@ -16,7 +16,7 @@ COREAPI DWORD USEAPIC = 0;
 COREAPI volatile DWORD(*volatile APIC_REGISTERS)[4];
 COREAPI volatile QWORD CPU_MASK = 0;
 COREAPI volatile DWORD APIC_BSP_LOCK = 0;
-COREAPI volatile ACPI_MADT *volatile MADT = 0;
+COREAPI volatile ACPI_MADT *volatile MULTIPLE_APIC_TABLE = 0;
 /*
 COREAPI BYTE AP_BOOT_CODE[] =
 {
@@ -296,7 +296,7 @@ void apic_startup_ap(BYTE apicid, void (*apEntry)(void))
 }
 void setup_madt(ACPI_MADT *madt)
 {
-	MADT = madt;
+	MULTIPLE_APIC_TABLE = madt;
 	/*
 	QWORD apPhyAddr = ((QWORD) SYSTEM_TABLE->APC) & 0xFFFFF;
 	__memcpy(SYSTEM_TABLE->APC, AP_BOOT_CODE, sizeof(AP_BOOT_CODE));
@@ -306,9 +306,9 @@ void setup_madt(ACPI_MADT *madt)
 	*((QWORD *) (SYSTEM_TABLE->APC + 0xD4)) = (QWORD) apic_ap_startup;
 	*/
 
-	QWORD size = madt->HEAD.LENG - sizeof(ACPI_MADT);
+	QWORD size = MULTIPLE_APIC_TABLE->HEAD.LENG - sizeof(ACPI_MADT);
 	DWORD bsp = apic_current_id();
-	BYTE *data = madt->DATA;
+	volatile BYTE *data = MULTIPLE_APIC_TABLE->DATA;
 	QWORD read = 0;
 	while (read < size)
 	{
@@ -360,8 +360,8 @@ void ioapic_write_redirect(volatile DWORD *base, DWORD idx, QWORD value)
 }
 BYTE ioapic_override(BYTE irq)
 {
-	QWORD size = MADT->HEAD.LENG - sizeof(ACPI_MADT);
-	volatile BYTE *data = MADT->DATA;
+	QWORD size = MULTIPLE_APIC_TABLE->HEAD.LENG - sizeof(ACPI_MADT);
+	volatile BYTE *data = MULTIPLE_APIC_TABLE->DATA;
 	QWORD read = 0;
 	while (read < size)
 	{
@@ -382,8 +382,8 @@ DWORD ioapic_redirect(BYTE irq, BYTE vec)
 {
 	irq = ioapic_override(irq);
 
-	QWORD size = MADT->HEAD.LENG - sizeof(ACPI_MADT);
-	volatile BYTE *data = MADT->DATA;
+	QWORD size = MULTIPLE_APIC_TABLE->HEAD.LENG - sizeof(ACPI_MADT);
+	volatile BYTE *data = MULTIPLE_APIC_TABLE->DATA;
 	QWORD read = 0;
 	while (read < size)
 	{

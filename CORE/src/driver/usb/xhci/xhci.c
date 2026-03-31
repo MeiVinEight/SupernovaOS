@@ -7,6 +7,7 @@
 #include <driver/pci/pci.h>
 #include <interrupt/apic.h>
 #include <arch/processor.h>
+#include <driver/usb/xhci/xhci_port.h>
 
 COREAPI volatile PCI_EXPRESS_XHCI_DEVICE DEVICE;
 
@@ -40,6 +41,7 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	__memcpy(&DEVICE.pcie, (void *) dev, sizeof(PCI_EXPRESS_DEVICE));
 
 	QWORD xhciBase = pcie_cfg_get_base_address(dev, 0);
+	DEVICE.address = xhciBase;
 	DEVICE.capability = (XHCI_CAPABILITY_SPACE *) core_mapping(xhciBase);
 	DEVICE.operational = (XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + DEVICE.capability->SIZE);
 	DEVICE.runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + DEVICE.capability->RTME);
@@ -171,28 +173,20 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	__halt();
 	__halt();
 
-	// Foreach xECP
-	volatile QWORD xadr = xhciBase;
-	volatile DWORD xecp = DEVICE.capability->XECP << 2;
-	while (xecp)
+	simple_output("Check ports\n");
+	DWORD maxprt = DEVICE.capability->PORT;
+	for (DWORD i = 0; i < maxprt; i++)
 	{
-		xadr = xadr + xecp;
-		volatile XHCI_EXTENDED_CAPABILITY *xcap = (XHCI_EXTENDED_CAPABILITY *) core_mapping(xadr);
-		if (xcap->CAID == XHCI_XECP_SUPPORTED_PROTOCOL)
+		volatile XHCI_PORT_SPACE *port = DEVICE.operational->PORT + i;
+		simple_output("Port ");
+		simple_output_number(i);
+		if (port->CCST)
 		{
-			volatile XHCI_CAPABILITY_SUPPORTED_PROTOCOL *supp = (XHCI_CAPABILITY_SUPPORTED_PROTOCOL *) xcap;
-			QWORD name = supp->NAME;
-			simple_output(&name);
-			simple_output_number(supp->MAJV);
-			outchar('.');
-			simple_output_number(supp->MINV);
-			simple_output(": ");
-			simple_output_number(supp->CPOF - 1);
-			outchar('+');
-			simple_output_number(supp->CPCN);
-			outchar('\n');
+			simple_output(" YES\n");
+			xhci_port_reset(&DEVICE, i);
 		}
-		xecp = xcap->NEXT << 2;
+		else
+			simple_output(" NO\n");
 	}
 }
 QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_DEVICE *device)

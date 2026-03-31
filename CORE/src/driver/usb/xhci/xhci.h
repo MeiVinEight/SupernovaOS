@@ -5,6 +5,7 @@
 #ifndef SUPERNOVA_XHCI_H
 #define SUPERNOVA_XHCI_H
 
+#include <types.h>
 #include <driver/pci/pcie.h>
 #include <driver/usb/xhci/xhc_regs.h>
 #include <driver/usb/xhci/xhc_ring.h>
@@ -13,6 +14,7 @@
 typedef struct _PCI_EXPRESS_XHCI_DEVICE
 {
 	PCI_EXPRESS_DEVICE pcie;
+	QWORD address;
 	volatile XHCI_CAPABILITY_SPACE *capability;
 	volatile XHCI_OPERATIONAL_SPACE *operational;
 	volatile XHCI_RUNTIME_SPACE *runtime;

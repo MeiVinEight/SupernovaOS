@@ -355,6 +355,419 @@ typedef struct _XHCI_RUNTIME_SPACE
 	DWORD RSV1[7];
 	XHCI_INTERRUPTER INTR[];
 } XHCI_RUNTIME_SPACE;
+typedef struct _XHCI_PORT_SPACE
+{
+	union
+	{
+		DWORD PTSC;
+		struct
+		{
+			/**
+			 * Current Connect Status (CCS) – ROS. Default = ‘0’. ‘1’ = A device is connected81 to the port. ‘0’ =
+			 * A device is not connected. This value reflects the current state of the port, and may not
+			 * correspond directly to the event that caused the Connect Status Change (CSC) bit to be set to ‘1’.
+			 * Refer to sections 4.19.3 and 4.19.4 for more details on the Connect Status Change (CSC)
+			 * assertion conditions.
+			 *
+			 * This flag is ‘0’ if PP is ‘0’.
+			 */
+			DWORD CCST:1;
+			/**
+			 * Port Enabled/Disabled (PED) – RW1CS. Default = ‘0’. ‘1’ = Enabled. ‘0’ = Disabled.
+			 * Ports may only be enabled by the xHC. Software cannot enable a port by writing a ‘1’ to this flag.
+			 * A port may be disabled by software writing a ‘1’ to this flag.
+			 *
+			 * This flag shall automatically be cleared to ‘0’ by a disconnect event or other fault condition.
+			 * Note that the bit status does not change until the port state actually changes. There may be a
+			 * delay in disabling or enabling a port due to other host controller or bus events.
+			 *
+			 * When the port is disabled (PED = ‘0’) downstream propagation of data is blocked on this port,
+			 * except for reset.
+			 *
+			 * For USB2 protocol ports:
+			 *
+			 * When the port is in the Disabled state, software shall reset the port (PR = ‘1’) to transition PED to
+			 * ‘1’ and the port to the Enabled state.
+			 *
+			 * For USB3 protocol ports:
+			 *
+			 * When the port is in the Polling state (after detecting an attach), the port shall automatically
+			 * transition to the Enabled state and set PED to ‘1’ upon the completion of successful link training.
+			 * When the port is in the Disabled state, software shall write a ‘5’ (RxDetect) to the PLS field to
+			 * transition the port to the Disconnected state. Refer to section 4.19.1.2.
+			 *
+			 * PED shall automatically be cleared to ‘0’ when PR is set to ‘1’, and set to ‘1’ when PR transitions
+			 * from ‘1’ to ‘0’ after a successful reset. Refer to Port Reset (PR) bit for more information on how
+			 * the PED bit is managed.
+			 *
+			 * Note that when software writes this bit to a ‘1’, it shall also write a ‘0’ to the PR bit82
+			 * .
+			 *
+			 * This flag is ‘0’ if PP is ‘0’.
+			 */
+			DWORD POEN:1;
+			DWORD RSV0:1;
+			/**
+			 * Over-current Active (OCA) – RO. Default = ‘0’. ‘1’ = This port currently has an over-current
+			 * condition. ‘0’ = This port does not have an over-current condition. This bit shall automatically
+			 * transition from a ‘1’ to a ‘0’ when the over-current condition is removed.
+			 */
+			DWORD OCAC:1;
+			/**
+			 * Port Reset (PR) – RW1S. Default = ‘0’. ‘1’ = Port Reset signaling is asserted. ‘0’ = Port is not in
+			 * Reset. When software writes a ‘1’ to this bit generating a ‘0’ to ‘1’ transition, the bus reset
+			 * sequence is initiated83; USB2 protocol ports shall execute the bus reset sequence as defined in
+			 * the USB2 Spec. USB3 protocol ports shall execute the Hot Reset sequence as defined in the
+			 * USB3 Spec. PR remains set until reset signaling is completed by the root hub.
+			 *
+			 * Note that software shall write a ‘1’ to this flag to transition a USB2 port from the Polling state to
+			 * the Enabled state. Refer to sections 4.15.2.3 and 4.19.1.1.
+			 *
+			 * This flag is ‘0’ if PP is ‘0’.
+			 */
+			DWORD PRST:1;
+			/**
+			 * Port Link State (PLS) – RWS. Default = RxDetect (‘5’). This field is used to power manage the port
+			 * and reflects its current link state.
+			 *
+			 * When the port is in the Enabled state, system software may set the link U state by writing this
+			 * field. System software may also write this field to force a Disabled to Disconnected state
+			 * transition of the port.
+			 *
+			 * Write Value Description
+			 * - 0 The link shall transition to a U0 state from any of the U states.
+			 * - 2 USB2 protocol ports only. The link should transition to the U2 State.
+			 * - 3 The link shall transition to a U3 state from the U0 state. This action
+			 * selectively suspends the device connected to this port. While the Port
+			 * Link State = U3, the hub does not propagate downstream-directed
+			 * traffic to this port, but the hub shall respond to resume signaling from
+			 * the port.
+			 * - 5 USB3 protocol ports only. If the port is in the Disabled state (PLS =
+			 * Disabled, PP = 1), then the link shall transition to a RxDetect state and
+			 * the port shall transition to the Disconnected state, else ignored.
+			 * - 10 USB3 protocol ports only. Shall enable a link transition to the
+			 * Compliance state, i.e. CTE = ‘1’. Refer to section 4.19.1.2.4.1 for more
+			 * information.
+			 * - 1,4,6-9,11-14 Ignored.
+			 * - 15 USB2 protocol ports only. If the port is in the U3 state (PLS = U3), then
+			 * the link shall remain in the U3 state and the port shall transition to the
+			 * Resume substate, else ignored. Refer to section 4.15.2 for more
+			 * information.
+			 *
+			 * Note: The Port Link State Write Strobe (LWS) shall also be set to ‘1’ to write this
+			 * field.
+			 *
+			 * For USB2 protocol ports: Writing a value of '2' to this field shall request LPM, asserting L1
+			 * signaling on the USB2 bus. Software may read this field to determine if the transition to the U2
+			 * state was successful. Writing a value of '0' shall deassert L1 signaling on the USB. Writing a value
+			 * of '1' shall have no effect. The U1 state shall never be reported by a USB2 protocol port.
+			 *
+			 * Read Value Meaning
+			 * - 0 Link is in the U0 State
+			 * - 1 Link is in the U1 State
+			 * - 2 Link is in the U2 State
+			 * - 3 Link is in the U3 State (Device Suspended)
+			 * - 4 Link is in the Disabled State86
+			 * - 5 Link is in the RxDetect State87
+			 * - 6 Link is in the Inactive State88
+			 * - 7 Link is in the Polling State
+			 * - 8 Link is in the Recovery State
+			 * - 9 Link is in the Hot Reset State
+			 * - 10 Link is in the Compliance Mode State
+			 * - 11 Link is in the Test Mode89 State
+			 * - 12-14 Reserved
+			 * - 15 Link is in the Resume State90
+			 *
+			 * This field is undefined if PP = ‘0’.
+			 *
+			 * Note: Transitions between different states are not reflected until the transition is complete. Refer
+			 * to section 4.19 for PLS transition conditions.
+			 */
+			DWORD POLS:4;
+			/**
+			 * Port Power (PP) – RWS. Default = ‘1’. This flag reflects a port's logical, power control state.
+			 * Because host controllers can implement different methods of port power switching, this flag may
+			 * or may not represent whether (VBus) power is actually applied to the port. When PP equals a '0'
+			 * the port is nonfunctional and shall not report attaches, detaches, or Port Link State (PLS)
+			 * changes. However, the port shall report over-current conditions when PP = ‘0’ if PPC = ‘0’. After
+			 * modifying PP, software shall read PP and confirm that it is reached its target state before
+			 * modifying it again91, undefined behavior may occur if this procedure is not followed.
+			 * 0 = This port is in the Powered-off state.
+			 * 1 = This port is not in the Powered-off state.
+			 * If the Port Power Control (PPC) flag in the HCCPARAMS1 register is '1', then xHC has port power
+			 * control switches and this bit represents the current setting of the switch ('0' = off, '1' = on).
+			 * If the Port Power Control (PPC) flag in the HCCPARAMS1 register is '0', then xHC does not have
+			 * port power control switches and each port is hard wired to power, and not affected by this bit.
+			 * When an over-current condition is detected on a powered port, the xHC shall transition the PP
+			 * bit in each affected port from a ‘1’ to ‘0’ (removing power from the port).
+			 * Note: If this is an SSIC Port, then the DSP Disconnect process is initiated by '1' to '0' transition of
+			 * PP. After an SSIC USP disconnect process, the port may be disabled by setting PED = 1. As noted,
+			 * the SSIC spec does not define a mechanism for the USP to request DSP to be re-enabled for a
+			 * subsequent re-connect. If PED is set to 1 without a prior negotiated disconnect with the USP,
+			 * subsequent re-enabling of the port requires DSP to issue a WPR to bring USP back to Rx.Detect.
+			 * Refer to section 5.1.2 in the SSIC Spec for more information.
+			 * Refer to section 4.19.4 for more information.
+			 */
+			DWORD PPWE:1;
+			/**
+			 * Port Speed (Port Speed) – ROS. Default = ‘0’. This field identifies the speed of the connected
+			 * USB Device. This field is only relevant if a device is connected (CCS = ‘1’) in all other cases this
+			 * field shall indicate Undefined Speed. Refer to section 4.19.3.
+			 *
+			 * Value Meaning
+			 * - 0 Undefined Speed
+			 * - 1 - 15 Protocol Speed ID (PSI), refer to section 7.2.1 for the definition of PSIV
+			 * field in the PSI Dword
+			 *
+			 * Note: This field is invalid on a USB2 protocol port until after the port is reset.
+			 */
+			DWORD PSPD:4;
+			/**
+			 * Port Indicator Control (PIC) – RWS. Default = 0. Writing to these bits has no effect if the Port
+			 * Indicators (PIND) bit in the HCCPARAMS1 register is a ‘0’. If PIND bit is a ‘1’, then the bit
+			 * encodings are:
+			 *
+			 * Value Meaning
+			 * - 0 Port indicators are off
+			 * - 1 Amber
+			 * - 2 Green
+			 * - 3 Undefined
+			 *
+			 * Refer to the USB2 Specification section 11.5.3 for a description on how these bits shall be used.
+			 *
+			 * This field is ‘0’ if PP is ‘0’.
+			 */
+			DWORD PICN:2;
+			/**
+			 * Port Link State Write Strobe (LWS) – RW. Default = ‘0’. When this bit is set to ‘1’ on a write
+			 * reference to this register, this flag enables writes to the PLS field. When ‘0’, write data in PLS field
+			 * is ignored. Reads to this bit return ‘0’.
+			 */
+			DWORD LSWS:1;
+			/**
+			 * Connect Status Change (CSC) – RW1CS. Default = ‘0’. ‘1’ = Change in CCS. ‘0’ = No change. This
+			 * flag indicates a change has occurred in the port’s Current Connect Status (CCS) or Cold Attach
+			 * Status (CAS) bits. Note that this flag shall not be set if the CCS transition was due to software
+			 * setting PP to ‘0’, or the CAS transition was due to software setting WPR to ‘1’. The xHC sets this
+			 * bit to ‘1’ for all changes to the port device connect status92, even if system software has not
+			 * cleared an existing Connect Status Change. For example, the insertion status changes twice
+			 * before system software has cleared the changed condition, root hub hardware will be “setting”
+			 * an already-set bit (i.e., the bit will remain ‘1’). Software shall clear this bit by writing a ‘1’ to it.
+			 * Refer to section 4.19.2 for more information on change bit usage.
+			 */
+			DWORD CSCH:1;
+			/**
+			 * Port Enabled/Disabled Change (PEC) – RW1CS. Default = ‘0’. ‘1’ = change in PED. ‘0’ = No
+			 * change. Note that this flag shall not be set if the PED transition was due to software setting PP to
+			 * ‘0’. Software shall clear this bit by writing a ‘1’ to it. Refer to section 4.19.2 for more information
+			 * on change bit usage.
+			 *
+			 * For a USB2 protocol port, this bit shall be set to ‘1’ only when the port is disabled due to the
+			 * appropriate conditions existing at the EOF2 point (refer to section 11.8.1 of the USB2
+			 * Specification for the definition of a Port Error).
+			 *
+			 * For a USB3 protocol port, this bit shall never be set to ‘1’.
+			 */
+			DWORD PECH:1;
+			/**
+			 * Warm Port Reset Change (WRC) – RW1CS/RsvdZ. Default = ‘0’. This bit is set when Warm Reset
+			 * processing on this port completes. ‘0’ = No change. ‘1’ = Warm Reset complete. Note that this
+			 * flag shall not be set to ‘1’ if the Warm Reset processing was forced to terminate due to software
+			 * clearing PP or PED to '0'. Software shall clear this bit by writing a '1' to it. Refer to section 4.19.5.1.
+			 * Refer to section 4.19.2 for more information on change bit usage.
+			 *
+			 * This bit only applies to USB3 protocol ports. For USB2 protocol ports it shall be RsvdZ.
+			 */
+			DWORD WPRC:1;
+			/**
+			 * Over-current Change (OCC) – RW1CS. Default = ‘0’. This bit shall be set to a ‘1’ when there is a ‘0’
+			 * to ‘1’ or ‘1’ to ‘0’ transition of Over-current Active (OCA). Software shall clear this bit by writing a
+			 * ‘1’ to it. Refer to section 4.19.2 for more information on change bit usage
+			 */
+			DWORD OCCH:1;
+			/**
+			 * Port Reset Change (PRC) – RW1CS. Default = ‘0’. This flag is set to ‘1’ due to a '1' to '0' transition
+			 * of Port Reset (PR). e.g. when any reset processing (Warm or Hot) on this port is complete. Note
+			 * that this flag shall not be set to ‘1’ if the reset processing was forced to terminate due to software
+			 * clearing PP or PED to '0'. ‘0’ = No change. ‘1’ = Reset complete. Software shall clear this bit by
+			 * writing a '1' to it. Refer to section 4.19.5. Refer to section 4.19.2 for more information on change
+			 * bit usage.
+			 */
+			DWORD PRCH:1;
+			/**
+			 * Port Link State Change (PLC) – RW1CS. Default = ‘0’. This flag is set to ‘1’ due to the following
+			 * PLS transitions:
+			 *
+			 * Transition Condition
+			 * - U3 -> Resume Wakeup signaling from a device
+			 * - Resume -> Recovery -> U0 Device Resume complete (USB3 protocol ports
+			 * only)
+			 * - Resume -> U0 Device Resume complete (USB2 protocol ports
+			 * only)
+			 * - U3 -> Recovery -> U0 Software Resume complete (USB3 protocol ports
+			 * only)
+			 * - U3 -> U0 Software Resume complete (USB2 protocol ports
+			 * only)
+			 * - U2 -> U0 L1 Resume complete (USB2 protocol ports only)93
+			 * - U0 -> U0 L1 Entry Reject (USB2 protocol ports only)93
+			 * - Any state -> Inactive Error (USB3 protocol ports only).
+			 * Note: PLC is asserted only on the first LTSSM
+			 * SS.Inactive.Disconnect.Detect to SS.Inactive.Quiet
+			 * substate transition after entering the SS.Inactive
+			 * state94.
+			 * - Any State -> U3 U3 Entry complete. Note: PLC is asserted only if
+			 * U3E = ‘1’95.
+			 *
+			 * Note that this flag shall not be set if the PLS transition was due to software
+			 * setting PP to ‘0’. Refer to section 4.23.5 for more information. '0' = No
+			 * change. '1' = Link Status Changed. Software shall clear this bit by
+			 * writing a '1' to it. Refer to “PLC Condition:” references in section 4.19.1
+			 * for the specific port state transitions that set this flag. Refer to section
+			 * 4.19.2 for more information on change bit usage.
+			 */
+			DWORD PLSC:1;
+			/**
+			 * Port Config Error Change (CEC) – RW1CS/RsvdZ. Default = ‘0’. This flag indicates that the port
+			 * failed to configure its link partner. 0 = No change. 1 = Port Config Error detected. Software shall
+			 * clear this bit by writing a '1' to it. Refer to section 4.19.2 for more information on change bit
+			 * usage.
+			 *
+			 * Note: This flag is valid only for USB3 protocol ports. For USB2 protocol ports this bit shall be
+			 * RsvdZ.
+			 */
+			DWORD PCEC:1;
+			/**
+			 * Cold Attach Status (CAS) – RO. Default = ‘0’. ‘1’ = Far-end Receiver Terminations were detected
+			 * in the Disconnected state and the Root Hub Port State Machine was unable to advance to the
+			 * Enabled state. Refer to sections 4.19.8 for more details on the Cold Attach Status (CAS) assertion
+			 * conditions. Software shall clear this bit by writing a '1' to WPR or the xHC shall clear this bit if CCS
+			 * transitions to ‘1’.
+			 *
+			 * This flag is ‘0’ if PP is ‘0’ or for USB2 protocol ports.
+			 */
+			DWORD CAST:1;
+			/**
+			 * Wake on Connect Enable (WCE) – RWS. Default = ‘0’. Writing this bit to a ‘1’ enables the port to
+			 * be sensitive to device connects as system wake-up events96. Refer to section 4.15 for operational
+			 * model.
+			 */
+			DWORD WCEN:1;
+			/**
+			 * Wake on Disconnect Enable (WDE) – RWS. Default = ‘0’. Writing this bit to a ‘1’ enables the port
+			 * to be sensitive to device disconnects as system wake-up events96. Refer to section 4.15 for
+			 * operational model.
+			 */
+			DWORD WDEN:1;
+			/**
+			 * Wake on Over-current Enable (WOE) – RWS. Default = ‘0’. Writing this bit to a ‘1’ enables the
+			 * port to be sensitive to over-current conditions as system wake-up events96. Refer to section 4.15
+			 * for operational model.
+			 */
+			DWORD WOEN:1;
+			DWORD RSV1:2;
+			/**
+			 * Device Removable97 (DR) - RO. This flag indicates if this port has a removable device attached.
+			 * ‘1’ = Device is non-removable. ‘0’ = Device is removable.
+			 */
+			DWORD RMOV:1;
+			/**
+			 * Warm Port Reset (WPR) – RW1S/RsvdZ. Default = ‘0’. When software writes a ‘1’ to this bit, the
+			 * Warm Reset sequence as defined in the USB3 Specification is initiated and the PR flag is set to ‘1’.
+			 * Once initiated, the PR, PRC, and WRC flags shall reflect the progress of the Warm Reset
+			 * sequence. This flag shall always return ‘0’ when read. Refer to section 4.19.5.1.
+			 *
+			 * This flag only applies to USB3 protocol ports. For USB2 protocol ports it shall be RsvdZ.
+			 */
+			DWORD WRST:1;
+		};
+	};
+
+	/**
+	 * U1 Timeout – RWS. Default = ‘0’. Timeout value for U1 inactivity timer. If equal to FFh, the port
+	 * is disabled from initiating U1 entry. This field shall be set to ‘0’ by the assertion of PR to ‘1’. Refer
+	 * to section 4.19.4.1 for more information on U1 Timeout operation. The following are
+	 * permissible values:
+	 * Value Description
+	 * - 00h Zero (default)
+	 * - 01h 1 µs.
+	 * - 02h 2 µs.
+	 * - …
+	 * - 7Fh 127 µs.
+	 * - 80h–FEh Reserved
+	 * - FFh Infinite
+	 */
+	BYTE  U1TO;
+	/**
+	 * U2 Timeout – RWS. Default = ‘0’. Timeout value for U2 inactivity timer. If equal to FFh, the port
+	 * is disabled from initiating U2 entry. This field shall be set to ‘0’ by the assertion of PR to ‘1’. Refer
+	 * to section 4.19.4.1 for more information on U2 Timeout operation. The following are
+	 * permissible values:
+	 * Value Description
+	 * - 00h Zero (default)
+	 * - 01h 256 µs
+	 * - 02h 512 µs
+	 * - …
+	 * - FEh 65,024 ms
+	 * - FFh Infinite
+	 *
+	 * A U2 Inactivity Timeout LMP shall be sent by the xHC to the device connected on this port when
+	 * this field is written. Refer to Sections 8.4.3 and 10.4.2.10 of the USB3 specification for more
+	 * details.
+	 */
+	BYTE  U2TO;
+	/**
+	 * Force Link PM Accept (FLA) - RW. Default = ‘0’. When this bit is set to ‘1’, the port shall generate
+	 * a Set Link Function LMP with the Force_LinkPM_Accept bit asserted (‘1’). When this bit is cleared
+	 * to ‘0’, the port shall generate a Set Link Function LMP with the Force_LinkPM_Accept bit deasserted (‘0’).
+	 * This flag shall be set to ‘0’ by the assertion of PR to ‘1’ or when CCS = transitions from ‘0’ to ‘1’.
+	 *
+	 * Writes to this flag have no effect if PP = ‘0’.
+	 *
+	 * The Set Link Function LMP is sent by the xHC to the device connected on this port when this bit
+	 * transitions from ‘0’ to ‘1’ or ‘1’ to ‘0’. Refer to Sections 8.4.2 and 10.14.2.2 of the USB3
+	 * specification for more details.
+	 *
+	 * Improper use of the SS Force_LinkPM_Accept functionality can impact the performance of the
+	 * link significantly. This bit shall only be used for compliance and testing purposes. Software shall
+	 * ensure that there are no pending packets at the link level before setting this bit.
+	 *
+	 * This flag is ‘0’ if PP is ‘0’.
+	 */
+	WORD  FLPA:1;
+	WORD  RSV2:15;
+	/**
+	 * Link Error Count – RW. Default = ‘0’. This field returns the number of link errors detected by the
+	 * port. This value shall be reset to ‘0’ by the assertion of a Chip Hardware Reset, HCRST, when PR
+	 * transitions from ‘1’ to ‘0’, or when reset by software by writing 0 to it. This register will increment
+	 * by one each time a port transitions from U0 to Recovery to recover an error event and will
+	 * saturate at max.
+	 */
+	WORD  LERR;
+	/**
+	 * Rx Lane Count (RLC) - RO. Default = '0'. This field that identifies the number of Receive Lanes
+	 * negotiated by the port. This is a "zero-based" value, where 0 to 15 represents Lane Counts of 1
+	 * to 16, respectively. This value is valid only when CCS = '1'. RLC shall equal '0' for a simplex
+	 * Sublink. Refer to section 7.2.1 for more information.
+	 */
+	BYTE  RXLC:4;
+	/**
+	 * Tx Lane Count (TLC) - RO. Default = '0'. This field that identifies the number of Transmit Lanes
+	 * negotiated by the port. This is a "zero-based" value, where 0 to 15 represents Lane Counts of 1
+	 * to 16, respectively. This value is valid only when CCS = '1'. TLC shall equal '0' for a simplex
+	 * Sublink. Refer to section 7.2.1 for more information.
+	 */
+	BYTE  TXLC:4;
+	BYTE  RSV3;
+	/**
+	 * Link Soft Error Count – RW. Default = ‘0’. This field returns the number of link errors detected
+	 * by the port. This value shall be reset to ‘0’ by the assertion of a Chip Hardware Reset, HCRST,
+	 * when PR transitions from ‘1’ to ‘0’, or when reset by software by writing 0 to it. This register will
+	 * saturate at max and will increment by one for all the conditions listed in section 7.3.2.2 (Soft
+	 * Error Count) of the USB3.2 Specification.
+	 */
+	WORD  LSEC;
+	WORD  RSV4;
+} XHCI_PORT_SPACE;
 
 /**
  * Note: The Ring Segment Size may be set to any value from 16 to 4096, however

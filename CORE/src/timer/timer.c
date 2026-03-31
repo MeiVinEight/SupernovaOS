@@ -9,7 +9,7 @@ COREAPI volatile QWORD TSC_FREQUENCY_KHZ = 0;
 void interrupt_timer(INTERRUPT_STACK *stack)
 {
 	// Do nothing
-	eoi_apic(IRQ_INT);
+	eoi_apic(0);
 }
 void setup_timer()
 {
@@ -47,4 +47,15 @@ void setup_timer()
 	simple_output("CPU ");
 	simple_output_number(TSC_FREQUENCY_KHZ / 1000);
 	simple_output(" MHz\n");
+}
+void delay(QWORD ms)
+{
+	while (ms > 50)
+	{
+		__halt();
+		ms -= 50;
+	}
+	QWORD tsc = __rdtsc();
+	tsc += TSC_FREQUENCY_KHZ;
+	while (__rdtsc() < tsc);
 }

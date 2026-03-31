@@ -65,6 +65,16 @@ typedef struct _XHCI_CAPABILITY_SPACE
 	DWORD SLOT:8; // Max Number of Device Slots
 	DWORD INTE:11;
 	DWORD RSV1:5;
+	/**
+	 * Number of Ports (MaxPorts). This field specifies the maximum Port Number value, i.e. the
+	 * highest numbered Port Register Set that are addressable in the Operational Register Space
+	 * (refer to Table 5-18). Valid values are in the range of 1h to FFh.
+	 *
+	 * The value in this field shall reflect the maximum Port Number value assigned by an xHCI
+	 * Supported Protocol Capability, described in section 7.2. Software shall refer to these capabilities
+	 * to identify whether a specific Port Number is valid, and the protocol supported by the
+	 * associated Port Register Set.
+	 */
 	DWORD PORT:8;
 	//DWORD STR2;
 	DWORD ISTH:4;

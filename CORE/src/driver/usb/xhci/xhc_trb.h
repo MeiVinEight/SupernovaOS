@@ -98,6 +98,24 @@ typedef struct _XHCI_TRB_ENABLE_SLOT
 	DWORD SLOT:5;
 	DWORD RSV3:11;
 } XHCI_TRB_ENABLE_SLOT;
+typedef struct _XHCI_TRB_DISABLE_SLOT
+{
+	QWORD RSV0;
+	DWORD RSV1;
+	/**
+	 * Cycle bit (C). This bit is used to mark the Enqueue Pointer of a Command Ring.
+	 */
+	DWORD CYCL:1;
+	DWORD RSV2:9;
+	/**
+	 * TRB Type. This field identifies the type of the TRB. Refer to Table 6-91 for the definition of the
+	 * Disable Slot Command TRB type ID.
+	 */
+	DWORD TYPE:6;
+	DWORD RSV3:8;
+	// Slot ID. The ID of the Device Slot to disable.
+	DWORD SLOT:8;
+} XHCI_TRB_DISABLE_SLOT;
 typedef struct _XHCI_TRB_COMMAND_COMPLETION
 {
 	/**

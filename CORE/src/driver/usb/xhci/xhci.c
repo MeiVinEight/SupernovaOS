@@ -285,6 +285,33 @@ void xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COMM
 		return;
 	}
 }
+void xhci_disable_slot(PCI_EXPRESS_XHCI_DEVICE *device, DWORD slotId)
+{
+	if (!slotId)
+		return;
+	if (slotId > device->capability->SLOT)
+		return;
+	QWORD outputContext = device->context[slotId];
+	if (outputContext)
+	{
+		simple_output("Free memory: ");
+		simple_output_address(outputContext, 16);
+		outchar('\n');
+		free_physical_memory(outputContext, 1);
+	}
+	device->context[slotId] = 0;
+	XHCI_TRB_DISABLE_SLOT trb;
+	__memset(&trb, 0, sizeof(XHCI_TRB_DISABLE_SLOT));
+	trb.TYPE = XHCI_TRB_TYPE_DISABLE_SLOT;
+	trb.SLOT = slotId;
+	DWORD cc;
+	if ((cc = xhci_send_command(device, &trb, 0)) != XHCI_CODE_SUCCESS)
+	{
+		simple_output("Disable slot command failed: ");
+		simple_output_number(cc);
+		outchar('\n');
+	}
+}
 void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	volatile XHCI_EVENT_RING *ring = &device->event;

@@ -37,7 +37,7 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	{
 		status->RST = 0;
 		simple_output("Port already enabled\n");
-		return 1;
+		return 0;
 	}
 
 	// Power on the port if necessary (spec requires PP=1 before any state change)

@@ -15,6 +15,28 @@
 
 #define XHCI_TRB_CTRL_CYCLE 1
 
+/**
+ * Indicates that the Completion Code field has not been updated by the
+ * TRB producer.
+ */
+#define XHCI_CODE_INVALID                    0
+// Indicates successful completion of the TRB operation.
+#define XHCI_CODE_SUCCESS                    1
+#define XHCI_CODE_DATA_BUFFER_ERROR          2
+#define XHCI_CODE_BUBBLE_DETECTED_ERROR      3
+#define XHCI_CODE_USB_TRANSACTION_ERROR      4
+#define XHCI_CODE_TRB_ERROR                  5
+#define XHCI_CODE_STALL_ERROR                6
+#define XHCI_CODE_RESOURCE_ERROR             7
+#define XHCI_CODE_BANDWIDTH_ERROR            8
+#define XHCI_CODE_NO_SLOT_AVAILABLE_ERROR    9
+#define XHCI_CODE_INVALID_STREAM_TYPE_ERROR  10
+#define XHCI_CODE_SLOT_NOT_ENABLED_ERROR     11
+#define XHCI_CODE_ENDPOINT_NOT_ENABLED_ERROR 12
+#define XHCI_CODE_SHORT_PACKET               13
+#define XHCI_CODE_UNDERRUN                   14
+#define XHCI_CODE_RING_OVERRUN               15
+
 typedef struct _XHCI_TRB_GENERIC
 {
 	QWORD DATA;

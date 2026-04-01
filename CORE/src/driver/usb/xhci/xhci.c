@@ -264,6 +264,27 @@ void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intx)
 	// Set the IP bit to '1' to clear it, preserve other bits including IE
 	intr->IPEN = 1;
 }
+void xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
+{
+	volatile BYTE indx = device->event.INDX;
+	void *cmd = xhc_queue_command(&device->command, trb);
+	xhc_command_doorbell(device->doorbell);
+	while (1)
+	{
+		if (indx == device->event.INDX)
+		{
+			__halt();
+			continue;
+		}
+		volatile XHCI_TRB_COMMAND_COMPLETION *blk = (XHCI_TRB_COMMAND_COMPLETION *) device->event.RING + indx++;
+		if (blk->TYPE != XHCI_TRB_TYPE_COMMAND_COMPLETION)
+			continue;
+		if (core_mapping(blk->CMMD) != (QWORD) cmd)
+			continue;
+		__memcpy(completion, (void *) blk, sizeof(XHCI_TRB_COMMAND_COMPLETION));
+		return;
+	}
+}
 void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 {
 	volatile XHCI_EVENT_RING *ring = &device->event;

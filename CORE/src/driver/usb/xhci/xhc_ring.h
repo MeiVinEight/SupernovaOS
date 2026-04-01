@@ -27,7 +27,7 @@ typedef struct _XHCI_EVENT_RING
 } XHCI_EVENT_RING;
 
 void xhc_command_ring_create(volatile XHCI_COMMAND_RING *ring);
-void xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb);
+void *xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb);
 void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRUPTER *interrupter);
 void xhc_event_ring_update_dequeue(volatile XHCI_EVENT_RING *ring);
 XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_EVENT_RING *ring);

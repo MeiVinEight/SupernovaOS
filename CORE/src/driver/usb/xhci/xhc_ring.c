@@ -13,7 +13,7 @@ void xhc_command_ring_create(volatile XHCI_COMMAND_RING *ring)
 	ring->RING[0xFF].DATA = ((QWORD) ring->RING) & 0x0000007FFFFFFFFFULL;
 	ring->RING[0xFF].CTRL = 2 | (XHCI_TRB_TYPE_LINK << 10);
 }
-void xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb)
+void *xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb)
 {
 	if (ring->INDX == 0xFF)
 	{
@@ -24,7 +24,9 @@ void xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb)
 	XHCI_TRB_GENERIC *blk = trb;
 	blk->CTRL &= ~1;
 	blk->CTRL |= ring->CYCL;
-	ring->RING[ring->INDX++] = *blk;
+	//ring->RING[ring->INDX++] = *blk;
+	__memcpy(ring->RING + ring->INDX, trb, sizeof(XHCI_TRB_GENERIC));
+	return ring->RING + ring->INDX++;
 }
 void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRUPTER *interrupter)
 {

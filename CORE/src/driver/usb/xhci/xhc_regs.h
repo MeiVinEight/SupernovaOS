@@ -357,7 +357,7 @@ typedef struct _XHCI_PORT_SPACE
 			 *
 			 * This bit only applies to USB3 protocol ports. For USB2 protocol ports it shall be RsvdZ.
 			 */
-			DWORD WPRC:1;
+			DWORD WRCH:1;
 			/**
 			 * Over-current Change (OCC) – RW1CS. Default = ‘0’. This bit shall be set to a ‘1’ when there is a ‘0’
 			 * to ‘1’ or ‘1’ to ‘0’ transition of Over-current Active (OCA). Software shall clear this bit by writing a
@@ -404,7 +404,7 @@ typedef struct _XHCI_PORT_SPACE
 			 * for the specific port state transitions that set this flag. Refer to section
 			 * 4.19.2 for more information on change bit usage.
 			 */
-			DWORD PLSC:1;
+			DWORD PLCH:1;
 			/**
 			 * Port Config Error Change (CEC) – RW1CS/RsvdZ. Default = ‘0’. This flag indicates that the port
 			 * failed to configure its link partner. 0 = No change. 1 = Port Config Error detected. Software shall
@@ -414,7 +414,7 @@ typedef struct _XHCI_PORT_SPACE
 			 * Note: This flag is valid only for USB3 protocol ports. For USB2 protocol ports this bit shall be
 			 * RsvdZ.
 			 */
-			DWORD PCEC:1;
+			DWORD CECH:1;
 			/**
 			 * Cold Attach Status (CAS) – RO. Default = ‘0’. ‘1’ = Far-end Receiver Terminations were detected
 			 * in the Disconnected state and the Root Hub Port State Machine was unable to advance to the

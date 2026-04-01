@@ -62,7 +62,7 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 
 	// Wait for reset completion (PRC for USB 2, WRC for USB 3)
 	delay(1000);
-	if ((usb3 && !port->WPRC) || (!usb3 && !port->PRCH))
+	if ((usb3 && !port->WRCH) || (!usb3 && !port->PRCH))
 	{
 		simple_output("xHCI PORT ");
 		simple_output_number(portId);

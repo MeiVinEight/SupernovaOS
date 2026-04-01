@@ -30,6 +30,15 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	else
 		simple_output("USB 2\n");
 	volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
+	device->status[portId] = 0;
+	volatile XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
+
+	if (port->POEN)
+	{
+		status->RST = 0;
+		simple_output("Port already enabled\n");
+		return 1;
+	}
 
 	// Power on the port if necessary (spec requires PP=1 before any state change)
 	if (!port->PPWR)
@@ -62,18 +71,23 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 
 	// Wait for reset completion (PRC for USB 2, WRC for USB 3)
 	delay(1000);
-	if ((usb3 && !port->WRCH) || (!usb3 && !port->PRCH))
+	//if ((usb3 && !port->WRCH) || (!usb3 && !port->PRCH))
+	if (!status->RST)
 	{
 		simple_output("xHCI PORT ");
 		simple_output_number(portId);
 		simple_output(" RESET TIMEOUT\n");
 		return 1;
 	}
+	status->RST = 0;
 
 	delay(100); // Post-reset settling
+	if (status->ERR)
+	{
+		simple_output("Port Reset Error\n");
+		return 1;
+	}
 
-	// Clear the reset completion and status change bits
-	xhci_port_ack_port_changes(device, portId, (1u << 17) | (1u << 18) | (1u << 19) | (1u << 21)); // CSC|PEC|WRC|PRC
 	delay(100);
     // Verify the port is enabled after reset
 	if (!port->POEN)

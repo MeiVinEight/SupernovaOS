@@ -118,12 +118,11 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 	{
 		volatile MEMORY_BLOCK *node = memblk_mapping_node(*ref);
 
-		QWORD addr = node->A;
-		addr += ((1ULL << align) - 1);
-		addr &= ~((1ULL << align) - 1);
-		QWORD size = ((node->A + node->S) - addr);
+		QWORD allocAddr = node->A;
+		allocAddr += ((1ULL << align) - 1);
+		allocAddr &= ~((1ULL << align) - 1);
+		QWORD size = ((node->A + node->S) - allocAddr);
 		QWORD allocSize = size >> 12;
-		QWORD newAddr;
 
 		if (continu)
 		{
@@ -139,11 +138,11 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 				*pageCount = allocSize;
 		}
 		size -= *pageCount << 12;
-		newAddr = (node->A + node->S) - size;
+		QWORD newAddr = (node->A + node->S) - size;
 
-		if (addr != node->A)
+		if (allocAddr != node->A)
 		{
-			node->S = addr - node->A;
+			node->S = allocAddr - node->A;
 
 			if (size)
 			{
@@ -167,8 +166,7 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 		{
 			memblk_delete_link(&MEMORY_MAP, node, free_memblk);
 		}
-
-		return newAddr;
+		return allocAddr;
 	}
 	return 0;
 }

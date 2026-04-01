@@ -46,36 +46,7 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	DEVICE.operational = (XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + DEVICE.capability->SIZE);
 	DEVICE.runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + DEVICE.capability->RTME);
 	DEVICE.doorbell = (XHCI_DOORBELL *) core_mapping(xhciBase + DEVICE.capability->BELL);
-
-
-	// Foreach xECP
-	volatile QWORD xadr = xhciBase;
-	volatile DWORD xecp = DEVICE.capability->XECP << 2;
-	while (xecp)
-	{
-		xadr = xadr + xecp;
-		volatile XHCI_EXTENDED_CAPABILITY *xcap = (XHCI_EXTENDED_CAPABILITY *) core_mapping(xadr);
-		simple_output("xHCI Extended Capability @ ");
-		simple_output_address((QWORD) xcap, 16);
-		simple_output(": ");
-		simple_output_address(xcap->CAID, 2);
-		outchar('\n');
-		if (xcap->CAID == XHCI_XECP_SUPPORTED_PROTOCOL)
-		{
-			volatile XHCI_CAPABILITY_SUPPORTED_PROTOCOL *supp = (XHCI_CAPABILITY_SUPPORTED_PROTOCOL *) xcap;
-			QWORD name = supp->NAME;
-			simple_output(&name);
-			simple_output_number(supp->MAJV);
-			outchar('.');
-			simple_output_number(supp->MINV);
-			simple_output(": ");
-			simple_output_number(supp->CPOF - 1);
-			outchar('+');
-			simple_output_number(supp->CPCN);
-			outchar('\n');
-		}
-		xecp = xcap->NEXT << 2;
-	}
+	__memset(DEVICE.slot, 0, sizeof(DEVICE.slot));
 
 	DWORD reset = xhci_reset_controller(&DEVICE);
 	if (!reset)
@@ -134,7 +105,7 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		if (port->CCSS)
 		{
 			simple_output(" YES\n");
-			xhci_port_reset(&DEVICE, i);
+			xhci_setup_device(&DEVICE, i);
 		}
 		else
 			simple_output(" NO\n");
@@ -392,4 +363,21 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 
 	xhci_interrupt_ack(&DEVICE, 0);
 	eoi_apic(0);
+}
+void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
+{
+	volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
+	if (xhci_port_reset(device, portId))
+	{
+		simple_output("Reset port failed\n");
+		return;
+	}
+
+	DWORD portSpeed = port->PSPD;
+
+	XHCI_TRB_ENABLE_SLOT trb;
+	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
+	trb.TYPE = XHCI_TRB_TYPE_ENABLE_SLOT;
+	void *addr = xhc_queue_command(&DEVICE.command, &trb);
+	xhc_command_doorbell(DEVICE.doorbell);
 }

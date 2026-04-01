@@ -36,5 +36,6 @@ DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device);
 void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device);
 void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intr);
 void xhci_interrupt(INTERRUPT_STACK *stack);
+void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId);
 
 #endif //SUPERNOVA_XHCI_H

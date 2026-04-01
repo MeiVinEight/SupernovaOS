@@ -47,51 +47,35 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	DEVICE.runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + DEVICE.capability->RTME);
 	DEVICE.doorbell = (XHCI_DOORBELL *) core_mapping(xhciBase + DEVICE.capability->BELL);
 
-	simple_output("==== xHCI Capability Address ");
-	simple_output_address((QWORD) DEVICE.capability, 16);
-	simple_output(" ====\n");
-	simple_output("    Length: ");
-	simple_output_number(DEVICE.capability->SIZE);
-	outchar('\n');
-	simple_output("    Max Device Slots: ");
-	simple_output_number(DEVICE.capability->SLOT);
-	outchar('\n');
-	simple_output("    Max Interrupters: ");
-	simple_output_number(DEVICE.capability->INTE);
-	outchar('\n');
-	simple_output("    Max Ports: ");
-	simple_output_number(DEVICE.capability->PORT);
-	outchar('\n');
 
-	simple_output("    IST: ");
-	simple_output_number(DEVICE.capability->ISTH);
-	outchar('\n');
-	simple_output("    ERST Max Size: ");
-	simple_output_number(DEVICE.capability->ERST);
-	outchar('\n');
-	simple_output("    Scratchpad Buffers: ");
-	simple_output_address(xhci_get_scratchpad_buffer(&DEVICE), 8);
-	outchar('\n');
-
-	simple_output("    64-bit Addressing: ");
-	simple_output(DEVICE.capability->AC64 ? "yes\n" : "no\n");
-	simple_output("    Bandwidth Negotiation: ");
-	simple_output_number(DEVICE.capability->BWNC);
-	outchar('\n');
-	simple_output("    64-Byte Context Size: ");
-	simple_output(DEVICE.capability->CX64 ? "yes\n" : "no\n");
-	simple_output("    Port Power Control: ");
-	simple_output_number(DEVICE.capability->PPWC);
-	outchar('\n');
-	simple_output("    Port Indicators: ");
-	simple_output_number(DEVICE.capability->PIND);
-	outchar('\n');
-	simple_output("    Light HC Reset Available: ");
-	simple_output_number(DEVICE.capability->LHCR);
-	outchar('\n');
-	simple_output("    xHCI Extended Capability: ");
-	simple_output_number(DEVICE.capability->XECP);
-	outchar('\n');
+	// Foreach xECP
+	volatile QWORD xadr = xhciBase;
+	volatile DWORD xecp = DEVICE.capability->XECP << 2;
+	while (xecp)
+	{
+		xadr = xadr + xecp;
+		volatile XHCI_EXTENDED_CAPABILITY *xcap = (XHCI_EXTENDED_CAPABILITY *) core_mapping(xadr);
+		simple_output("xHCI Extended Capability @ ");
+		simple_output_address((QWORD) xcap, 16);
+		simple_output(": ");
+		simple_output_address(xcap->CAID, 2);
+		outchar('\n');
+		if (xcap->CAID == XHCI_XECP_SUPPORTED_PROTOCOL)
+		{
+			volatile XHCI_CAPABILITY_SUPPORTED_PROTOCOL *supp = (XHCI_CAPABILITY_SUPPORTED_PROTOCOL *) xcap;
+			QWORD name = supp->NAME;
+			simple_output(&name);
+			simple_output_number(supp->MAJV);
+			outchar('.');
+			simple_output_number(supp->MINV);
+			simple_output(": ");
+			simple_output_number(supp->CPOF - 1);
+			outchar('+');
+			simple_output_number(supp->CPCN);
+			outchar('\n');
+		}
+		xecp = xcap->NEXT << 2;
+	}
 
 	DWORD reset = xhci_reset_controller(&DEVICE);
 	if (!reset)
@@ -103,45 +87,12 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	simple_output("Successful reset\n");
 
 	xhci_configure_controller(&DEVICE);
-	simple_output("==== xHCI Operational Address ");
-	simple_output_address((QWORD) DEVICE.operational, 16);
-	simple_output(" ====\n");
-
-	simple_output("    command: ");
-	simple_output_address(xhci_operational_command(&DEVICE), 8);
-	outchar('\n');
-	simple_output("    status: ");
-	simple_output_address(xhci_operational_status(&DEVICE), 8);
-	outchar('\n');
-	simple_output("    pagesize: ");
-	simple_output_address(DEVICE.operational->PAGE, 8);
-	outchar('\n');
-	simple_output("    notify: ");
-	simple_output_address(DEVICE.operational->DNCR, 8);
-	outchar('\n');
-	simple_output("    Context Ring: ");
-	simple_output_address(DEVICE.operational->CRCR, 16);
-	outchar('\n');
-	simple_output("    Context Base Address Array: ");
-	simple_output_address(DEVICE.operational->CBAA, 16);
-	outchar('\n');
-	simple_output("    config: ");
-	simple_output_address(xhci_operational_config(&DEVICE), 8);
-	outchar('\n');
 
 	if (!xhci_start_controller(&DEVICE))
 	{
 		simple_output("XHCI start failed\n");
 		return;
 	}
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
 	__halt();
 	__halt();
 	simple_output("Controller started!\n");
@@ -325,16 +276,6 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 	// Setup the event ring and write to interrupter
 	// registers to se ERSTSZ, ERDP, and ERSTBA.
 	xhc_event_ring_create(&device->event, intr);
-
-	simple_output("    Event Ring Address: ");
-	simple_output_address(intr->STBA, 16);
-	outchar('\n');
-	simple_output("    Event Ring Size: ");
-	simple_output_number(intr->STSZ);
-	outchar('\n');
-	simple_output("    Dequeue Pointer: ");
-	simple_output_address(intr->ERDP << 4, 16);
-	outchar('\n');
 
 	// Clear and pending interrupts for the primary interrupter
 	xhci_interrupt_ack(device, 0);

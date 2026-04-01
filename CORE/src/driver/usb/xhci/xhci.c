@@ -46,7 +46,6 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	DEVICE.operational = (XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + DEVICE.capability->SIZE);
 	DEVICE.runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + DEVICE.capability->RTME);
 	DEVICE.doorbell = (XHCI_DOORBELL *) core_mapping(xhciBase + DEVICE.capability->BELL);
-	__memset(DEVICE.slot, 0, sizeof(DEVICE.slot));
 
 	DWORD reset = xhci_reset_controller(&DEVICE);
 	if (!reset)
@@ -55,8 +54,6 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		return;
 	}
 
-	simple_output("Successful reset\n");
-
 	xhci_configure_controller(&DEVICE);
 
 	if (!xhci_start_controller(&DEVICE))
@@ -64,9 +61,6 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		simple_output("XHCI start failed\n");
 		return;
 	}
-	__halt();
-	__halt();
-	simple_output("Controller started!\n");
 
 	// Test xHCI Event
 	XHCI_TRB_ENABLE_SLOT trb;

@@ -258,7 +258,7 @@ void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intx)
 	// Set the IP bit to '1' to clear it, preserve other bits including IE
 	intr->IPEN = 1;
 }
-void xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
+DWORD xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
 {
 	volatile BYTE indx = device->event.INDX;
 	void *cmd = xhc_queue_command(&device->command, trb);
@@ -275,8 +275,9 @@ void xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COMM
 			continue;
 		if (core_mapping(blk->CMMD) != (QWORD) cmd)
 			continue;
-		__memcpy(completion, (void *) blk, sizeof(XHCI_TRB_COMMAND_COMPLETION));
-		return;
+		if (completion)
+			__memcpy(completion, (void *) blk, sizeof(XHCI_TRB_COMMAND_COMPLETION));
+		return blk->CCOD;
 	}
 }
 void xhci_disable_slot(PCI_EXPRESS_XHCI_DEVICE *device, DWORD slotId)

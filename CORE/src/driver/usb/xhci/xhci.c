@@ -8,8 +8,10 @@
 #include <interrupt/apic.h>
 #include <arch/processor.h>
 #include <driver/usb/xhci/xhci_port.h>
+#include <driver/usb/xhci/xhci_device.h>
 
 COREAPI volatile PCI_EXPRESS_XHCI_DEVICE DEVICE;
+COREAPI volatile XHCI_USB_DEVICE USB_DEVICE;
 
 void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 {
@@ -62,6 +64,7 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		return;
 	}
 
+	/*
 	// Test xHCI Event
 	XHCI_TRB_ENABLE_SLOT trb;
 	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
@@ -88,6 +91,7 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 	__halt();
 	__halt();
 	__halt();
+	*/
 
 	simple_output("Check ports\n");
 	DWORD maxprt = DEVICE.capability->PORT;
@@ -421,6 +425,29 @@ void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	XHCI_TRB_ENABLE_SLOT trb;
 	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
 	trb.TYPE = XHCI_TRB_TYPE_ENABLE_SLOT;
-	void *addr = xhc_queue_command(&DEVICE.command, &trb);
-	xhc_command_doorbell(DEVICE.doorbell);
+	XHCI_TRB_COMMAND_COMPLETION completion;
+	xhci_send_command((PCI_EXPRESS_XHCI_DEVICE *) device, &trb, &completion);
+	if (completion.CCOD != XHCI_CODE_SUCCESS)
+	{
+		simple_output("Enable slot failed: ");
+		simple_output_number(completion.CCOD);
+		outchar('\n');
+		return;
+	}
+	DWORD slotId = completion.SLID;
+	simple_output("Enable slot ");
+	simple_output_number(slotId);
+	outchar('\n');
+
+	QWORD pageCount = 1;
+	QWORD outCtxPhy = alloc_physical_memory(&pageCount, 0, 0);
+	__memset((void *) core_mapping(outCtxPhy), 0, 0x1000);
+	device->context[slotId] = outCtxPhy;
+
+	USB_DEVICE.controller = (void *) device;
+	if (setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE))
+	{
+		simple_output("Setup device failed\n");
+		xhci_disable_slot((PCI_EXPRESS_XHCI_DEVICE *) device, slotId);
+	}
 }

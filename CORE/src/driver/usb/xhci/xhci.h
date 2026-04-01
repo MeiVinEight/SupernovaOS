@@ -11,7 +11,7 @@
 #include <driver/usb/xhci/xhc_ring.h>
 #include <interrupt/interrupt.h>
 
-typedef struct _PCI_EXPRESS_XHCI_DEVICE
+typedef struct _PCI_EXPRESS_XHCI_CONTROLLER
 {
 	PCI_EXPRESS_DEVICE pcie;
 	QWORD address;
@@ -23,18 +23,18 @@ typedef struct _PCI_EXPRESS_XHCI_DEVICE
 	XHCI_COMMAND_RING command;
 	XHCI_EVENT_RING event;
 	WORD status[32];
-} PCI_EXPRESS_XHCI_DEVICE;
+} PCI_EXPRESS_XHCI_CONTROLLER;
 
 void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *device);
-QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-DWORD xhci_operational_config(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device);
-void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intr);
+QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+DWORD xhci_operational_config(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
+void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intr);
 void xhci_interrupt(INTERRUPT_STACK *stack);
-void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId);
+void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId);
 
 #endif //SUPERNOVA_XHCI_H

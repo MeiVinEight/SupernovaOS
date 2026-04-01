@@ -23,7 +23,7 @@ typedef struct _XHCI_PORT_STATUS
 	WORD RSV:14;
 } XHCI_PORT_STATUS;
 
-DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId);
-void xhci_port_ack_port_changes(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId, DWORD changeMask);
+DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId);
+void xhci_port_ack_port_changes(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId, DWORD changeMask);
 
 #endif //SUPERNOVAOS_XHCI_PORT_H

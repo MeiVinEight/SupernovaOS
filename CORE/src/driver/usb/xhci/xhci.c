@@ -10,7 +10,7 @@
 #include <driver/usb/xhci/xhci_port.h>
 #include <driver/usb/xhci/xhci_device.h>
 
-COREAPI volatile PCI_EXPRESS_XHCI_DEVICE DEVICE;
+COREAPI volatile PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
 COREAPI volatile XHCI_USB_DEVICE USB_DEVICE;
 
 void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
@@ -109,23 +109,23 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 			simple_output(" NO\n");
 	}
 }
-QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	return (device->capability->MSBH << 5) | device->capability->MSBL;
 }
-DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	return *((volatile DWORD *) ((QWORD) device->operational));
 }
-DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	return *((volatile DWORD *) (((QWORD) device->operational) + 4));
 }
-DWORD xhci_operational_config(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+DWORD xhci_operational_config(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	return *((volatile DWORD *) (((QWORD) device->operational) + 0x38));
 }
-DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	// Clear Run/Stop bit
 	device->operational->RNST = 0;
@@ -160,7 +160,7 @@ DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 
 	return 1;
 }
-DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	// Ensure USBCMD bit for RUN/STOP is properly set
 	device->operational->INTE = 1;
@@ -176,7 +176,7 @@ DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 	// Controller started successfully
 	return 1;
 }
-void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	/* ==== Operational ==== */
 	// Enable device notification
@@ -251,7 +251,7 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_DEVICE *device)
 	/* ==== Runtime ==== */
 
 }
-void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intx)
+void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 {
 	// Clear the EINT bit in USBSYS by writting '1' to it
 	device->operational->USTS = XHCI_USBSTS_EINT;
@@ -262,7 +262,7 @@ void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intx)
 	// Set the IP bit to '1' to clear it, preserve other bits including IE
 	intr->IPEN = 1;
 }
-DWORD xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
+DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
 {
 	volatile BYTE indx = device->event.INDX;
 	void *cmd = xhc_queue_command(&device->command, trb);
@@ -284,7 +284,7 @@ DWORD xhci_send_command(PCI_EXPRESS_XHCI_DEVICE *device, void *trb, XHCI_TRB_COM
 		return blk->CCOD;
 	}
 }
-void xhci_disable_slot(PCI_EXPRESS_XHCI_DEVICE *device, DWORD slotId)
+void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 {
 	if (!slotId)
 		return;
@@ -311,7 +311,7 @@ void xhci_disable_slot(PCI_EXPRESS_XHCI_DEVICE *device, DWORD slotId)
 		outchar('\n');
 	}
 }
-void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	volatile XHCI_EVENT_RING *ring = &device->event;
 	while (1)
@@ -411,7 +411,7 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 	xhci_interrupt_ack(&DEVICE, 0);
 	eoi_apic(0);
 }
-void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
+void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 	if (xhci_port_reset(device, portId))
@@ -426,7 +426,7 @@ void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
 	trb.TYPE = XHCI_TRB_TYPE_ENABLE_SLOT;
 	XHCI_TRB_COMMAND_COMPLETION completion;
-	xhci_send_command((PCI_EXPRESS_XHCI_DEVICE *) device, &trb, &completion);
+	xhci_send_command((PCI_EXPRESS_XHCI_CONTROLLER *) device, &trb, &completion);
 	if (completion.CCOD != XHCI_CODE_SUCCESS)
 	{
 		simple_output("Enable slot failed: ");
@@ -448,6 +448,6 @@ void xhci_setup_device(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	if (setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE))
 	{
 		simple_output("Setup device failed\n");
-		xhci_disable_slot((PCI_EXPRESS_XHCI_DEVICE *) device, slotId);
+		xhci_disable_slot((PCI_EXPRESS_XHCI_CONTROLLER *) device, slotId);
 	}
 }

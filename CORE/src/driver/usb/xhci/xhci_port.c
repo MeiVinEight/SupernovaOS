@@ -3,7 +3,7 @@
 #include <timer/timer.h>
 #include <console.h>
 
-DWORD xhci_port_usb3(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
+DWORD xhci_port_usb3(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	// Foreach xECP
 	volatile QWORD xadr = device->address;
@@ -22,7 +22,7 @@ DWORD xhci_port_usb3(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	}
 	return 0;
 }
-DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
+DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	DWORD usb3 = xhci_port_usb3(device, portId);
 	if (usb3)
@@ -97,7 +97,7 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId)
 	}
 	return 0;
 }
-void xhci_port_ack_port_changes(volatile PCI_EXPRESS_XHCI_DEVICE *device, DWORD portId, DWORD changeMask)
+void xhci_port_ack_port_changes(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId, DWORD changeMask)
 {
 	volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 	DWORD portsc = port->PTSC;

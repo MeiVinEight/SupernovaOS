@@ -75,22 +75,6 @@ XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_EVENT_RING *ring)
 		ring->CYCL ^= 1;
 	return ret;
 }
-void xhc_event_ring_process(volatile XHCI_EVENT_RING *ring)
-{
-	while (1)
-	{
-		volatile XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(ring);
-		if (!blk)
-			break;
-		// Process Event
-	}
-
-	// Update ERDP
-	xhc_event_ring_update_dequeue(ring);
-
-	// Clear the Event Handle Busy bit
-	ring->INTE->EHBS = 1;
-}
 void xhc_ring_doorbell(volatile XHCI_DOORBELL *doorbell, BYTE id, BYTE target)
 {
 	volatile DWORD *raw = (DWORD *) doorbell;

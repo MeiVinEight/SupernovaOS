@@ -22,6 +22,8 @@ typedef struct _PCI_EXPRESS_XHCI_DEVICE
 	volatile QWORD *context;
 	XHCI_COMMAND_RING command;
 	XHCI_EVENT_RING event;
+	WORD status[32];
+	BYTE slot[32];
 } PCI_EXPRESS_XHCI_DEVICE;
 
 void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *device);

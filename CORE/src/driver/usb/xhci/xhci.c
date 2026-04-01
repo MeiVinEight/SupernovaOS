@@ -131,7 +131,7 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		volatile XHCI_PORT_SPACE *port = DEVICE.operational->PORT + i;
 		simple_output("Port ");
 		simple_output_number(i);
-		if (port->CCST)
+		if (port->CCSS)
 		{
 			simple_output(" YES\n");
 			xhci_port_reset(&DEVICE, i);
@@ -293,6 +293,91 @@ void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_DEVICE *device, BYTE intx)
 	// Set the IP bit to '1' to clear it, preserve other bits including IE
 	intr->IPEN = 1;
 }
+void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_DEVICE *device)
+{
+	volatile XHCI_EVENT_RING *ring = &device->event;
+	while (1)
+	{
+		volatile XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(ring);
+		if (!blk)
+			break;
+		// Process Event
+		BYTE type = (blk->CTRL >> 10) & 0x3F;
+		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
+		{
+			volatile XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
+			simple_output("COMMAND COMPLETION: CODE = ");
+			simple_output_address(trb->CCOD, 2);
+			simple_output(" SLOT = ");
+			simple_output_number(trb->SLID);
+			outchar('\n');
+			continue;
+		}
+		if (type == XHCI_TRB_TYPE_PORT_STATUS_CHANGE)
+		{
+			volatile XHCI_TRB_PORT_STATUS_CHANGE *trb = (XHCI_TRB_PORT_STATUS_CHANGE *) blk;
+			DWORD portId = trb->PRID - 1;
+			volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
+			volatile XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
+			simple_output("Port ");
+			simple_output_number(portId);
+			simple_output(" Status Change: ");
+			simple_output_address(trb->CCOD, 2);
+			outchar('\n');
+			if (port->CSCH)
+			{
+				simple_output("Connection Status: ");
+				simple_output_number(port->CCSS);
+				outchar('\n');
+			}
+			if (port->PECH)
+			{
+				simple_output("Port Enable: ");
+				simple_output_number(port->POEN);
+				outchar('\n');
+			}
+			if (port->WRCH)
+			{
+				status->RST = 1;
+				simple_output("Warm Reset complete\n");
+			}
+			if (port->OCCH)
+			{
+				simple_output("Over-current condition: ");
+				simple_output_number(port->OCAC);
+				outchar('\n');
+			}
+			if (port->PRCH)
+			{
+				status->RST = 1;
+				simple_output("Reset complete\n");
+			}
+			if (port->PLCH)
+			{
+				simple_output("Port Link Status: ");
+				simple_output_number(port->PLST);
+				outchar('\n');
+			}
+			if (port->CECH)
+			{
+				status->ERR = 1;
+				simple_output("Port Config Error\n");
+			}
+			// Clear port status change bits
+			xhci_port_ack_port_changes(device, portId, XHCI_PORTSC_PSC_MASK);
+			continue;
+		}
+		simple_output("TRB Type ");
+		simple_output_address(type, 2);
+		outchar('\n');
+	}
+
+	// Update ERDP
+	xhc_event_ring_update_dequeue(ring);
+
+	// Clear the Event Handle Busy bit
+	ring->INTE->EHBS = 1;
+}
 void xhci_interrupt(INTERRUPT_STACK *stack)
 {
 	simple_output("CPU #");
@@ -303,7 +388,7 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 	simple_output_address(stack->RIP, 16);
 	simple_output(": xHCI Message Event\n");
 
-	xhc_event_ring_process(&DEVICE.event);
+	xhc_event_ring_process(&DEVICE);
 
 	xhci_interrupt_ack(&DEVICE, 0);
 	eoi_apic(0);

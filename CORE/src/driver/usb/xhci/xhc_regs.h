@@ -150,7 +150,7 @@ typedef struct _XHCI_PORT_SPACE
 			 *
 			 * This flag is ‘0’ if PP is ‘0’.
 			 */
-			DWORD CCST:1;
+			DWORD CCSS:1;
 			/**
 			 * Port Enabled/Disabled (PED) – RW1CS. Default = ‘0’. ‘1’ = Enabled. ‘0’ = Disabled.
 			 * Ports may only be enabled by the xHC. Software cannot enable a port by writing a ‘1’ to this flag.
@@ -262,7 +262,7 @@ typedef struct _XHCI_PORT_SPACE
 			 * Note: Transitions between different states are not reflected until the transition is complete. Refer
 			 * to section 4.19 for PLS transition conditions.
 			 */
-			DWORD POLS:4;
+			DWORD PLST:4;
 			/**
 			 * Port Power (PP) – RWS. Default = ‘1’. This flag reflects a port's logical, power control state.
 			 * Because host controllers can implement different methods of port power switching, this flag may

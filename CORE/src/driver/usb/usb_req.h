@@ -5,6 +5,8 @@
 #ifndef SUPERNOVAOS_USB_REQ_H
 #define SUPERNOVAOS_USB_REQ_H
 
+#include <types.h>
+
 #define USB_REQ_GET_STATUS         0
 #define USB_REQ_CLEAR_FEATURE      1
 #define USB_REQ_SET_FEATURE        3
@@ -69,5 +71,40 @@ bmRequestType |bRequest         |wValue          |wIndex    |wLength    |Data
 --------------------------------------------------------------------------------------
 10000010B     |SYNCH_FRAME      |Zero            |Endpoint  |Zero       |Frame Number
 */
+
+typedef struct _USB_DEVICE_SETUP_DATA
+{
+	/**
+	 * D4...0: Recipient
+	 * - 0 = Device
+	 * - 1 = Interface
+	 * - 2 = Endpoint
+	 * - 3 = Other
+	 * - 4...31 = Reserved
+	 */
+	DWORD RECP:5;
+	/**
+	 * D6...5: Type
+	 * - 0 = Standard
+	 * - 1 = Class
+	 * - 2 = Vendor
+	 * - 3 = Reserved
+	 */
+	DWORD RTYP:2;
+	/**
+	 * D7: Data transfer direction
+	 * - 0 = Host-to-device
+	 * - 1 = Device-to-host
+	 */
+	DWORD DIRE:1;
+	// Specific request (refer to Table 9-3)
+	DWORD REQU:8;
+	// Word-sized field that varies according to request
+	DWORD VALU:16;
+	// Word-sized field that varies according to request; typically used to pass an index or offset
+	DWORD INDX:16;
+	// Number of bytes to transfer if there is a Data stage
+	DWORD LENG:16;
+} USB_DEVICE_SETUP_DATA;
 
 #endif //SUPERNOVAOS_USB_REQ_H

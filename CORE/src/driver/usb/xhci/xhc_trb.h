@@ -10,6 +10,7 @@
 #define XHCI_TRB_TYPE_LINK               6
 #define XHCI_TRB_TYPE_ENABLE_SLOT        9
 #define XHCI_TRB_TYPE_DISABLE_SLOT       10
+#define XHCI_TRB_TYPE_ADDRESS_DEVICE     11
 #define XHCI_TRB_TYPE_COMMAND_COMPLETION 33
 #define XHCI_TRB_TYPE_PORT_STATUS_CHANGE 34
 
@@ -116,6 +117,37 @@ typedef struct _XHCI_TRB_DISABLE_SLOT
 	// Slot ID. The ID of the Device Slot to disable.
 	DWORD SLOT:8;
 } XHCI_TRB_DISABLE_SLOT;
+typedef struct _XHCI_TRB_ADDRESS_DEVICE
+{
+	/**
+	 * Input Context Pointer Hi and Lo. This field represents the high order bits of the 64-bit base
+	 * address of the Input Context data structure associated with this command. Refer to section 6.2.5
+	 * for more information on the Input Context data structure.
+	 *
+	 * The memory structure referenced by this physical memory pointer shall be aligned on a 16-byte
+	 * address boundary.
+	 */
+	QWORD CTXT;
+	DWORD RSV0;
+	// Cycle bit (C). This bit is used to mark the Enqueue Pointer of a Command Ring.
+	DWORD CYCL:1;
+	DWORD RSV1:8;
+	/**
+	 * Block Set Address Request (BSR). When this flag is set to ‘0’ the Address Device Command shall
+	 * generate a USB SET_ADDRESS request to the device. When this flag is set to ‘1’ the Address
+	 * Device Command shall not generate a USB SET_ADDRESS request. Refer to section 4.6.5 for
+	 * more information on the use of this flag.
+	 */
+	DWORD BSAR:1;
+	/**
+	 * TRB Type. This field identifies the type of the TRB. Refer to Table 6-91 for the definition of the
+	 * Address Device Command TRB type ID.
+	 */
+	DWORD TYPE:6;
+	DWORD RSV2:8;
+	// Slot ID. The ID of the Device Slot that is the target of this command.
+	DWORD SLOT:8;
+} XHCI_TRB_ADDRESS_DEVICE;
 typedef struct _XHCI_TRB_COMMAND_COMPLETION
 {
 	/**

@@ -96,7 +96,12 @@ typedef struct _XHCI_CAPABILITY_SPACE
 	//DWORD CAP1;
 	DWORD AC64:1;
 	DWORD BWNC:1;
-	DWORD CX64:1;
+	/**
+	 * Context Size (CSZ). If this bit is set to ‘1’, then the xHC uses 64 byte Context data structures. If
+	 * this bit is cleared to ‘0’, then the xHC uses 32 byte Context data structures.
+	 * Note: This flag does not apply to Stream Contexts.
+	 */
+	DWORD CSZE:1;
 	DWORD PPWC:1;
 	DWORD PIND:1;
 	DWORD LHCR:1;  // Light Host Controller Reset

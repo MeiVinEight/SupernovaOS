@@ -249,7 +249,6 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 	// Clear and pending interrupts for the primary interrupter
 	xhci_interrupt_ack(device, 0);
 	/* ==== Runtime ==== */
-
 }
 void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 {
@@ -439,15 +438,14 @@ void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portI
 	simple_output_number(slotId);
 	outchar('\n');
 
-	QWORD pageCount = 1;
-	QWORD outCtxPhy = alloc_physical_memory(&pageCount, 0, 0);
-	__memset((void *) core_mapping(outCtxPhy), 0, 0x1000);
-	device->context[slotId] = outCtxPhy;
-
 	USB_DEVICE.controller = (void *) device;
-	if (setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE))
+	if (xhci_setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE, portId, slotId))
 	{
 		simple_output("Setup device failed\n");
 		xhci_disable_slot((PCI_EXPRESS_XHCI_CONTROLLER *) device, slotId);
 	}
+	USB_DEVICE.root = portId;
+
+	// Enumerate device
+	xhci_usb_enumerate_device((XHCI_USB_DEVICE *) &USB_DEVICE);
 }

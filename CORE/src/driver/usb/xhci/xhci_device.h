@@ -29,6 +29,7 @@ typedef struct _XHCI_USB_DEVICE
 	struct _XHCI_USB_DEVICE *parent;
 	// Input Context
 	void *input;
+	QWORD persistent;
 	// Transfer Ring
 	XHCI_TRANSFER_RING transfer;
 	// Route String

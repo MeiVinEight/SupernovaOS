@@ -30,6 +30,18 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 	device->input = (void *) core_mapping(inputCtxPhy);
 	__memset(device->input, 0, pc << 12);
 
+	// Allocate a persistent DMA page for control transfer payloads.
+	pc = 1;
+	QWORD persPhyAddr = alloc_physical_memory(&pc, 0, 0);
+	if (!persPhyAddr)
+	{
+		free_physical_memory(outCtxPhy, 1);
+		free_physical_memory(inputCtxPhy, 1);
+		controller->context[slotId] = 0;
+		return 1;
+	}
+	device->persistent = persPhyAddr;
+
 	// Trasnfer Ring
 	xhc_transfer_ring_create(&device->transfer, device->input, controller->capability->CSZE, slotId);
 

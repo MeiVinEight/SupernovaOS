@@ -90,3 +90,18 @@ void xhc_control_doorbell(volatile XHCI_DOORBELL *doorbell, DWORD id)
 {
 	xhc_ring_doorbell(doorbell, id, XHCI_DOORBELL_CONTROL_RING);
 }
+void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, void *context, DWORD is64, DWORD slotId)
+{
+	__memset(ring, 0, sizeof(XHCI_TRANSFER_RING));
+	QWORD pc = 1;
+	QWORD ringPhyAddr = alloc_physical_memory(&pc, 0, 0);
+	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(ringPhyAddr);
+	__memset(ring->RING, 0, pc << 12);
+	ring->CYCL = 1;
+	ring->INDX = 0;
+	ring->CTXT = context;
+	ring->CX64 = is64;
+	ring->BELL = slotId;
+	ring->RING[0xFF].DATA = ringPhyAddr;
+	ring->RING[0xFF].CTRL = (XHCI_TRB_TYPE_LINK << 10) | 3;
+}

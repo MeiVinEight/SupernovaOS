@@ -25,6 +25,15 @@ typedef struct _XHCI_EVENT_RING
 	BYTE INDX;
 	BYTE CYCL;
 } XHCI_EVENT_RING;
+typedef struct _XHCI_TRANSFER_RING
+{
+	XHCI_TRB_GENERIC *RING;
+	BYTE *CTXT;
+	BYTE INDX;
+	BYTE CYCL;
+	BYTE CX64;
+	BYTE BELL;
+} XHCI_TRANSFER_RING;
 
 void xhc_command_ring_create(volatile XHCI_COMMAND_RING *ring);
 void *xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb);
@@ -35,5 +44,6 @@ XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_EVENT_RING *ring);
 void xhc_ring_doorbell(volatile XHCI_DOORBELL *doorbell, BYTE id, BYTE target);
 void xhc_command_doorbell(volatile XHCI_DOORBELL *doorbell);
 void xhc_control_doorbell(volatile XHCI_DOORBELL *doorbell, DWORD id);
+void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, void *context, DWORD is64, DWORD slotId);
 
 #endif //SUPERNOVA_XHC_RING_H

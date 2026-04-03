@@ -31,6 +31,15 @@
 #define XHCI_CODE_BUBBLE_DETECTED_ERROR      3
 #define XHCI_CODE_USB_TRANSACTION_ERROR      4
 #define XHCI_CODE_TRB_ERROR                  5
+/**
+ * Asserted when a Stall condition (e.g., a Stall PID received from a device) is
+ * detected for a TRB. Refer to section 4.10.2.1 for more information on
+ * Stalls.
+ *
+ * This code also indicates that the USB device has an error that prevents it
+ * from completing a command issued through a Control endpoint. Refer to
+ * section 8.5.3.1 of the USB2 specification for more information.
+ */
 #define XHCI_CODE_STALL_ERROR                6
 #define XHCI_CODE_RESOURCE_ERROR             7
 #define XHCI_CODE_BANDWIDTH_ERROR            8

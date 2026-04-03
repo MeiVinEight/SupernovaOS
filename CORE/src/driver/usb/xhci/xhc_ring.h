@@ -45,5 +45,6 @@ void xhc_ring_doorbell(volatile XHCI_DOORBELL *doorbell, BYTE id, BYTE target);
 void xhc_command_doorbell(volatile XHCI_DOORBELL *doorbell);
 void xhc_control_doorbell(volatile XHCI_DOORBELL *doorbell, DWORD id);
 void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, void *context, DWORD is64, DWORD slotId);
+void *xhc_queue_transfer(volatile XHCI_TRANSFER_RING *ring, void *trb);
 
 #endif //SUPERNOVA_XHC_RING_H

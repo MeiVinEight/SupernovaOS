@@ -56,6 +56,10 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		return;
 	}
 
+	simple_output("CONTEXT ");
+	simple_output_number(32 << DEVICE.capability->CSZE);
+	outchar('\n');
+
 	xhci_configure_controller(&DEVICE);
 
 	if (!xhci_start_controller(&DEVICE))
@@ -320,6 +324,29 @@ void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 			break;
 		// Process Event
 		BYTE type = (blk->CTRL >> 10) & 0x3F;
+		if (type == XHCI_TRB_TYPE_TRANSFER_EVENT)
+		{
+			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
+			simple_output("Transfer Event: ");
+			simple_output_number(xfer->CCOD);
+			outchar('\n');
+			if (xfer->EDAT)
+				simple_output("Event Data: ");
+			else
+				simple_output("TRB: ");
+			simple_output_address(xfer->XFER, 16);
+			outchar('\n');
+			simple_output("TRB Transfer Length: ");
+			simple_output_number(xfer->TTRL);
+			outchar('\n');
+			simple_output("Endpoint ID: ");
+			simple_output_number(xfer->EPID);
+			outchar('\n');
+			simple_output("Slot ID: ");
+			simple_output_number(xfer->SLOT);
+			outchar('\n');
+			continue;
+		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
 		{
 			volatile XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
@@ -412,14 +439,11 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 }
 void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
-	volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 	if (xhci_port_reset(device, portId))
 	{
 		simple_output("Reset port failed\n");
 		return;
 	}
-
-	DWORD portSpeed = port->PSPD;
 
 	XHCI_TRB_ENABLE_SLOT trb;
 	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));

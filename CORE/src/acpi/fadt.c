@@ -89,7 +89,6 @@ void setup_fadt(volatile ACPI_FADT *fadt)
 	__outword(enReg1a, FADT_PM1E_EN_PWRBTN_EN);
 	if (enReg1b)
 		__outword(enReg1b, FADT_PM1E_EN_PWRBTN_EN);
-
 }
 void acpi_shutdown()
 {

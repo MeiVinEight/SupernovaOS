@@ -52,6 +52,7 @@ void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRU
 	ring->ERST->RSV1 = 0;
 
 	// Configure the Event Ring Segment Table Size (ERSTSZ) register
+	// Must set before ERSTBA
 	ring->INTE->STSZ = 1;
 
 	// Initialize and set ERDP

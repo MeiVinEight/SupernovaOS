@@ -679,7 +679,88 @@ typedef struct _XHCI_OPERATIONAL_SPACE
 	DWORD PAGE;
 	DWORD RSV6[2];
 	DWORD DNCR; // Device Notification Control Register
-	QWORD CRCR;
+	union
+	{
+		/**
+		 * The Command Ring Control Register provides Command Ring control and status
+		 * capabilities, and identifies the address and Cycle bit state of the Command Ring
+		 * Dequeue Pointer.
+		 */
+		QWORD CRCR;
+		struct
+		{
+			/**
+			 * Ring Cycle State (RCS) - RW. This bit identifies the value of the xHC Consumer Cycle State (CCS)
+			 * flag for the TRB referenced by the Command Ring Pointer. Refer to section 4.9.3 for more
+			 * information.
+			 *
+			 * Writes to this flag are ignored if Command Ring Running (CRR) is ‘1’.
+			 *
+			 * If the CRCR is written while the Command Ring is stopped (CRR = ‘0’), then the value of this flag
+			 * shall be used to fetch the first Command TRB the next time the Host Controller Doorbell register
+			 * is written with the DB Reason field set to Host Controller Command.
+			 *
+			 * If the CRCR is not written while the Command Ring is stopped (CRR = ‘0’), then the Command
+			 * Ring shall begin fetching Command TRBs using the current value of the internal Command Ring
+			 * CCS flag.
+			 *
+			 * Reading this flag always returns ‘0’.
+			 */
+			QWORD CRCS:1;
+			/**
+			 * Command Stop (CS) - RW1S. Default = ‘0’. Writing a ‘1’ to this bit shall stop the operation of the
+			 * Command Ring after the completion of the currently executing command, and generate a
+			 * Command Completion Event with the Completion Code set to Command Ring Stopped and the
+			 * Command TRB Pointer set to the current value of the Command Ring Dequeue Pointer. Refer to
+			 * section 4.6.1.1 for more information on stopping a command.
+			 *
+			 * The next write to the Host Controller Doorbell with DB Reason field set to Host Controller
+			 * Command shall restart the Command Ring operation.
+			 *
+			 * Writes to this flag are ignored by the xHC if Command Ring Running (CRR) = ‘0’.
+			 * Reading this bit shall always return ‘0’.
+			 */
+			QWORD CSTP:1;
+			/**
+			 * Command Abort (CA) - RW1S. Default = ‘0’. Writing a ‘1’ to this bit shall immediately terminate
+			 * the currently executing command, stop the Command Ring, and generate a Command
+			 * Completion Event with the Completion Code set to Command Ring Stopped. Refer to section
+			 * 4.6.1.2 for more information on aborting a command.
+			 *
+			 * The next write to the Host Controller Doorbell with DB Reason field set to Host Controller
+			 * Command shall restart the Command Ring operation.
+			 *
+			 * Writes to this flag are ignored by the xHC if Command Ring Running (CRR) = ‘0’.
+			 * Reading this bit always returns ‘0’.
+			 */
+			QWORD CABR:1;
+			/**
+			 * Command Ring Running (CRR) - RO. Default = 0. This flag is set to ‘1’ if the Run/Stop (R/S) bit is
+			 * ‘1’ and the Host Controller Doorbell register is written with the DB Reason field set to Host
+			 * Controller Command. It is cleared to ‘0’ when the Command Ring is “stopped” after writing a ‘1’
+			 * to the Command Stop (CS) or Command Abort (CA) flags, or if the R/S bit is cleared to ‘0’.
+			 */
+			QWORD CRUN:1;
+			QWORD RSVA:2;
+			/**
+			 * Command Ring Pointer - RW. Default = ‘0’. This field defines high order bits of the initial value
+			 * of the 64-bit Command Ring Dequeue Pointer.
+			 *
+			 * Writes to this field are ignored when Command Ring Running (CRR) = ‘1’.
+			 *
+			 * If the CRCR is written while the Command Ring is stopped (CRR = ‘0’), the value of this field shall
+			 * be used to fetch the first Command TRB the next time the Host Controller Doorbell register is
+			 * written with the DB Reason field set to Host Controller Command.
+			 *
+			 * If the CRCR is not written while the Command Ring is stopped (CRR = ‘0’) then the Command
+			 * Ring shall begin fetching Command TRBs at the current value of the internal xHC Command
+			 * Ring Dequeue Pointer.
+			 *
+			 * Reading this field always returns ‘0’.
+			 */
+			QWORD CRNG:58;
+		};
+	};
 	DWORD RSV7[4];
 	QWORD CBAA;
 	//DWORD configure;

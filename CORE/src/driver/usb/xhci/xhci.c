@@ -196,7 +196,7 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	device->operational->CBAA = dcbaAddr;
 
 	// Setup command ring, CRCR
-	xhc_command_ring_create(&device->command);
+	xhc_transfer_ring_create(&device->command, 1);
 	device->operational->CRCR = physical_address((QWORD) device->command.RING) | 1;
 	/* ==== Operational ==== */
 
@@ -204,7 +204,7 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	/* ==== Runtime ==== */
 	// Setup the event ring and write to interrupter
 	// registers to se ERSTSZ, ERDP, and ERSTBA.
-	xhc_event_ring_create(&device->event, 0);
+	xhc_transfer_ring_create(&device->event, 0);
 
 	// Get the primary interrupter registers
 	volatile XHCI_INTERRUPTER *intr = device->runtime->INTR;
@@ -247,7 +247,7 @@ void xhci_interrupt_ack(PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
 {
 	BYTE indx = device->event.INDX;
-	void *cmd = xhc_queue_command(&device->command, trb);
+	void *cmd = xhc_queue_transfer(&device->command, trb);
 	xhc_command_doorbell(device->doorbell);
 	while (1)
 	{

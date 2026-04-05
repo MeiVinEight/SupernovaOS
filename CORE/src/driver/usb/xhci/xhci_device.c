@@ -47,7 +47,7 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 	device->persistent = persPhyAddr;
 
 	// Trasnfer Ring
-	xhc_transfer_ring_create(&device->transfer, device->input, controller->capability->CSZE, slotId);
+	xhc_transfer_ring_create(&device->transfer, 1);
 
 	device->route = 0;
 	device->port = portId;

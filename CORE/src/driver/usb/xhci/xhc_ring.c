@@ -3,42 +3,6 @@
 #include <memory/virtmem.h>
 #include <intrinsic.h>
 
-void xhc_command_ring_create(volatile XHCI_TRANSFER_RING *ring)
-{
-	QWORD pc = 1;
-	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(alloc_physical_memory(&pc, 0, 0));
-	__memset(ring->RING, 0, 0x1000);
-	ring->INDX = 0;
-	ring->CYCL = 1;
-	ring->RING[0xFF].DATA = ((QWORD) ring->RING) & 0x0000007FFFFFFFFFULL;
-	ring->RING[0xFF].CTRL = 2 | (XHCI_TRB_TYPE_LINK << 10);
-}
-void *xhc_queue_command(volatile XHCI_TRANSFER_RING *ring, void *trb)
-{
-	if (ring->INDX == 0xFF)
-	{
-		ring->RING[0xFF].CTRL ^= 1;
-		ring->CYCL ^= 1;
-		ring->INDX = 0;
-	}
-	XHCI_TRB_GENERIC *blk = trb;
-	blk->CTRL &= ~1;
-	blk->CTRL |= ring->CYCL;
-	//ring->RING[ring->INDX++] = *blk;
-	__memcpy(ring->RING + ring->INDX, trb, sizeof(XHCI_TRB_GENERIC));
-	return ring->RING + ring->INDX++;
-}
-void xhc_event_ring_create(volatile XHCI_TRANSFER_RING *ring, volatile XHCI_INTERRUPTER *interrupter)
-{
-	ring->INDX = 0;
-	ring->CYCL = 1;
-
-	// Create the event ring segment memory block
-	QWORD pc = 1;
-	QWORD erdp = alloc_physical_memory(&pc, 0, 0);
-	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(erdp);
-	__memset(ring->RING, 0, pc << 12);
-}
 XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_TRANSFER_RING *ring)
 {
 	if ((ring->RING[ring->INDX].CTRL & XHCI_TRB_CTRL_CYCLE) != ring->CYCL)
@@ -64,17 +28,19 @@ void xhc_control_doorbell(volatile XHCI_DOORBELL *doorbell, DWORD id)
 {
 	xhc_ring_doorbell(doorbell, id, XHCI_DOORBELL_CONTROL_RING);
 }
-void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, void *context, DWORD is64, DWORD slotId)
+void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, int link)
 {
-	__memset(ring, 0, sizeof(XHCI_TRANSFER_RING));
 	QWORD pc = 1;
 	QWORD ringPhyAddr = alloc_physical_memory(&pc, 0, 0);
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(ringPhyAddr);
-	__memset(ring->RING, 0, pc << 12);
 	ring->CYCL = 1;
 	ring->INDX = 0;
-	ring->RING[0xFF].DATA = ringPhyAddr;
-	ring->RING[0xFF].CTRL = (XHCI_TRB_TYPE_LINK << 10) | 3;
+	__memset(ring->RING, 0, pc << 12);
+	if (link)
+	{
+		ring->RING[0xFF].DATA = ringPhyAddr;
+		ring->RING[0xFF].CTRL = (XHCI_TRB_TYPE_LINK << 10) | 3;
+	}
 }
 void *xhc_queue_transfer(XHCI_TRANSFER_RING *ring, void *trb)
 {

@@ -30,6 +30,7 @@ void  __writecr0(QWORD);
 void  __writecr3(QWORD);
 void  __writecr4(QWORD);
 void  __writemsr(DWORD, QWORD);
+void  _mm_pause(void);
 
 QWORD __lgdt(void *);
 QWORD __getrsp();

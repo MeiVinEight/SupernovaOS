@@ -50,12 +50,7 @@ void setup_timer()
 }
 void delay(QWORD ms)
 {
-	while (ms > 50)
-	{
-		__halt();
-		ms -= 50;
-	}
 	QWORD tsc = __rdtsc();
-	tsc += TSC_FREQUENCY_KHZ;
-	while (__rdtsc() < tsc);
+	tsc += TSC_FREQUENCY_KHZ * ms;
+	while (__rdtsc() < tsc) _mm_pause();
 }

@@ -18,7 +18,7 @@ typedef struct _PCI_EXPRESS_XHCI_CONTROLLER
 	volatile XHCI_CAPABILITY_SPACE *capability;
 	volatile XHCI_OPERATIONAL_SPACE *operational;
 	volatile XHCI_RUNTIME_SPACE *runtime;
-	volatile XHCI_DOORBELL *doorbell;
+	XHCI_DOORBELL *doorbell;
 	volatile QWORD *context;
 	XHCI_TRANSFER_RING command;
 	XHCI_TRANSFER_RING event;

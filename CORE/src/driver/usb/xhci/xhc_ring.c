@@ -3,7 +3,7 @@
 #include <memory/virtmem.h>
 #include <intrinsic.h>
 
-XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_TRANSFER_RING *ring)
+XHCI_TRB_GENERIC *xhc_event_ring_pop(XHCI_TRANSFER_RING *ring)
 {
 	if ((ring->RING[ring->INDX].CTRL & XHCI_TRB_CTRL_CYCLE) != ring->CYCL)
 		return 0;
@@ -15,20 +15,20 @@ XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_TRANSFER_RING *ring)
 		ring->CYCL ^= 1;
 	return ret;
 }
-void xhc_ring_doorbell(volatile XHCI_DOORBELL *doorbell, BYTE id, BYTE target)
+void xhc_ring_doorbell(XHCI_DOORBELL *doorbell, BYTE id, BYTE target)
 {
 	volatile DWORD *raw = (DWORD *) doorbell;
 	raw[id] = (DWORD) target;
 }
-void xhc_command_doorbell(volatile XHCI_DOORBELL *doorbell)
+void xhc_command_doorbell(XHCI_DOORBELL *doorbell)
 {
 	xhc_ring_doorbell(doorbell, 0, XHCI_DOORBELL_COMMAND_RING);
 }
-void xhc_control_doorbell(volatile XHCI_DOORBELL *doorbell, DWORD id)
+void xhc_control_doorbell(XHCI_DOORBELL *doorbell, DWORD id)
 {
 	xhc_ring_doorbell(doorbell, id, XHCI_DOORBELL_CONTROL_RING);
 }
-void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, int link)
+void xhc_transfer_ring_create(XHCI_TRANSFER_RING *ring, int link)
 {
 	QWORD pc = 1;
 	QWORD ringPhyAddr = alloc_physical_memory(&pc, 0, 0);

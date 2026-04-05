@@ -9,13 +9,14 @@
 #include <arch/processor.h>
 #include <driver/usb/xhci/xhci_port.h>
 #include <driver/usb/xhci/xhci_device.h>
+#include <stdio.h>
 
 COREAPI volatile PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
 COREAPI volatile XHCI_USB_DEVICE USB_DEVICE;
 
 void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 {
-	volatile PCI_DEVICE_VENDOR vendor;
+	PCI_DEVICE_VENDOR vendor;
 	vendor.VENDOR = dev->configuration->vendor;
 	vendor.DEVICE = dev->configuration->device;
 	simple_output("PCI @ ");
@@ -113,22 +114,6 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 			simple_output(" NO\n");
 	}
 }
-QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
-{
-	return (device->capability->MSBH << 5) | device->capability->MSBL;
-}
-DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
-{
-	return *((volatile DWORD *) ((QWORD) device->operational));
-}
-DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
-{
-	return *((volatile DWORD *) (((QWORD) device->operational) + 4));
-}
-DWORD xhci_operational_config(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
-{
-	return *((volatile DWORD *) (((QWORD) device->operational) + 0x38));
-}
 DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	// Clear Run/Stop bit
@@ -147,7 +132,7 @@ DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 	__halt();
 
 	// Check registers all bits clear
-	if (xhci_operational_command(device))
+	if (device->operational->UCMD)
 		return 0;
 
 	if (device->operational->DNCR)
@@ -159,7 +144,7 @@ DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 	if (device->operational->CBAA)
 		return 0;
 
-	if (xhci_operational_config(device))
+	if (device->operational->UCFG)
 		return 0;
 
 	return 1;
@@ -208,7 +193,7 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 	to ‘0’ by software.
 
 	*/
-	DWORD maxScratchpadBuf = xhci_get_scratchpad_buffer(device);
+	DWORD maxScratchpadBuf = (device->capability->MSBH << 5) | device->capability->MSBL;
 	if (maxScratchpadBuf)
 	{
 		// TODO Check PAGESIZE in operational registers
@@ -327,34 +312,18 @@ void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 		if (type == XHCI_TRB_TYPE_TRANSFER_EVENT)
 		{
 			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
-			simple_output("Transfer Event: ");
-			simple_output_number(xfer->CCOD);
-			outchar('\n');
+			printf("Transfer Event: %u ", xfer->CCOD);
 			if (xfer->EDAT)
 				simple_output("Event Data: ");
 			else
 				simple_output("TRB: ");
-			simple_output_address(xfer->XFER, 16);
-			outchar('\n');
-			simple_output("TRB Transfer Length: ");
-			simple_output_number(xfer->TTRL);
-			outchar('\n');
-			simple_output("Endpoint ID: ");
-			simple_output_number(xfer->EPID);
-			outchar('\n');
-			simple_output("Slot ID: ");
-			simple_output_number(xfer->SLOT);
-			outchar('\n');
+			printf("%016llX TTL: %u EPID: %u SID: %u\n", xfer->XFER, xfer->TTRL, xfer->EPID, xfer->SLOT);
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
 		{
 			volatile XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
-			simple_output("COMMAND COMPLETION: CODE = ");
-			simple_output_address(trb->CCOD, 2);
-			simple_output(" SLOT = ");
-			simple_output_number(trb->SLID);
-			outchar('\n');
+			printf("Command Completion: %u\n", trb->CCOD);
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_PORT_STATUS_CHANGE)
@@ -363,45 +332,25 @@ void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 			DWORD portId = trb->PRID - 1;
 			volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 			volatile XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
-			simple_output("Port ");
-			simple_output_number(portId);
-			simple_output(" Status Change: ");
-			simple_output_address(trb->CCOD, 2);
-			outchar('\n');
+			printf("Port %lu Status Change: %u\n", portId, trb->CCOD);
 			if (port->CSCH)
-			{
-				simple_output("Connection Status: ");
-				simple_output_number(port->CCSS);
-				outchar('\n');
-			}
+				printf("Connection Status: %u\n", port->CCSS);
 			if (port->PECH)
-			{
-				simple_output("Port Enable: ");
-				simple_output_number(port->POEN);
-				outchar('\n');
-			}
+				printf("Port Enable: %u\n", port->POEN);
 			if (port->WRCH)
 			{
 				status->RST = 1;
 				simple_output("Warm Reset complete\n");
 			}
 			if (port->OCCH)
-			{
-				simple_output("Over-current condition: ");
-				simple_output_number(port->OCAC);
-				outchar('\n');
-			}
+				printf("Over-current condition: %u\n", port->OCAC);
 			if (port->PRCH)
 			{
 				status->RST = 1;
 				simple_output("Reset complete\n");
 			}
 			if (port->PLCH)
-			{
-				simple_output("Port Link Status: ");
-				simple_output_number(port->PLST);
-				outchar('\n');
-			}
+				printf("Port Link Status: %u\n", port->PLST);
 			if (port->CECH)
 			{
 				status->ERR = 1;
@@ -411,9 +360,7 @@ void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 			xhci_port_ack_port_changes(device, portId, XHCI_PORTSC_PSC_MASK);
 			continue;
 		}
-		simple_output("TRB Type ");
-		simple_output_address(type, 2);
-		outchar('\n');
+		printf("TRB Type %u\n", type);
 	}
 
 	// Update ERDP

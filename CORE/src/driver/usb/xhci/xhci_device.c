@@ -29,9 +29,6 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 		controller->context[slotId] = 0;
 		return 1;
 	}
-	simple_output("Device Input Context: ");
-	simple_output_address(inputCtxPhy, 16);
-	outchar('\n');
 	// Input Context
 	device->input = (void *) core_mapping(inputCtxPhy);
 	__memset(device->input, 0, pc << 12);
@@ -75,17 +72,11 @@ DWORD xhci_usb_initial_max_packet_size(DWORD speed)
 void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 {
 	volatile XHCI_INPUT_CONTROL_CONTEXT32 *control = xhci_context_get(device->input, -1, device->transfer.CX64);
-	simple_output("Input Control Context: ");
-	simple_output_address((QWORD) control, 16);
-	outchar('\n');
 	// Enable A0 (Slot Context) and A1 (Endpoint Control Context: EP Context 0)
 	control->ADDX = 3;
 	control->DROP = 0;
 
 	volatile XHCI_SLOT_CONTEXT32 *slot = xhci_context_get(device->input, 0, device->transfer.CX64);
-	simple_output("Input Slot Context: ");
-	simple_output_address((QWORD) slot, 16);
-	outchar('\n');
 	slot->RSTR = device->route;
 	slot->SPED = device->speed;
 	slot->CENT = 1;
@@ -150,9 +141,6 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 	outchar('\n');
 
 	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->input, 1, device->transfer.CX64);
-	simple_output("Input Control Endpoint Context: ");
-	simple_output_address((QWORD) endpoint0, 16);
-	outchar('\n');
 	endpoint0->STAT = XHCI_ENDPOINT_STATE_DISABLED; // 0
 	endpoint0->TYPE = XHCI_ENDPOINT_TYPE_CONTROL; // 4
 	// Max Packet Size
@@ -171,18 +159,12 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 	endpoint0->MEPH = 0;
 	endpoint0->TRDP = physical_address((QWORD) device->transfer.RING);
 	endpoint0->TRDP |= device->transfer.CYCL;
-	simple_output("Transfer DP: ");
-	simple_output_address(endpoint0->TRDP, 16);
-	outchar('\n');
 }
 DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLETION *completion, const DWORD bsr)
 {
 	volatile XHCI_TRB_ADDRESS_DEVICE trb;
 	__memset(&trb, 0, sizeof(XHCI_TRB_ADDRESS_DEVICE));
 	trb.CTXT = physical_address((QWORD) device->input);
-	simple_output("Address Device With Input Context: ");
-	simple_output_address(trb.CTXT, 16);
-	outchar('\n');
 
 	/*
 		Block Set Address Request (BSR). When this flag is set to '0' the Address Device Command shall
@@ -218,18 +200,9 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	}
 
 	DWORD isIn = requ->DIRE;
-	simple_output("Is IN: ");
-	simple_output_number(isIn);
-	outchar('\n');
 
 	// For OUT data stage, copy caller data into DMA buffer enqueue
-	simple_output("Persistent: ");
-	simple_output_address(device->persistent, 16);
-	outchar('\n');
 	void *dmaBuffer = (void *) core_mapping(device->persistent);
-	simple_output("DMA: ");
-	simple_output_address((QWORD) dmaBuffer, 16);
-	outchar('\n');
 	if (len && !isIn && buf)
 		__memcpy(dmaBuffer, buf, len);
 	else
@@ -247,10 +220,7 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	// TRT: 0=No Data, 2=OUT Data, 3=IN Data
 	setup.TRTY = (len) ? (isIn ? 3 : 2) : 0;
 
-	simple_output("Setup Stage: ");
-	void *stage = xhc_queue_transfer(transfer, (void *) &setup);
-	simple_output_address((QWORD) stage, 16);
-	outchar('\n');
+	xhc_queue_transfer(transfer, (void *) &setup);
 	if (len)
 	{
 		volatile XHCI_TRB_DATA_STAGE data;
@@ -260,10 +230,7 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 		data.TTRL = len;
 		data.DIRE = isIn;
 
-		simple_output("Data Stage: ");
-		stage = xhc_queue_transfer(transfer, (void *) &data);
-		simple_output_address((QWORD) stage, 16);
-		outchar('\n');
+		xhc_queue_transfer(transfer, (void *) &data);
 	}
 
 	volatile XHCI_TRB_STATUS_STAGE status;
@@ -271,10 +238,7 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	status.TYPE = XHCI_TRB_TYPE_STATUS_STAGE;
 	status.IONC = 1;
 	status.DIRE = (len) ? (isIn ^ 1) : 1;
-	simple_output("Status Stage: ");
-	stage = xhc_queue_transfer(transfer, (void *) &status);
-	simple_output_address((QWORD) stage, 16);
-	outchar('\n');
+	xhc_queue_transfer(transfer, (void *) &status);
 
 	// VL805 quirk: avoid ringing the doorbell near the SOF boundary for
 	// FS non-periodic transfers behind a hub (TT babble avoidance).
@@ -292,6 +256,8 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 
 	simple_output("Doorbell\n");
 	xhc_control_doorbell(controller->doorbell, device->slot);
+	delay(1000);
+	__memcpy(buf, dmaBuffer, len);
 	return 0;
 }
 DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
@@ -317,27 +283,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	DWORD initMaxPs = xhci_usb_initial_max_packet_size(psiv);
 	xhci_usb_configure_control_endpoint(device, initMaxPs);
 
-	/*
-	volatile QWORD *ctx = (QWORD *) controller->context[device->slot];
-	simple_output("Device Context: ");
-	simple_output_address((QWORD) ctx, 16);
-	outchar('\n');
-	ctx = (QWORD *) core_mapping((QWORD) ctx);
-	for (int i = 0; i < 8; i++)
-	{
-		simple_output_address(ctx[i], 16);
-		outchar('\n');
-	}
-
-	simple_output("Device Input Context: ");
-	simple_output_address((QWORD) device->input, 16);
-	outchar('\n');
-	for (int i = 0; i < 12; i++)
-	{
-		simple_output_address(((volatile QWORD *) device->input)[i], 16);
-		outchar('\n');
-	}
-	*/
 
 	// First address device with BSR=1, essentially blocking the SET_ADDRESS request,
 	// but still enables the control endpoint which we can use to get the device descriptor.
@@ -353,23 +298,11 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		return;
 	}
 
-	/*
-	simple_output("Device Context: ");
-	simple_output_address((QWORD) ctx, 16);
-	outchar('\n');
-	for (int i = 0; i < 8; i++)
-	{
-		simple_output_address(ctx[i], 16);
-		outchar('\n');
-	}
-	*/
-
 	// Read the first 8 bytes of the device descriptor to get bMaxPacketSize0.
 	// On VL805/VL817 the hub TT can babble under concurrent periodic traffic,
 	// so retry with CLEAR_TT_BUFFER between attempts.
 	STANDARD_USB_DEVICE desc;
 	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
-	simple_output("xHCI: GET DESCRITPRO 3 times\n");
 	DWORD rc = xhci_get_device_descriptor(device, &desc, 8);
 	if (rc)
 	{
@@ -381,20 +314,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		return;
 	}
 
-	delay(1000);
-
 	simple_output("USB DEVICE: ");
 	simple_output_address(*((volatile QWORD *) &desc), 16);
 	outchar('\n');
-
-	/*
-	simple_output("Device Context: ");
-	simple_output_address((QWORD) ctx, 16);
-	outchar('\n');
-	for (int i = 0; i < 8; i++)
-	{
-		simple_output_address(ctx[i], 16);
-		outchar('\n');
-	}
-	*/
 }

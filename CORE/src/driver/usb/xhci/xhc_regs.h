@@ -771,10 +771,17 @@ typedef struct _XHCI_OPERATIONAL_SPACE
 	DWORD RSV7[4];
 	QWORD CBAA;
 	//DWORD configure;
-	DWORD MDSE:8; // Max Device Slots Enabled
-	DWORD ENU3:1; // Enable U3 Entry
-	DWORD ENCI:1; // Enable Configuration Information
-	DWORD RSV8:22;
+	union
+	{
+		DWORD UCFG;
+		struct
+		{
+			DWORD MDSE:8; // Max Device Slots Enabled
+			DWORD ENU3:1; // Enable U3 Entry
+			DWORD ENCI:1; // Enable Configuration Information
+			DWORD RSV8:22;
+		};
+	};
 	DWORD RSV9[0xF1];
 	XHCI_PORT_SPACE PORT[];
 } XHCI_OPERATIONAL_SPACE;

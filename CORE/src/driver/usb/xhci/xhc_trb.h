@@ -6,6 +6,7 @@
 #define SUPERNOVA_XHC_TRB_H
 
 #include <types.h>
+#include <driver/usb/usb_req.h>
 
 #define XHCI_TRB_TYPE_SETUP_STAGE        2
 #define XHCI_TRB_TYPE_DATA_STAGE         3
@@ -79,37 +80,7 @@ typedef struct _XHCI_TRB_NORMAL
 
 typedef struct _XHCI_TRB_SETUP_STAGE
 {
-	/**
-	 * D4...0: Recipient
-	 * - 0 = Device
-	 * - 1 = Interface
-	 * - 2 = Endpoint
-	 * - 3 = Other
-	 * - 4...31 = Reserved
-	 */
-	DWORD RECP:5;
-	/**
-	 * D6...5: Type
-	 * - 0 = Standard
-	 * - 1 = Class
-	 * - 2 = Vendor
-	 * - 3 = Reserved
-	 */
-	DWORD RTYP:2;
-	/**
-	 * D7: Data transfer direction
-	 * - 0 = Host-to-device
-	 * - 1 = Device-to-host
-	 */
-	DWORD DIRE:1;
-	// Specific request (refer to Table 9-3)
-	DWORD REQU:8;
-	// Word-sized field that varies according to request
-	DWORD VALU:16;
-	// Word-sized field that varies according to request; typically used to pass an index or offset
-	DWORD INDX:16;
-	// Number of bytes to transfer if there is a Data stage
-	DWORD LENG:16;
+	USB_DEVICE_SETUP_DATA REQU;
 	// TRB Transfer Length. Always 8
 	DWORD TTRL:17;
 	DWORD RSV0:5;

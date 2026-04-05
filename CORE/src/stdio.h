@@ -1,3 +1,3 @@
 #pragma once
 
-int __cdecl cprintf(const char* fmt, ...);
+int __cdecl printf(const char* fmt, ...);

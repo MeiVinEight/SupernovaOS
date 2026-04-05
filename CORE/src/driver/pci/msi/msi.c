@@ -2,7 +2,7 @@
 #include <interrupt/apic.h>
 #include <console.h>
 
-DWORD pcie_setup_msi(volatile PCI_EXPRESS_DEVICE *device, DWORD intx)
+DWORD pcie_setup_msi(PCI_EXPRESS_DEVICE *device, DWORD intx)
 {
 	if (intx > 0xFF)
 		return 0;

@@ -44,25 +44,16 @@ void setup_pcie()
 					if ((!conf->device) || (conf->device == 0xFFFF))
 						continue;
 
-					/*
-					volatile PCI_DEVICE_VENDOR vendor;
+					PCI_DEVICE_VENDOR vendor;
 					vendor.VENDOR = conf->vendor;
 					vendor.DEVICE = conf->device;
-					simple_output("PCI @ ");
-					simple_output_address(funcAddr, 16);
-					simple_output(" - ");
-					simple_output_address(conf->subsystem, 8);
-					simple_output(": ");
-					simple_output_address(conf->class, 6);
-					simple_output(" - ");
+
+					/*
+					printf("PCI Express (%02lX.%02lX.%X) @ %016llX: %06X - ", bus, device, func, funcAddr, conf->class);
 					const char *vendorName = pci_vendor_name(vendor.VENDOR);
 					const char *deviceName = pci_device_name(vendor);
 					if (vendorName && deviceName)
-					{
-						simple_output(vendorName);
-						outchar(' ');
-						simple_output(deviceName);
-					}
+						printf("%s %s", vendorName, deviceName);
 					else
 						simple_output_address(vendor.ID, 8);
 					outchar('\n');
@@ -80,7 +71,7 @@ void setup_pcie()
 		}
 	}
 }
-QWORD pcie_cfg_get_base_address(volatile PCI_EXPRESS_DEVICE *device, DWORD addrIdx)
+QWORD pcie_cfg_get_base_address(PCI_EXPRESS_DEVICE *device, DWORD addrIdx)
 {
 	QWORD bar = device->configuration->address[addrIdx];
 	DWORD isIo = bar & PCI_BAR_IO_SPACE;
@@ -117,13 +108,13 @@ QWORD pcie_cfg_get_base_address(volatile PCI_EXPRESS_DEVICE *device, DWORD addrI
 
 	return 0;
 }
-DWORD pcie_bar_cound(volatile PCI_EXPRESS_DEVICE *device)
+DWORD pcie_bar_cound(PCI_EXPRESS_DEVICE *device)
 {
 	if (device->configuration->type & 0x7F)
 		return 2;
 	return 6;
 }
-PCI_EXPRESS_CAPABILITY *__stdcall pcie_capability(volatile PCI_EXPRESS_DEVICE *device, DWORD capa)
+PCI_EXPRESS_CAPABILITY *__stdcall pcie_capability(PCI_EXPRESS_DEVICE *device, DWORD capa)
 {
 	BYTE capId = capa;
 	QWORD baseAddr = (QWORD) device->configuration;
@@ -143,7 +134,7 @@ PCI_EXPRESS_CAPABILITY *__stdcall pcie_capability(volatile PCI_EXPRESS_DEVICE *d
 	}
 	return 0;
 }
-DWORD pcie_setup_interrupt(volatile PCI_EXPRESS_DEVICE *device, void (*irq)(INTERRUPT_STACK *stack), BYTE intx)
+DWORD pcie_setup_interrupt(PCI_EXPRESS_DEVICE *device, void (*irq)(INTERRUPT_STACK *stack), BYTE intx)
 {
 	if (pcie_setup_msix(device, intx))
 	{

@@ -5,7 +5,7 @@
 #include <console.h>
 #include <interrupt/apic.h>
 
-DWORD __stdcall pcie_setup_msix(volatile PCI_EXPRESS_DEVICE *device, DWORD intx)
+DWORD __stdcall pcie_setup_msix(PCI_EXPRESS_DEVICE *device, DWORD intx)
 {
 	if (intx > 0xFF)
 		return 0;
@@ -59,7 +59,7 @@ DWORD __stdcall pcie_setup_msix(volatile PCI_EXPRESS_DEVICE *device, DWORD intx)
 
 	return 1;
 }
-void clear_msix_pending_bit(volatile DWORD *pba, DWORD entryIdx)
+void clear_msix_pending_bit(DWORD *pba, DWORD entryIdx)
 {
 	DWORD dwOff = entryIdx >> 5;
 	DWORD bitOff = entryIdx & 0x1F;

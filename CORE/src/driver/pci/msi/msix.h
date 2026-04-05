@@ -103,7 +103,7 @@ typedef struct _PCI_EXPRESS_MSIX_TABLE_ENTRY
 	DWORD CTRL;
 } PCI_EXPRESS_MSIX_TABLE_ENTRY;
 
-DWORD pcie_setup_msix(volatile PCI_EXPRESS_DEVICE *device, DWORD intx);
-void clear_msix_pending_bit(volatile DWORD *pba, DWORD entryIdx);
+DWORD pcie_setup_msix(PCI_EXPRESS_DEVICE *device, DWORD intx);
+void clear_msix_pending_bit(DWORD *pba, DWORD entryIdx);
 
 #endif //SUPERNOVA_MSIX_H

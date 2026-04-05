@@ -307,6 +307,6 @@ typedef struct _PCI_EXPRESS_CAPABILITY_MSI64
 } PCI_EXPRESS_CAPABILITY_MSI64;
 #pragma pack(pop)
 
-DWORD pcie_setup_msi(volatile PCI_EXPRESS_DEVICE *device, DWORD intx);
+DWORD pcie_setup_msi(PCI_EXPRESS_DEVICE *device, DWORD intx);
 
 #endif //SUPERNOVA_MSI_H

@@ -295,7 +295,7 @@ void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 }
 void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
-	XHCI_EVENT_RING *ring = &device->event;
+	XHCI_TRANSFER_RING *ring = &device->event;
 	while (1)
 	{
 		XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(ring);

@@ -3,7 +3,7 @@
 #include <memory/virtmem.h>
 #include <intrinsic.h>
 
-void xhc_command_ring_create(volatile XHCI_COMMAND_RING *ring)
+void xhc_command_ring_create(volatile XHCI_TRANSFER_RING *ring)
 {
 	QWORD pc = 1;
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(alloc_physical_memory(&pc, 0, 0));
@@ -13,7 +13,7 @@ void xhc_command_ring_create(volatile XHCI_COMMAND_RING *ring)
 	ring->RING[0xFF].DATA = ((QWORD) ring->RING) & 0x0000007FFFFFFFFFULL;
 	ring->RING[0xFF].CTRL = 2 | (XHCI_TRB_TYPE_LINK << 10);
 }
-void *xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb)
+void *xhc_queue_command(volatile XHCI_TRANSFER_RING *ring, void *trb)
 {
 	if (ring->INDX == 0xFF)
 	{
@@ -28,7 +28,7 @@ void *xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb)
 	__memcpy(ring->RING + ring->INDX, trb, sizeof(XHCI_TRB_GENERIC));
 	return ring->RING + ring->INDX++;
 }
-void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRUPTER *interrupter)
+void xhc_event_ring_create(volatile XHCI_TRANSFER_RING *ring, volatile XHCI_INTERRUPTER *interrupter)
 {
 	ring->INDX = 0;
 	ring->CYCL = 1;
@@ -39,7 +39,7 @@ void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRU
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(erdp);
 	__memset(ring->RING, 0, pc << 12);
 }
-XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_EVENT_RING *ring)
+XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_TRANSFER_RING *ring)
 {
 	if ((ring->RING[ring->INDX].CTRL & XHCI_TRB_CTRL_CYCLE) != ring->CYCL)
 		return 0;
@@ -73,9 +73,6 @@ void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, void *context, 
 	__memset(ring->RING, 0, pc << 12);
 	ring->CYCL = 1;
 	ring->INDX = 0;
-	ring->CTXT = context;
-	ring->CX64 = is64;
-	ring->BELL = slotId;
 	ring->RING[0xFF].DATA = ringPhyAddr;
 	ring->RING[0xFF].CTRL = (XHCI_TRB_TYPE_LINK << 10) | 3;
 }

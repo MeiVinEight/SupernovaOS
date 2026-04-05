@@ -72,12 +72,14 @@ DWORD xhci_usb_initial_max_packet_size(DWORD speed)
 }
 void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 {
-	volatile XHCI_INPUT_CONTROL_CONTEXT32 *control = xhci_context_get(device->input, -1, device->transfer.CX64);
+	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
+	DWORD ctx64 = controller->capability->CSZE;
+	volatile XHCI_INPUT_CONTROL_CONTEXT32 *control = xhci_context_get(device->input, -1, ctx64);
 	// Enable A0 (Slot Context) and A1 (Endpoint Control Context: EP Context 0)
 	control->ADDX = 3;
 	control->DROP = 0;
 
-	volatile XHCI_SLOT_CONTEXT32 *slot = xhci_context_get(device->input, 0, device->transfer.CX64);
+	volatile XHCI_SLOT_CONTEXT32 *slot = xhci_context_get(device->input, 0, ctx64);
 	slot->RSTR = device->route;
 	slot->SPED = device->speed;
 	slot->CENT = 1;
@@ -105,7 +107,7 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 			{
 				slot->PSID = hub->slot;
 				slot->PRPN = hub->port + 1;
-				slot->MTTT = ((XHCI_SLOT_CONTEXT32 *) xhci_context_get(hub->input, 0, hub->transfer.CX64))->MTTT;
+				slot->MTTT = ((XHCI_SLOT_CONTEXT32 *) xhci_context_get(hub->input, 0, ctx64))->MTTT;
 				simple_output("xHCI: slot ");
 				simple_output_number(device->slot);
 				simple_output(" TT: hub slog=");
@@ -141,7 +143,7 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 	simple_output_number(maxPs);
 	outchar('\n');
 
-	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->input, 1, device->transfer.CX64);
+	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->input, 1, ctx64);
 	endpoint0->STAT = XHCI_ENDPOINT_STATE_DISABLED; // 0
 	endpoint0->TYPE = XHCI_ENDPOINT_TYPE_CONTROL; // 4
 	// Max Packet Size

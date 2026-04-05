@@ -254,7 +254,6 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	}
 	*/
 
-	simple_output("Doorbell\n");
 	xhc_control_doorbell(controller->doorbell, device->slot);
 	delay(1000);
 	__memcpy(buf, dmaBuffer, len);

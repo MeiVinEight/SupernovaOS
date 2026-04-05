@@ -25,7 +25,7 @@ typedef struct _PCI_EXPRESS_XHCI_CONTROLLER
 	WORD status[32];
 } PCI_EXPRESS_XHCI_CONTROLLER;
 
-void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *device);
+void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *device);
 QWORD xhci_get_scratchpad_buffer(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
 DWORD xhci_operational_command(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
 DWORD xhci_operational_status(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
@@ -36,6 +36,6 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device);
 void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intr);
 DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion);
 void xhci_interrupt(INTERRUPT_STACK *stack);
-void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId);
+void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId);
 
 #endif //SUPERNOVA_XHCI_H

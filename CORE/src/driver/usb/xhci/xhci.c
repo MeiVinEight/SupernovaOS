@@ -11,29 +11,19 @@
 #include <driver/usb/xhci/xhci_device.h>
 #include <stdio.h>
 
-COREAPI volatile PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
+COREAPI PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
 COREAPI volatile XHCI_USB_DEVICE USB_DEVICE;
 
-void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
+void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 {
 	PCI_DEVICE_VENDOR vendor;
 	vendor.VENDOR = dev->configuration->vendor;
 	vendor.DEVICE = dev->configuration->device;
-	simple_output("PCI @ ");
-	simple_output_address((QWORD) dev->configuration, 16);
-	simple_output(" - ");
-	simple_output_address(dev->configuration->subsystem, 8);
-	simple_output(": ");
-	simple_output_address(dev->configuration->class, 6);
-	simple_output(" - ");
+	printf("PCI Express @ %016llX: %06X - ", (QWORD) dev->configuration, dev->configuration->class);
 	const char *vendorName = pci_vendor_name(vendor.VENDOR);
 	const char *deviceName = pci_device_name(vendor);
 	if (vendorName && deviceName)
-	{
-		simple_output(vendorName);
-		outchar(' ');
-		simple_output(deviceName);
-	}
+		printf("%s %s", vendorName, deviceName);
 	else
 		simple_output_address(vendor.ID, 8);
 	outchar('\n');
@@ -56,10 +46,6 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 		simple_output("Reset failed\n");
 		return;
 	}
-
-	simple_output("CONTEXT ");
-	simple_output_number(32 << DEVICE.capability->CSZE);
-	outchar('\n');
 
 	xhci_configure_controller(&DEVICE);
 
@@ -91,14 +77,11 @@ void setup_usb_xhci_pcie(volatile PCI_EXPRESS_DEVICE *dev)
 
 	xhc_queue_command(&DEVICE.command, &trb);
 	xhc_command_doorbell(DEVICE.doorbell);
-
-	__halt();
-	__halt();
-	__halt();
-	__halt();
 	*/
 
-	simple_output("Check ports\n");
+
+	__halt();
+	__halt();
 	DWORD maxprt = DEVICE.capability->PORT;
 	for (DWORD i = 0; i < maxprt; i++)
 	{
@@ -384,7 +367,7 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 	xhci_interrupt_ack(&DEVICE, 0);
 	eoi_apic(0);
 }
-void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
+void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	if (xhci_port_reset(device, portId))
 	{
@@ -396,7 +379,7 @@ void xhci_setup_device(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portI
 	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
 	trb.TYPE = XHCI_TRB_TYPE_ENABLE_SLOT;
 	XHCI_TRB_COMMAND_COMPLETION completion;
-	xhci_send_command((PCI_EXPRESS_XHCI_CONTROLLER *) device, &trb, &completion);
+	xhci_send_command(device, &trb, &completion);
 	if (completion.CCOD != XHCI_CODE_SUCCESS)
 	{
 		simple_output("Enable slot failed: ");

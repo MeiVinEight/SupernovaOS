@@ -9,6 +9,7 @@
 #include <driver/usb/xhci/xhci_port.h>
 #include <driver/usb/xhci/xhci_device.h>
 #include <stdio.h>
+#include <timer/timer.h>
 
 COREAPI PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
 COREAPI volatile XHCI_USB_DEVICE USB_DEVICE;
@@ -53,31 +54,6 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 		simple_output("XHCI start failed\n");
 		return;
 	}
-
-	/*
-	// Test xHCI Event
-	XHCI_TRB_ENABLE_SLOT trb;
-	__memset(&trb, 0, sizeof(XHCI_TRB_ENABLE_SLOT));
-	trb.TYPE = XHCI_TRB_TYPE_ENABLE_SLOT;
-	// Send the command twice, and it should trigger the interrupt twice.
-	xhc_queue_command(&DEVICE.command, &trb);
-	xhc_command_doorbell(DEVICE.doorbell);
-
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-	__halt();
-
-	xhc_queue_command(&DEVICE.command, &trb);
-	xhc_command_doorbell(DEVICE.doorbell);
-	*/
-
 
 	__halt();
 	__halt();
@@ -246,40 +222,25 @@ void xhci_interrupt_ack(PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 }
 DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
 {
-	BYTE indx = device->event.INDX;
-	void *cmd = xhc_queue_transfer(&device->command, trb);
+	xhc_queue_transfer(&device->command, trb);
+	volatile XHCI_TRB_COMMAND_COMPLETION *comp = &device->command.COMP;
+	comp->CCOD = 0;
 	xhc_command_doorbell(device->doorbell);
-	while (1)
-	{
-		if (indx == device->event.INDX)
-		{
-			__halt();
-			continue;
-		}
-		XHCI_TRB_COMMAND_COMPLETION *blk = (XHCI_TRB_COMMAND_COMPLETION *) device->event.RING + indx++;
-		if (blk->TYPE != XHCI_TRB_TYPE_COMMAND_COMPLETION)
-			continue;
-		if (core_mapping(blk->CMMD) != (QWORD) cmd)
-			continue;
-		if (completion)
-			__memcpy(completion, (void *) blk, sizeof(XHCI_TRB_COMMAND_COMPLETION));
-		return blk->CCOD;
-	}
+	while (!comp->CCOD) delay(1);
+	if (completion)
+		__memcpy(completion, (void *) comp, sizeof(XHCI_TRB_COMMAND_COMPLETION));
+	return comp->CCOD;
 }
 void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 {
+	printf("Disable slot: %lu\n", slotId);
 	if (!slotId)
 		return;
 	if (slotId > device->capability->SLOT)
 		return;
 	QWORD outputContext = device->context[slotId];
 	if (outputContext)
-	{
-		simple_output("Free memory: ");
-		simple_output_address(outputContext, 16);
-		outchar('\n');
 		free_physical_memory(outputContext, 1);
-	}
 	device->context[slotId] = 0;
 	XHCI_TRB_DISABLE_SLOT trb;
 	__memset(&trb, 0, sizeof(XHCI_TRB_DISABLE_SLOT));
@@ -287,11 +248,7 @@ void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 	trb.SLOT = slotId;
 	DWORD cc;
 	if ((cc = xhci_send_command(device, &trb, 0)) != XHCI_CODE_SUCCESS)
-	{
-		simple_output("Disable slot command failed: ");
-		simple_output_number(cc);
-		outchar('\n');
-	}
+		printf("Disable slot command failed: %lu\n", cc);
 }
 void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
@@ -310,7 +267,7 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
 		{
-			XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
+			__memcpy(&device->command.COMP, blk, sizeof(XHCI_TRB_COMMAND_COMPLETION));
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_PORT_STATUS_CHANGE)
@@ -390,7 +347,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	if (xhci_setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE, portId, slotId))
 	{
 		simple_output("Setup device failed\n");
-		xhci_disable_slot((PCI_EXPRESS_XHCI_CONTROLLER *) device, slotId);
+		xhci_disable_slot(device, slotId);
 	}
 	USB_DEVICE.root = portId;
 

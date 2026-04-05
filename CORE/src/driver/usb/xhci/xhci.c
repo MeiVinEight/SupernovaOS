@@ -6,7 +6,6 @@
 #include <driver/usb/xhci/xhc_regs.h>
 #include <driver/pci/pci.h>
 #include <interrupt/apic.h>
-#include <arch/processor.h>
 #include <driver/usb/xhci/xhci_port.h>
 #include <driver/usb/xhci/xhci_device.h>
 #include <stdio.h>
@@ -85,16 +84,11 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 	DWORD maxprt = DEVICE.capability->PORT;
 	for (DWORD i = 0; i < maxprt; i++)
 	{
-		volatile XHCI_PORT_SPACE *port = DEVICE.operational->PORT + i;
-		simple_output("Port ");
-		simple_output_number(i);
-		if (port->CCSS)
-		{
-			simple_output(" YES\n");
-			xhci_setup_device(&DEVICE, i);
-		}
-		else
-			simple_output(" NO\n");
+		if (!DEVICE.operational->PORT[i].CCSS)
+			continue;
+
+		printf("Port %lu\n", i);
+		xhci_setup_device(&DEVICE, i);
 	}
 }
 DWORD xhci_reset_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
@@ -295,18 +289,11 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		if (type == XHCI_TRB_TYPE_TRANSFER_EVENT)
 		{
 			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
-			printf("Transfer Event: %u ", xfer->CCOD);
-			if (xfer->EDAT)
-				simple_output("Event Data: ");
-			else
-				simple_output("TRB: ");
-			printf("%016llX TTL: %u EPID: %u SID: %u\n", xfer->XFER, xfer->TTRL, xfer->EPID, xfer->SLOT);
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
 		{
 			XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
-			printf("Command Completion: %u\n", trb->CCOD);
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_PORT_STATUS_CHANGE)
@@ -354,14 +341,6 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 }
 void xhci_interrupt(INTERRUPT_STACK *stack)
 {
-	simple_output("CPU #");
-	simple_output_number(cpu_local_apic_id());
-	simple_output(" INT: #");
-	simple_output_address(stack->INT, 2);
-	simple_output(" @ RIP ");
-	simple_output_address(stack->RIP, 16);
-	simple_output(": xHCI Message Event\n");
-
 	xhc_event_ring_process(&DEVICE);
 
 	xhci_interrupt_ack(&DEVICE, 0);
@@ -388,9 +367,6 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 		return;
 	}
 	DWORD slotId = completion.SLID;
-	simple_output("Enable slot ");
-	simple_output_number(slotId);
-	outchar('\n');
 
 	USB_DEVICE.controller = (void *) device;
 	if (xhci_setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE, portId, slotId))

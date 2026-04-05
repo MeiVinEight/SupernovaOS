@@ -25,10 +25,6 @@ DWORD xhci_port_usb3(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	DWORD usb3 = xhci_port_usb3(device, portId);
-	if (usb3)
-		simple_output("USB 3\n");
-	else
-		simple_output("USB 2\n");
 	volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 	device->status[portId] = 0;
 	volatile XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;

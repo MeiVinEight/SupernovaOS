@@ -238,8 +238,8 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	// Setup Stage TRB
 	volatile XHCI_TRB_SETUP_STAGE setup;
 	__memset(&setup, 0, sizeof(XHCI_TRB_SETUP_STAGE));
+	__memcpy(&setup, requ, sizeof(USB_DEVICE_SETUP_DATA));
 	setup.TYPE = XHCI_TRB_TYPE_SETUP_STAGE;
-	__memcpy(&setup, &requ, sizeof(USB_DEVICE_SETUP_DATA));
 	setup.TTRL = 8;
 	setup.INTT = 0;
 	setup.IDAT = 1;

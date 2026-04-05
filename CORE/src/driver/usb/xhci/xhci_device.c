@@ -8,6 +8,7 @@
 #include <console.h>
 #include <driver/usb/usb_req.h>
 #include <timer/timer.h>
+#include <stdio.h>
 
 DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 {
@@ -274,7 +275,7 @@ DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
 }
 void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 {
-	volatile PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
+	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
 	DWORD isRoot = !device->route;
 
 	// Configure the input context for Address Device command
@@ -313,7 +314,25 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		return;
 	}
 
-	simple_output("USB DEVICE: ");
-	simple_output_address(*((volatile QWORD *) &desc), 16);
-	outchar('\n');
+	printf("USB Descriptor: len=%u, type=%u, rel=%x, class=%u, subclass=%u, proto=%u, maxps=%u\n", desc.LENG, desc.TYPE, desc.UREL, desc.CCOD, desc.SCOD, desc.POTO, desc.MPS0);
+	// If the device reported a different max packet size, update the input context
+	DWORD reportMaxPs = desc.MPS0;
+	if (reportMaxPs == 9)
+		reportMaxPs = 512;
+	if (reportMaxPs != initMaxPs)
+	{
+		xhci_usb_configure_control_endpoint(device, reportMaxPs);
+
+		// Send Evaluate Context to update the xHC's internal state
+		XHCI_TRB_EVALUATE_CONTEXT evaluate;
+		__memset(&evaluate, 0, sizeof(XHCI_TRB_EVALUATE_CONTEXT));
+		evaluate.CTXT = physical_address((QWORD) device->input);
+		evaluate.TYPE = XHCI_TRB_TYPE_EVALUATE_CONTEXT;
+		evaluate.SLOT = device->slot;
+		if ((rc = xhci_send_command(controller, &evaluate, 0)) != XHCI_CODE_SUCCESS)
+		{
+			printf("Evaludate Context failed: %lu\n", rc);
+			return;
+		}
+	}
 }

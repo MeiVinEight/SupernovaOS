@@ -30,7 +30,6 @@ void *xhc_queue_command(volatile XHCI_COMMAND_RING *ring, void *trb)
 }
 void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRUPTER *interrupter)
 {
-	ring->INTE = interrupter;
 	ring->INDX = 0;
 	ring->CYCL = 1;
 
@@ -39,32 +38,6 @@ void xhc_event_ring_create(volatile XHCI_EVENT_RING *ring, volatile XHCI_INTERRU
 	QWORD erdp = alloc_physical_memory(&pc, 0, 0);
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(erdp);
 	__memset(ring->RING, 0, pc << 12);
-
-	// Create the event ring segment table
-	QWORD erstba = alloc_physical_memory(&pc, 0, 0);
-	ring->ERST = (XHCI_EVENT_RING_SEGMENT *) core_mapping(erstba);
-	__memset(ring->ERST, 0, pc << 12);
-
-	// Construct the segment table entry
-	ring->ERST->RSBA = erdp;
-	ring->ERST->RSSZ = 0x1000 / sizeof(XHCI_TRB_GENERIC);
-	ring->ERST->RSV0 = 0;
-	ring->ERST->RSV1 = 0;
-
-	// Configure the Event Ring Segment Table Size (ERSTSZ) register
-	// Must set before ERSTBA
-	ring->INTE->STSZ = 1;
-
-	// Initialize and set ERDP
-	xhc_event_ring_update_dequeue(ring);
-
-	// Write to ERSTBA register
-	interrupter->STBA = erstba;
-
-}
-void xhc_event_ring_update_dequeue(volatile XHCI_EVENT_RING *ring)
-{
-	ring->INTE->ERDP = physical_address((QWORD) (ring->RING + ring->INDX)) >> 4;
 }
 XHCI_TRB_GENERIC *xhc_event_ring_pop(volatile XHCI_EVENT_RING *ring)
 {
@@ -106,7 +79,7 @@ void xhc_transfer_ring_create(volatile XHCI_TRANSFER_RING *ring, void *context, 
 	ring->RING[0xFF].DATA = ringPhyAddr;
 	ring->RING[0xFF].CTRL = (XHCI_TRB_TYPE_LINK << 10) | 3;
 }
-void *xhc_queue_transfer(volatile XHCI_TRANSFER_RING *ring, void *trb)
+void *xhc_queue_transfer(XHCI_TRANSFER_RING *ring, void *trb)
 {
 	// Advance and possibly wrap the enqueue pointer if needed.
 	if (ring->INDX == 0xFF)

@@ -196,21 +196,38 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	device->operational->CBAA = dcbaAddr;
 
 	// Setup command ring, CRCR
-	xhc_command_ring_create((XHCI_COMMAND_RING *) &device->command);
+	xhc_command_ring_create(&device->command);
 	device->operational->CRCR = physical_address((QWORD) device->command.RING) | 1;
 	/* ==== Operational ==== */
 
 
 	/* ==== Runtime ==== */
+	// Setup the event ring and write to interrupter
+	// registers to se ERSTSZ, ERDP, and ERSTBA.
+	xhc_event_ring_create(&device->event, 0);
+
 	// Get the primary interrupter registers
 	volatile XHCI_INTERRUPTER *intr = device->runtime->INTR;
 
 	// Enable interrupts
 	intr->IENA = 1;
+	intr->IMOI = 0;
+	intr->IMOC = 0;
 
-	// Setup the event ring and write to interrupter
-	// registers to se ERSTSZ, ERDP, and ERSTBA.
-	xhc_event_ring_create(&device->event, intr);
+	// Configure the Event Ring Segment Table
+	volatile XHCI_EVENT_RING_SEGMENT *erst = (XHCI_EVENT_RING_SEGMENT *) core_mapping(dcbaAddr + 0x800);
+	erst->RSBA = physical_address((QWORD) device->event.RING);
+	erst->RSSZ = 0x1000 / sizeof(XHCI_TRB_GENERIC);
+	erst->RSV0 = 0;
+	erst->RSV1 = 0;
+	intr->STSZ = 1;
+	intr->STBA = physical_address((QWORD) erst);
+
+	// W1C Event Handler Busy bit
+	intr->EHBS = 1;
+
+	// Initialize and set ERDP
+	intr->ERDP = physical_address((QWORD) device->event.RING) >> 4;
 
 	// Clear and pending interrupts for the primary interrupter
 	xhci_interrupt_ack(device, 0);
@@ -334,10 +351,11 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	}
 
 	// Update ERDP
-	xhc_event_ring_update_dequeue(ring);
+	//xhc_event_ring_update_dequeue(ring);
+	device->runtime->INTR->ERDP = physical_address((QWORD) (ring->RING + ring->INDX)) >> 4;
 
 	// Clear the Event Handle Busy bit
-	ring->INTE->EHBS = 1;
+	device->runtime->INTR->EHBS = 1;
 }
 void xhci_interrupt(INTERRUPT_STACK *stack)
 {

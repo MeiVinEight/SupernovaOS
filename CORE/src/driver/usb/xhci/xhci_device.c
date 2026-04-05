@@ -182,7 +182,7 @@ DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLE
 DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len)
 {
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
-	volatile XHCI_TRANSFER_RING *transfer = &device->transfer;
+	XHCI_TRANSFER_RING *transfer = (XHCI_TRANSFER_RING *) &device->transfer;
 
 	// Use the device's persisitent DMA buffer
 	if (!device->persistent)
@@ -289,11 +289,11 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	// Some legacy devices require their descriptor to be read before sending them a SET_ADDRESS command.
 	XHCI_TRB_COMMAND_COMPLETION completion;
 	__memset(&completion, 0, sizeof(XHCI_TRB_COMMAND_COMPLETION));
-	DWORD code = xhci_address_device(device, &completion, 0);
-	if (code != XHCI_CODE_SUCCESS)
+	DWORD rc = xhci_address_device(device, &completion, 1);
+	if (rc != XHCI_CODE_SUCCESS)
 	{
 		simple_output("xHCI: Address Device Command failed: ");
-		simple_output_number(code);
+		simple_output_number(rc);
 		outchar('\n');
 		return;
 	}
@@ -303,7 +303,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	// so retry with CLEAR_TT_BUFFER between attempts.
 	STANDARD_USB_DEVICE desc;
 	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
-	DWORD rc = xhci_get_device_descriptor(device, &desc, 8);
+	rc = xhci_get_device_descriptor(device, &desc, 8);
 	if (rc)
 	{
 		simple_output("xHCI: Failed to get device descriptor: ");
@@ -324,6 +324,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		xhci_usb_configure_control_endpoint(device, reportMaxPs);
 
 		// Send Evaluate Context to update the xHC's internal state
+		printf("Evalute Context for Max Packet Size: %lu\n", reportMaxPs);
 		XHCI_TRB_EVALUATE_CONTEXT evaluate;
 		__memset(&evaluate, 0, sizeof(XHCI_TRB_EVALUATE_CONTEXT));
 		evaluate.CTXT = physical_address((QWORD) device->input);
@@ -331,8 +332,24 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		evaluate.SLOT = device->slot;
 		if ((rc = xhci_send_command(controller, &evaluate, 0)) != XHCI_CODE_SUCCESS)
 		{
-			printf("Evaludate Context failed: %lu\n", rc);
+			printf("Evaluate Context failed: %lu\n", rc);
 			return;
 		}
 	}
+
+	// Send the address device command again with BSR=0 this time
+	if ((rc = xhci_address_device(device, 0, 0)) != XHCI_CODE_SUCCESS)
+	{
+		printf("Address Device 1 failed: %lu\n", rc);
+		return;
+	}
+
+	/*
+	USB 2.0 Spec 9.2.6.3
+	After successful completion of the Status stage, the device is allowed a SetAddress() recovery interval of
+	2 ms. At the end of this interval, the device must be able to accept Setup packets addressed to the new
+	address. Also, at the end of the recovery interval, the device must not respond to tokens sent to the old
+	address (unless, of course, the old and new address is the same).
+	 */
+	delay(2);
 }

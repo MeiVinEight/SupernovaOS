@@ -97,7 +97,7 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 			simple_output(" NO\n");
 	}
 }
-DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
+DWORD xhci_reset_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	// Clear Run/Stop bit
 	device->operational->RNST = 0;
@@ -132,7 +132,7 @@ DWORD xhci_reset_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 
 	return 1;
 }
-DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
+DWORD xhci_start_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	// Ensure USBCMD bit for RUN/STOP is properly set
 	device->operational->INTE = 1;
@@ -148,7 +148,7 @@ DWORD xhci_start_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 	// Controller started successfully
 	return 1;
 }
-void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
+void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
 	/* ==== Operational ==== */
 	// Enable device notification
@@ -184,7 +184,7 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 		pcnt += 0xFFF;
 		pcnt >>= 12;
 		QWORD scrArrAddr = alloc_physical_memory(&pcnt, 0, 0);
-		volatile QWORD *scrpadArr = (QWORD *) core_mapping(scrArrAddr);
+		QWORD *scrpadArr = (QWORD *) core_mapping(scrArrAddr);
 		__memset(scrpadArr, 0, pcnt << 12);
 		// Create scratchpad pages
 		pcnt = 1;
@@ -222,7 +222,7 @@ void xhci_configure_controller(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 	xhci_interrupt_ack(device, 0);
 	/* ==== Runtime ==== */
 }
-void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
+void xhci_interrupt_ack(PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 {
 	// Clear the EINT bit in USBSYS by writting '1' to it
 	device->operational->USTS = XHCI_USBSTS_EINT;
@@ -235,7 +235,7 @@ void xhci_interrupt_ack(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 }
 DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion)
 {
-	volatile BYTE indx = device->event.INDX;
+	BYTE indx = device->event.INDX;
 	void *cmd = xhc_queue_command(&device->command, trb);
 	xhc_command_doorbell(device->doorbell);
 	while (1)
@@ -245,7 +245,7 @@ DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB
 			__halt();
 			continue;
 		}
-		volatile XHCI_TRB_COMMAND_COMPLETION *blk = (XHCI_TRB_COMMAND_COMPLETION *) device->event.RING + indx++;
+		XHCI_TRB_COMMAND_COMPLETION *blk = (XHCI_TRB_COMMAND_COMPLETION *) device->event.RING + indx++;
 		if (blk->TYPE != XHCI_TRB_TYPE_COMMAND_COMPLETION)
 			continue;
 		if (core_mapping(blk->CMMD) != (QWORD) cmd)
@@ -282,12 +282,12 @@ void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 		outchar('\n');
 	}
 }
-void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
+void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
-	volatile XHCI_EVENT_RING *ring = &device->event;
+	XHCI_EVENT_RING *ring = &device->event;
 	while (1)
 	{
-		volatile XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(ring);
+		XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(ring);
 		if (!blk)
 			break;
 		// Process Event
@@ -305,16 +305,16 @@ void xhc_event_ring_process(volatile PCI_EXPRESS_XHCI_CONTROLLER *device)
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
 		{
-			volatile XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
+			XHCI_TRB_COMMAND_COMPLETION *trb = (XHCI_TRB_COMMAND_COMPLETION *) blk;
 			printf("Command Completion: %u\n", trb->CCOD);
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_PORT_STATUS_CHANGE)
 		{
-			volatile XHCI_TRB_PORT_STATUS_CHANGE *trb = (XHCI_TRB_PORT_STATUS_CHANGE *) blk;
+			XHCI_TRB_PORT_STATUS_CHANGE *trb = (XHCI_TRB_PORT_STATUS_CHANGE *) blk;
 			DWORD portId = trb->PRID - 1;
 			volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
-			volatile XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
+			XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
 			printf("Port %lu Status Change: %u\n", portId, trb->CCOD);
 			if (port->CSCH)
 				printf("Connection Status: %u\n", port->CCSS);

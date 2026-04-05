@@ -23,24 +23,24 @@ void setup_pcie()
 
 	QWORD length = MCFG->HEAD.LENG;
 	DWORD entryCount = (length - /*sizeof(ACPI_MCFG)*/ 44) / sizeof(PCIE_SEGMENT_ADDRESS);
-	for (volatile DWORD entryIdx = 0; entryIdx < entryCount; entryIdx++)
+	for (DWORD entryIdx = 0; entryIdx < entryCount; entryIdx++)
 	{
-		volatile QWORD segAddr = core_mapping(MCFG->ECAM[entryIdx].ECAM);
+		QWORD segAddr = core_mapping(MCFG->ECAM[entryIdx].ECAM);
 
-		for (volatile BYTE bus = 0; (bus + MCFG->ECAM[entryIdx].SBUS) < MCFG->ECAM[entryIdx].EBUS; bus++)
+		for (DWORD bus = 0; (bus + MCFG->ECAM[entryIdx].SBUS) <= MCFG->ECAM[entryIdx].EBUS; bus++)
 		{
 			// Enumerate BUS
-			volatile QWORD busAddr = segAddr + ((QWORD) bus << 20);
+			QWORD busAddr = segAddr + ((QWORD) bus << 20);
 
-			for (volatile BYTE device = 0; device < 32; device++)
+			for (DWORD device = 0; device < 32; device++)
 			{
 				// Enumerate DEVICE
-				volatile QWORD devAddr = busAddr + ((QWORD) device << 15);
-				for (volatile BYTE func = 0; func < 8; func++)
+				QWORD devAddr = busAddr + ((QWORD) device << 15);
+				for (WORD func = 0; func < 8; func++)
 				{
 					// Enumerate function
-					volatile QWORD funcAddr = devAddr + ((QWORD) func << 12);
-					volatile PCI_CONFIGURATION_SPACE *conf = (PCI_CONFIGURATION_SPACE *) funcAddr;
+					QWORD funcAddr = devAddr + ((QWORD) func << 12);
+					PCI_CONFIGURATION_SPACE *conf = (PCI_CONFIGURATION_SPACE *) funcAddr;
 					if ((!conf->device) || (conf->device == 0xFFFF))
 						continue;
 
@@ -68,7 +68,7 @@ void setup_pcie()
 					outchar('\n');
 					*/
 
-					volatile PCI_EXPRESS_DEVICE pcie;
+					PCI_EXPRESS_DEVICE pcie;
 					pcie.bus = bus;
 					pcie.device = device;
 					pcie.function = func;

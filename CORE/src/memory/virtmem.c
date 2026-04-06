@@ -5,6 +5,9 @@
 
 #define MEMBLK_NODE_PRE_PAGE 0x7F
 
+#define HEAP_FLAG_USING 1ULL
+#define HEAP_FLAG_LAST  2ULL
+
 typedef union _VIRTUAL_ADDRESS
 {
 	struct
@@ -21,6 +24,7 @@ typedef union _VIRTUAL_ADDRESS
 
 COREAPI volatile MEMORY_BLOCK *volatile BLOCK_HEAP = 0;
 COREAPI volatile DWORD MEMORY_MAP = 0;
+COREAPI QWORD *HEAPK;
 
 volatile MEMORY_BLOCK *alloc_memblk()
 {
@@ -266,4 +270,122 @@ QWORD physical_address(QWORD virtAddr)
 	QWORD offset1 = va.offset1;
 	QWORD pte = pt[offset1];
 	return (pte & ~(0x00000FFFULL)) | va.offset0;
+}
+void *heap_alloc(QWORD allocSize)
+{
+	if (!HEAPK)
+	{
+		// Create a new Heap with 1*4K page
+		QWORD pc = 1;
+		QWORD phyAddr = alloc_physical_memory(&pc, 0, 0);
+		// Mapping to Heap Space
+		QWORD heapBase = 0xFFFF810000000000ULL;
+		virtual_mapping(phyAddr, heapBase, 1, PAGE_4K);
+		HEAPK = (QWORD *) heapBase;
+		// Initial block size, free, lastblock
+		HEAPK[0] = 0xFF8 | HEAP_FLAG_LAST;
+	}
+	// At least 8 byte
+	if (!allocSize)
+		allocSize = 8;
+	// Align at 8 byte boundary
+	allocSize += 7;
+	allocSize &= ~(7ULL);
+	// Foreach heap blocks
+	QWORD *heap = HEAPK;
+	while (1)
+	{
+		while (1)
+		{
+			// Free and sufficient block
+			if (!(*heap & HEAP_FLAG_USING) && (*heap >= allocSize))
+			{
+				// Get block flags
+				QWORD blockFlag = *heap & 7;
+				// Get block size
+				QWORD blockSize = *heap & (~7ULL);
+				// Set USING flag
+				*heap |= HEAP_FLAG_USING;
+				// Alloc addr is next QWORD
+				void *allocAddr = heap + 1;
+				// If block size greater than the required size, split the block
+				if (blockSize > allocSize)
+				{
+					// Split to 2 blocks
+					// Clear last flag and update block size
+					*heap = allocSize | HEAP_FLAG_USING;
+					// Goto next block head
+					heap += 1 + (allocSize >> 3);
+					// Set block flags and size
+					*heap = blockSize - allocSize - 8;
+					*heap |= blockFlag;
+				}
+				return allocAddr;
+			}
+			// Last block
+			if (*heap & HEAP_FLAG_LAST)
+				break;
+			// Next block
+			heap += 1 + (*heap >> 3);
+		}
+		// No free block
+		// Expand the heap
+		while ((*heap & (~7ULL)) < allocSize)
+		{
+			QWORD *heapEnd = heap + 1 + (*heap >> 3);
+			QWORD heapEndAddr = (QWORD) heapEnd;
+			// Allocate one 4K page
+			QWORD pc = 1;
+			QWORD phyPage = alloc_physical_memory(&pc, 0, 0);
+			if (!phyPage)
+			{
+				// No free page, kernel panic
+				*((QWORD *) -1ULL) = 1;
+			}
+			// Mapping page to heap end
+			virtual_mapping(phyPage, heapEndAddr, 1, PAGE_4K);
+			// Update block size
+			*heap += 0x1000;
+		}
+	}
+}
+void heap_free(const volatile void *addr)
+{
+	// No heap created
+	if (!HEAPK)
+		return;
+
+	QWORD *heap = HEAPK;
+	QWORD *prev = 0;
+	for (; ; prev = heap, heap += 1 + (*heap >> 3))
+	{
+		// Not this block
+		if ((heap + 1) != addr)
+		{
+			if (*heap & HEAP_FLAG_LAST)
+				break;
+			continue;
+		}
+
+		// Found the block
+		// Free the block by clear using flag
+		*heap &= ~HEAP_FLAG_USING;
+		// Try merge with prev free block
+		if (prev && !(*prev & HEAP_FLAG_USING))
+		{
+			*prev += 8 + (*heap & ~7ULL);
+			heap = prev;
+		}
+
+		if ((*heap & HEAP_FLAG_LAST))
+			return;
+		// Try merge with next block
+		QWORD *next = heap + 1 + (*heap >> 3);
+		if (!(*next & HEAP_FLAG_USING))
+		{
+			*heap += 8 + (*next & ~7ULL);
+			*heap |= (*next & 7);
+		}
+		return;
+	}
 }

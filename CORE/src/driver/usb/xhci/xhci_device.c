@@ -277,13 +277,9 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	DWORD initMaxPs = xhci_usb_initial_max_packet_size(psiv);
 	xhci_usb_configure_control_endpoint(device, initMaxPs);
 
-
-	// First address device with BSR=1, essentially blocking the SET_ADDRESS request,
-	// but still enables the control endpoint which we can use to get the device descriptor.
-	// Some legacy devices require their descriptor to be read before sending them a SET_ADDRESS command.
 	XHCI_TRB_COMMAND_COMPLETION completion;
 	__memset(&completion, 0, sizeof(XHCI_TRB_COMMAND_COMPLETION));
-	DWORD rc = xhci_address_device(device, &completion, 1);
+	DWORD rc = xhci_address_device(device, &completion, 0);
 	if (rc != XHCI_CODE_SUCCESS)
 	{
 		simple_output("xHCI: Address Device Command failed: ");
@@ -331,13 +327,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		}
 	}
 
-	// Send the address device command again with BSR=0 this time
-	if ((rc = xhci_address_device(device, 0, 0)) != XHCI_CODE_SUCCESS)
-	{
-		printf("Address Device 1 failed: %lu\n", rc);
-		return;
-	}
-
 	/*
 	USB 2.0 Spec 9.2.6.3
 	After successful completion of the Status stage, the device is allowed a SetAddress() recovery interval of
@@ -346,4 +335,15 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	address (unless, of course, the old and new address is the same).
 	 */
 	delay(2);
+
+	printf("Device State: %u\n", ((XHCI_SLOT_CONTEXT32 *) controller->context[device->slot])->STAT);
+
+	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
+	rc = xhci_get_device_descriptor(device, &desc, sizeof(STANDARD_USB_DEVICE));
+	if (rc != XHCI_CODE_SUCCESS)
+	{
+		printf("xHCI: Failed to get full device descriptor: %lu for slot %u\n", rc, device->slot);
+		return;
+	}
+	printf("USB Vendor:%04X Product:%04X\n", desc.VNID, desc.PRID);
 }

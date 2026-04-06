@@ -1,6 +1,5 @@
 #include <driver/pci/msi/msi.h>
 #include <interrupt/apic.h>
-#include <console.h>
 
 DWORD pcie_setup_msi(PCI_EXPRESS_DEVICE *device, DWORD intx)
 {
@@ -10,20 +9,7 @@ DWORD pcie_setup_msi(PCI_EXPRESS_DEVICE *device, DWORD intx)
 	// Find the MSI-X capability structure
 	volatile PCI_EXPRESS_CAPABILITY_MSI64 *cap = (PCI_EXPRESS_CAPABILITY_MSI64 *) pcie_capability(device, PCIE_CAID_MSI);
 	if (!cap)
-		return 0;
-
-	simple_output("PCI Express @ ");
-	simple_output_address((QWORD) device->configuration, 16);
-	simple_output(": ");
-	if (cap->AC64)
-		simple_output_number(64);
-	else
-		simple_output_number(32);
-	simple_output(" | Multiple Message = ");
-	simple_output_number(1 << cap->MMCA);
-	if (cap->PVMC)
-		simple_output(" | PVM");
-	outchar('\n');
+		return 0;;
 
 	cap->MSIE = 1;
 	cap->MMEN = 0;

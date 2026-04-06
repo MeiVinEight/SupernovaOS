@@ -2,7 +2,6 @@
 #include <driver/pci/msi/msi.h>
 #include <driver/pci/msi/msix.h>
 #include <core.h>
-#include <console.h>
 #include <interrupt/apic.h>
 
 DWORD __stdcall pcie_setup_msix(PCI_EXPRESS_DEVICE *device, DWORD intx)
@@ -14,11 +13,6 @@ DWORD __stdcall pcie_setup_msix(PCI_EXPRESS_DEVICE *device, DWORD intx)
 	volatile PCI_EXPRESS_CAPABILITY_MSI_X *cap = (PCI_EXPRESS_CAPABILITY_MSI_X *) pcie_capability(device, PCIE_CAID_MSIX);
 	if (!cap)
 		return 0;
-	simple_output("PCI Express @ ");
-	simple_output_address((QWORD) cap, 16);
-	simple_output(": MSI-X Table Size = ");
-	simple_output_address(cap->TABS, 4);
-	outchar('\n');
 
 	// Disable MSI-X temporarily by clearing the MSI-X enable bit (bit 15)
 	cap->MXEN = 0;

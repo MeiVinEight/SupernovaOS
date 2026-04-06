@@ -24,7 +24,7 @@ typedef union _VIRTUAL_ADDRESS
 
 COREAPI volatile MEMORY_BLOCK *volatile BLOCK_HEAP = 0;
 COREAPI volatile DWORD MEMORY_MAP = 0;
-COREAPI QWORD *HEAPK;
+COREAPI QWORD *volatile HEAPK;
 
 volatile MEMORY_BLOCK *alloc_memblk()
 {

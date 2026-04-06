@@ -31,7 +31,7 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 	pcie_setup_interrupt(dev, xhci_interrupt, interrupt_alloc_intx());
 
 	//device.pcie = *dev;
-	__memcpy(&DEVICE.pcie, (void *) dev, sizeof(PCI_EXPRESS_DEVICE));
+	__memcpy(&DEVICE.pcie, dev, sizeof(PCI_EXPRESS_DEVICE));
 
 	QWORD xhciBase = pcie_cfg_get_base_address(dev, 0);
 	DEVICE.address = xhciBase;

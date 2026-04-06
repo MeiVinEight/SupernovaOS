@@ -131,17 +131,7 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 		}
 	}
 
-	simple_output("xHCI: slot ");
-	simple_output_number(device->slot);
-	simple_output(" input ctx: route=");
-	simple_output_number(slot->RSTR);
-	simple_output(" speed=");
-	simple_output_number(slot->SPED);
-	simple_output(" root port=");
-	simple_output_number(slot->RHPN);
-	simple_output(" mps=");
-	simple_output_number(maxPs);
-	outchar('\n');
+	printf("xHCI: slot:%u, input ctx route:%u, speed:%u, root port:%u, mps:%lu\n", device->slot, slot->RSTR, slot->SPED, slot->RHPN, maxPs);
 
 	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->input, 1, ctx64);
 	endpoint0->STAT = XHCI_ENDPOINT_STATE_DISABLED; // 0

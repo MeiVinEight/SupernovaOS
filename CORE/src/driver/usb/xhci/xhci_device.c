@@ -247,10 +247,12 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	}
 	*/
 
+	volatile XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) &device->transfer.COMP;
+	xfer->CCOD = 0;
 	xhc_control_doorbell(controller->doorbell, device->slot);
-	delay(1000);
+	while (!xfer->CCOD) delay(1);
 	__memcpy(buf, dmaBuffer, len);
-	return 0;
+	return xfer->CCOD;
 }
 DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
 {
@@ -296,7 +298,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	STANDARD_USB_DEVICE desc;
 	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
 	rc = xhci_get_device_descriptor(device, &desc, 8);
-	if (rc)
+	if (rc != XHCI_CODE_SUCCESS)
 	{
 		simple_output("xHCI: Failed to get device descriptor: ");
 		simple_output_number(rc);

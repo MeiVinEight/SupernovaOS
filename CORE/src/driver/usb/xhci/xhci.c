@@ -12,7 +12,6 @@
 #include <timer/timer.h>
 
 COREAPI PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
-COREAPI volatile XHCI_USB_DEVICE USB_DEVICE;
 
 void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 {
@@ -208,6 +207,9 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	// Clear and pending interrupts for the primary interrupter
 	xhci_interrupt_ack(device, 0);
 	/* ==== Runtime ==== */
+
+	// Alloc memory for usb devices
+	device->device = heap_alloc((QWORD) device->capability->SLOT << 3);
 }
 void xhci_interrupt_ack(PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intx)
 {
@@ -263,6 +265,8 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		if (type == XHCI_TRB_TYPE_TRANSFER_EVENT)
 		{
 			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
+			XHCI_USB_DEVICE *usbdev = device->device[xfer->SLOT];
+			__memcpy(&usbdev->transfer.COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
@@ -343,14 +347,17 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	}
 	DWORD slotId = completion.SLID;
 
-	USB_DEVICE.controller = (void *) device;
-	if (xhci_setup_usb_device((XHCI_USB_DEVICE *) &USB_DEVICE, portId, slotId))
+	XHCI_USB_DEVICE *usbdev = heap_alloc(sizeof(XHCI_USB_DEVICE));
+	device->device[slotId] = usbdev;
+
+	usbdev->controller = (void *) device;
+	if (xhci_setup_usb_device(usbdev, portId, slotId))
 	{
 		simple_output("Setup device failed\n");
 		xhci_disable_slot(device, slotId);
 	}
-	USB_DEVICE.root = portId;
+	usbdev->root = portId;
 
 	// Enumerate device
-	xhci_usb_enumerate_device((XHCI_USB_DEVICE *) &USB_DEVICE);
+	xhci_usb_enumerate_device(usbdev);
 }

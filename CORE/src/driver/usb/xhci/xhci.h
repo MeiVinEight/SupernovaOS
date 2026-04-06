@@ -20,6 +20,7 @@ typedef struct _PCI_EXPRESS_XHCI_CONTROLLER
 	volatile XHCI_RUNTIME_SPACE *runtime;
 	XHCI_DOORBELL *doorbell;
 	volatile QWORD *context;
+	void **device;
 	XHCI_TRANSFER_RING command;
 	XHCI_TRANSFER_RING event;
 	WORD status[32];

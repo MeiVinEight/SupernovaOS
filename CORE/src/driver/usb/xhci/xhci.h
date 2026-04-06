@@ -14,6 +14,7 @@
 typedef struct _PCI_EXPRESS_XHCI_CONTROLLER
 {
 	PCI_EXPRESS_DEVICE pcie;
+	struct _PCI_EXPRESS_XHCI_CONTROLLER *next;
 	QWORD address;
 	volatile XHCI_CAPABILITY_SPACE *capability;
 	volatile XHCI_OPERATIONAL_SPACE *operational;
@@ -24,6 +25,7 @@ typedef struct _PCI_EXPRESS_XHCI_CONTROLLER
 	XHCI_TRANSFER_RING command;
 	XHCI_TRANSFER_RING event;
 	WORD status[32];
+	BYTE interrupt;
 } PCI_EXPRESS_XHCI_CONTROLLER;
 
 void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *device);

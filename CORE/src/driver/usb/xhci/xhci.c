@@ -10,8 +10,10 @@
 #include <driver/usb/xhci/xhci_device.h>
 #include <stdio.h>
 #include <timer/timer.h>
+#include <arch/processor.h>
 
-COREAPI PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
+//COREAPI PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
+COREAPI PCI_EXPRESS_XHCI_CONTROLLER *XHCI_CONTROLLER;
 
 void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 {
@@ -27,28 +29,36 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 		simple_output_address(vendor.ID, 8);
 	outchar('\n');
 
-	pcie_setup_interrupt(dev, xhci_interrupt, interrupt_alloc_intx());
+	BYTE intvec = interrupt_alloc_intx();
+	pcie_setup_interrupt(dev, xhci_interrupt, intvec);
 
-	//device.pcie = *dev;
-	__memcpy(&DEVICE.pcie, dev, sizeof(PCI_EXPRESS_DEVICE));
+	// Allocate new controller
+	PCI_EXPRESS_XHCI_CONTROLLER *controller = heap_alloc(sizeof(PCI_EXPRESS_XHCI_CONTROLLER));
+	__memset(controller, 0, sizeof(PCI_EXPRESS_XHCI_CONTROLLER));
+	controller->next = XHCI_CONTROLLER;
+	XHCI_CONTROLLER = controller;
+
+	//device.pcie = *dev
+	__memcpy(&controller->pcie, dev, sizeof(PCI_EXPRESS_DEVICE));
 
 	QWORD xhciBase = pcie_cfg_get_base_address(dev, 0);
-	DEVICE.address = xhciBase;
-	DEVICE.capability = (XHCI_CAPABILITY_SPACE *) core_mapping(xhciBase);
-	DEVICE.operational = (XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + DEVICE.capability->SIZE);
-	DEVICE.runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + DEVICE.capability->RTME);
-	DEVICE.doorbell = (XHCI_DOORBELL *) core_mapping(xhciBase + DEVICE.capability->BELL);
+	controller->address = xhciBase;
+	controller->capability = (XHCI_CAPABILITY_SPACE *) core_mapping(xhciBase);
+	controller->operational = (XHCI_OPERATIONAL_SPACE *) core_mapping(xhciBase + controller->capability->SIZE);
+	controller->runtime = (XHCI_RUNTIME_SPACE *) core_mapping(xhciBase + controller->capability->RTME);
+	controller->doorbell = (XHCI_DOORBELL *) core_mapping(xhciBase + controller->capability->BELL);
+	controller->interrupt = intvec;
 
-	DWORD reset = xhci_reset_controller(&DEVICE);
+	DWORD reset = xhci_reset_controller(controller);
 	if (!reset)
 	{
 		simple_output("Reset failed\n");
 		return;
 	}
 
-	xhci_configure_controller(&DEVICE);
+	xhci_configure_controller(controller);
 
-	if (!xhci_start_controller(&DEVICE))
+	if (!xhci_start_controller(controller))
 	{
 		simple_output("XHCI start failed\n");
 		return;
@@ -56,14 +66,14 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 
 	__halt();
 	__halt();
-	DWORD maxprt = DEVICE.capability->PORT;
+	DWORD maxprt = controller->capability->PORT;
 	for (DWORD i = 0; i < maxprt; i++)
 	{
-		if (!DEVICE.operational->PORT[i].CCSS)
+		if (!controller->operational->PORT[i].CCSS)
 			continue;
 
 		printf("Port %lu\n", i);
-		xhci_setup_device(&DEVICE, i);
+		xhci_setup_device(controller, i);
 	}
 }
 DWORD xhci_reset_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
@@ -320,9 +330,19 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 }
 void xhci_interrupt(INTERRUPT_STACK *stack)
 {
-	xhc_event_ring_process(&DEVICE);
+	PCI_EXPRESS_XHCI_CONTROLLER *controller = XHCI_CONTROLLER;
+	while (controller)
+	{
+		if (controller->interrupt == stack->INT)
+			break;
+		controller = controller->next;
+	}
 
-	xhci_interrupt_ack(&DEVICE, 0);
+	if (controller)
+	{
+		xhc_event_ring_process(controller);
+		xhci_interrupt_ack(controller, 0);
+	}
 	eoi_apic(0);
 }
 void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)

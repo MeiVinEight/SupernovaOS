@@ -10,6 +10,7 @@
 #include <acpi/acpi.h>
 #include <driver/pci/pcie.h>
 #include <memory/virtmem.h>
+#include <stdio.h>
 
 QWORD __stdcall coreCRTStartup();
 
@@ -20,11 +21,7 @@ void kprint_cpu()
 	char brand[51];
 	cpuid_brand(brand);
 	brand[48] = 0;
-	simple_output("CPU #");
-	simple_output_number(cpu_local_apic_id());
-	outchar(' ');
-	simple_output(brand);
-	outchar('\n');
+	printf("CPU #%u %s\n", cpu_local_apic_id(), brand);
 }
 QWORD core_mapping(QWORD addr)
 {

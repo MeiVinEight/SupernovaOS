@@ -32,8 +32,8 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 		return 1;
 	}
 	// Input Context
-	device->input = (void *) core_mapping(inputCtxPhy);
-	__memset(device->input, 0, pc << 12);
+	device->context = (void *) core_mapping(inputCtxPhy);
+	__memset(device->context, 0, pc << 12);
 
 	// Allocate a persistent DMA page for control transfer payloads.
 	pc = 1;
@@ -73,14 +73,15 @@ DWORD xhci_usb_initial_max_packet_size(DWORD speed)
 }
 void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 {
+	__memset(device->context, 0, 0x1000);
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
 	DWORD ctx64 = controller->capability->CSZE;
-	volatile XHCI_INPUT_CONTROL_CONTEXT32 *control = xhci_context_get(device->input, -1, ctx64);
+	volatile XHCI_INPUT_CONTROL_CONTEXT32 *control = xhci_context_get(device->context, -1, ctx64);
 	// Enable A0 (Slot Context) and A1 (Endpoint Control Context: EP Context 0)
 	control->ADDX = 3;
 	control->DROP = 0;
 
-	volatile XHCI_SLOT_CONTEXT32 *slot = xhci_context_get(device->input, 0, ctx64);
+	volatile XHCI_SLOT_CONTEXT32 *slot = xhci_context_get(device->context, 0, ctx64);
 	slot->RSTR = device->route;
 	slot->SPED = device->speed;
 	slot->CENT = 1;
@@ -108,7 +109,7 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 			{
 				slot->PSID = hub->slot;
 				slot->PRPN = hub->port + 1;
-				slot->MTTT = ((XHCI_SLOT_CONTEXT32 *) xhci_context_get(hub->input, 0, ctx64))->MTTT;
+				slot->MTTT = ((XHCI_SLOT_CONTEXT32 *) xhci_context_get(hub->context, 0, ctx64))->MTTT;
 				simple_output("xHCI: slot ");
 				simple_output_number(device->slot);
 				simple_output(" TT: hub slog=");
@@ -132,11 +133,9 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 		}
 	}
 
-	printf("xHCI: slot:%u, input ctx route:%u, speed:%u, root port:%u, mps:%lu\n", device->slot, slot->RSTR, slot->SPED, slot->RHPN, maxPs);
-
 	XHCI_TRANSFER_RING *transfer = device->transfer[1];
 
-	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->input, 1, ctx64);
+	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->context, 1, ctx64);
 	endpoint0->STAT = XHCI_ENDPOINT_STATE_DISABLED; // 0
 	endpoint0->TYPE = XHCI_ENDPOINT_TYPE_CONTROL; // 4
 	// Max Packet Size
@@ -163,7 +162,7 @@ DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLE
 {
 	volatile XHCI_TRB_ADDRESS_DEVICE trb;
 	__memset(&trb, 0, sizeof(XHCI_TRB_ADDRESS_DEVICE));
-	trb.CTXT = physical_address((QWORD) device->input);
+	trb.CTXT = physical_address((QWORD) device->context);
 
 	/*
 		Block Set Address Request (BSR). When this flag is set to '0' the Address Device Command shall
@@ -363,7 +362,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		printf("Evalute Context for Max Packet Size: %lu\n", reportMaxPs);
 		XHCI_TRB_EVALUATE_CONTEXT evaluate;
 		__memset(&evaluate, 0, sizeof(XHCI_TRB_EVALUATE_CONTEXT));
-		evaluate.CTXT = physical_address((QWORD) device->input);
+		evaluate.CTXT = physical_address((QWORD) device->context);
 		evaluate.TYPE = XHCI_TRB_TYPE_EVALUATE_CONTEXT;
 		evaluate.SLOT = device->slot;
 		if ((rc = xhci_send_command(controller, &evaluate, 0)) != XHCI_CODE_SUCCESS)
@@ -413,10 +412,10 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	// Sync the input context with the xHC's current output context
 	// so slot and EP0 state are up-to-date before we add new endpoints
 	DWORD ctx64 = controller->capability->CSZE;
-	__memcpy(((XHCI_SLOT_CONTEXT32 *) device->input) + (1 << ctx64), (void *) controller->context[device->slot], 32 * (sizeof(XHCI_SLOT_CONTEXT32) << ctx64));
+	__memcpy(((XHCI_SLOT_CONTEXT32 *) device->context) + (1 << ctx64), (void *) controller->context[device->slot], 32 * (sizeof(XHCI_SLOT_CONTEXT32) << ctx64));
 
 	// Reset input control context flags (clear stale bits from ADDRESS_DEVICE)
-	XHCI_INPUT_CONTROL_CONTEXT32 *ictx = device->input;
+	XHCI_INPUT_CONTROL_CONTEXT32 *ictx = device->context;
 	ictx->DROP = 0;
 	ictx->ADDX = 1;
 

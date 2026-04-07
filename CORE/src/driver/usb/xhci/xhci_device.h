@@ -7,6 +7,7 @@
 
 #include <types.h>
 #include <driver/usb/xhci/xhc_ring.h>
+#include <driver/usb/usb_desc.h>
 
 /*
 // xHci Spec Section 7.2.1 Protocol Speed ID (PSI) (page 524)
@@ -29,6 +30,7 @@ typedef struct _XHCI_USB_DEVICE
 	struct _XHCI_USB_DEVICE *parent;
 	// Input Context
 	void *input;
+	STANDARD_USB_CONFIGURATION *configuration;
 	QWORD persistent;
 	// Transfer Ring
 	XHCI_TRANSFER_RING transfer;

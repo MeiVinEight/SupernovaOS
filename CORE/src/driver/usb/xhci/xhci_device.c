@@ -392,6 +392,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		return;
 	}
 	printf("USB: slot %u config: %u interface(s)\n", device->slot, conf->IFAC);
+	device->configuration = conf;
 
 	// Sync the input context with the xHC's current output context
 	// so slot and EP0 state are up-to-date before we add new endpoints
@@ -405,7 +406,30 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 
 	DWORD offset = 0;
 	DWORD dataLen = (conf->TLEN > 9) ? (conf->TLEN - 9) : 0;
+	STANDARD_USB_INTERFACE *iface;
 	while (offset + 2 <= dataLen)
 	{
+		iface = (STANDARD_USB_INTERFACE *) (conf->DATA + offset);
+		if (iface->LENG < 2)
+			goto NEXT;
+		if (iface->TYPE == USB_DESC_INTERFACE && iface->LENG >= 9)
+			break;
+
+		NEXT:
+		offset += iface->LENG;
+	}
+
+	USB_DEVICE_SETUP_DATA requ;
+	requ.RECP = 0; // Device
+	requ.RTYP = 0; // Standard
+	requ.DIRE = 0; // Host to Device
+	requ.REQU = USB_REQ_SET_CONFIGURATION;
+	requ.VALU = conf->CNFV;
+	requ.INDX = 0;
+	requ.LENG = 0;
+	if ((rc = xhci_send_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
+	{
+		printf("xHCI: USB Set Configuration failed: %lu\n", rc);
+		return;
 	}
 }

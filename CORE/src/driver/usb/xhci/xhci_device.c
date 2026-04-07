@@ -267,6 +267,36 @@ DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
 	requ.LENG = len;
 	return xhci_send_control_transfer(device, &requ, out, len);
 }
+DWORD xhci_get_config_descriptor(XHCI_USB_DEVICE *device, DWORD indx, void *out, DWORD len)
+{
+	if (indx > 0xFF)
+		return -1;
+	USB_DEVICE_SETUP_DATA requ;
+	__memset(&requ, 0, sizeof(USB_DEVICE_SETUP_DATA));
+	requ.RECP = 0; // Device
+	requ.RTYP = 0; // Standard
+	requ.DIRE = 1; // Device To Host
+	requ.REQU = USB_REQ_GET_DESCRIPTOR;
+	requ.VALU = (USB_DESC_CONFIGURATION << 8) | indx;
+	requ.INDX = 0;
+	requ.LENG = len;
+	return xhci_send_control_transfer(device, &requ, out, len);
+}
+DWORD xhci_get_string_descriptor(XHCI_USB_DEVICE *device, DWORD indx, STANDARD_USB_STRING *out, DWORD len)
+{
+	if (indx > 0xFF)
+		return -1;
+	USB_DEVICE_SETUP_DATA requ;
+	__memset(&requ, 0, sizeof(USB_DEVICE_SETUP_DATA));
+	requ.RECP = 0; // Device
+	requ.RTYP = 0; // Standard
+	requ.DIRE = 1; // Device To Host
+	requ.REQU = USB_REQ_GET_DESCRIPTOR;
+	requ.VALU = (USB_DESC_STRING << 8) | indx;
+	requ.INDX = 0;
+	requ.LENG = len;
+	return xhci_send_control_transfer(device, &requ, out, len);
+}
 void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 {
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
@@ -345,5 +375,37 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		printf("xHCI: Failed to get full device descriptor: %lu for slot %u\n", rc, device->slot);
 		return;
 	}
-	printf("USB Vendor:%04X Product:%04X\n", desc.VNID, desc.PRID);
+	printf("USB Vendor:%04X Product:%04X, %u config(s)\n", desc.VNID, desc.PRID, desc.CNFN);
+
+	STANDARD_USB_CONFIGURATION iconf;
+	__memset(&iconf, 0, sizeof(STANDARD_USB_CONFIGURATION));
+	if ((rc = xhci_get_config_descriptor(device, 0, &iconf, 9)) != XHCI_CODE_SUCCESS)
+	{
+		printf("xHCI: Failed to get standard configuration descriptor: %lu\n", rc);
+		return;
+	}
+	STANDARD_USB_CONFIGURATION *conf = heap_alloc(iconf.TLEN);
+	__memset(conf, 0, iconf.TLEN);
+	if ((rc = xhci_get_config_descriptor(device, 0, conf, iconf.TLEN)) != XHCI_CODE_SUCCESS)
+	{
+		printf("xHCI: Failed to get total configuration descriptor: %lu\n", rc);
+		return;
+	}
+	printf("USB: slot %u config: %u interface(s)\n", device->slot, conf->IFAC);
+
+	// Sync the input context with the xHC's current output context
+	// so slot and EP0 state are up-to-date before we add new endpoints
+	DWORD ctx64 = controller->capability->CSZE;
+	__memcpy(((XHCI_SLOT_CONTEXT32 *) device->input) + (1 << ctx64), (void *) controller->context[device->slot], 32 * (sizeof(XHCI_SLOT_CONTEXT32) << ctx64));
+
+	// Reset input control context flags (clear stale bits from ADDRESS_DEVICE)
+	XHCI_INPUT_CONTROL_CONTEXT32 *ictx = device->input;
+	ictx->DROP = 0;
+	ictx->ADDX = 1;
+
+	DWORD offset = 0;
+	DWORD dataLen = (conf->TLEN > 9) ? (conf->TLEN - 9) : 0;
+	while (offset + 2 <= dataLen)
+	{
+	}
 }

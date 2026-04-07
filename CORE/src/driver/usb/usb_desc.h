@@ -92,5 +92,92 @@ typedef struct _STANDARD_USB_DEVICE
 	// Number of possible configurations
 	BYTE  CNFN;
 } STANDARD_USB_DEVICE;
+typedef struct _STANDARD_USB_CONFIGURATION
+{
+	// Size of this descriptor in bytes
+	BYTE LENG;
+	// CONFIGURATION Descriptor Type
+	BYTE TYPE;
+	/**
+	 * Total length of data returned for this
+	 * configuration. Includes the combined length
+	 * of all descriptors (configuration, interface,
+	 * endpoint, and class- or vendor-specific)
+	 * returned for this configuration.
+	 */
+	WORD TLEN;
+	// Number of interfaces supported by this configuration
+	BYTE IFAC;
+	/**
+	 * Value to use as an argument to the
+	 * SetConfiguration() request to select this
+	 * configuration
+	 */
+	BYTE CNFV;
+	// Index of string descriptor describing this configuration
+	BYTE CFGI;
+	/**
+	 * Configuration characteristics
+	 * D7: Reserved (set to one)
+	 * D6: Self-powered
+	 * D5: Remote Wakeup
+	 * D4...0: Reserved (reset to zero)
+	 * D7 is reserved and must be set to one for
+	 * historical reasons.
+	 *
+	 * A device configuration that uses power from
+	 * the bus and a local source reports a non-zero
+	 * value in bMaxPower to indicate the amount of
+	 * bus power required and sets D6. The actual
+	 * power source at runtime may be determined
+	 * using the GetStatus(DEVICE) request (see
+	 * Section 9.4.5).
+	 *
+	 * If a device configuration supports remote
+	 * wakeup, D5 is set to one.
+	 */
+	BYTE ATTR;
+	/**
+	 * Maximum power consumption of the USB
+	 * device from the bus in this specific
+	 * configuration when the device is fully
+	 * operational. Expressed in 2 mA units
+	 * (i.e., 50 = 100 mA).
+	 *
+	 * Note: A device configuration reports whether
+	 * the configuration is bus-powered or self powered.
+	 *
+	 * Device status reports whether the
+	 * device is currently self-powered. If a device is
+	 * disconnected from its external power source, it
+	 * updates device status to indicate that it is no
+	 * longer self-powered.
+	 *
+	 * A device may not increase its power draw
+	 * from the bus, when it loses its external power
+	 * source, beyond the amount reported by its
+	 * configuration.
+	 *
+	 * If a device can continue to operate when
+	 * disconnected from its external power source, it
+	 * continues to do so. If the device cannot
+	 * continue to operate, it fails operations it can
+	 * no longer support. The USB System Software
+	 * may determine the cause of the failure by
+	 * checking the status and noting the loss of the
+	 * device’s power source.
+	 */
+	BYTE MPWR;
+	BYTE DATA[];
+} STANDARD_USB_CONFIGURATION;
+typedef struct _STANDARD_USB_STRING
+{
+	// Size of this descriptor in bytes
+	BYTE LENG;
+	// STRING Descriptor Type
+	BYTE TYPE;
+	// LANGID code
+	WORD DATA[];
+} STANDARD_USB_STRING;
 
 #endif //SUPERNOVAOS_USB_DESC_H

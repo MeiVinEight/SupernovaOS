@@ -48,7 +48,7 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 	device->persistent = persPhyAddr;
 
 	// Trasnfer Ring
-	xhc_transfer_ring_create(&device->transfer, 1);
+	xhc_transfer_ring_create(device->transfer[1], 1);
 
 	device->route = 0;
 	device->port = portId;
@@ -134,6 +134,8 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 
 	printf("xHCI: slot:%u, input ctx route:%u, speed:%u, root port:%u, mps:%lu\n", device->slot, slot->RSTR, slot->SPED, slot->RHPN, maxPs);
 
+	XHCI_TRANSFER_RING *transfer = device->transfer[1];
+
 	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->input, 1, ctx64);
 	endpoint0->STAT = XHCI_ENDPOINT_STATE_DISABLED; // 0
 	endpoint0->TYPE = XHCI_ENDPOINT_TYPE_CONTROL; // 4
@@ -151,8 +153,8 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 	endpoint0->MEPL = 0;
 	// Max ESIT Payload Hi
 	endpoint0->MEPH = 0;
-	endpoint0->TRDP = physical_address((QWORD) device->transfer.RING);
-	endpoint0->TRDP |= device->transfer.CYCL;
+	endpoint0->TRDP = physical_address((QWORD) transfer->RING);
+	endpoint0->TRDP |= transfer->CYCL;
 }
 void xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
 {
@@ -178,7 +180,7 @@ DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLE
 DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len)
 {
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
-	XHCI_TRANSFER_RING *transfer = (XHCI_TRANSFER_RING *) &device->transfer;
+	XHCI_TRANSFER_RING *transfer = device->transfer[1];
 
 	// Use the device's persisitent DMA buffer
 	if (!device->persistent)
@@ -251,7 +253,7 @@ DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SE
 	}
 	*/
 
-	volatile XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) &device->transfer.COMP;
+	volatile XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) &transfer->COMP;
 	xfer->CCOD = 0;
 	xhc_control_doorbell(controller->doorbell, device->slot);
 	while (!xfer->CCOD) delay(1);

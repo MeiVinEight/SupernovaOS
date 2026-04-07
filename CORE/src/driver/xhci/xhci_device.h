@@ -33,9 +33,9 @@ typedef struct _XHCI_USB_DEVICE
 	STANDARD_USB_CONFIGURATION *configuration;
 	QWORD persistent;
 	// Transfer Ring
-	XHCI_TRANSFER_RING transfer;
+	XHCI_TRANSFER_RING control;
 	// Endpoint Transfer
-	XHCI_TRANSFER_RING *endpoint[16];
+	XHCI_TRANSFER_RING *transfer[16];
 	// Route String
 	DWORD route;
 	// Device Port

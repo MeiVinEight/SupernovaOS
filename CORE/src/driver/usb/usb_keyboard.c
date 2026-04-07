@@ -3,8 +3,10 @@
 #include <driver/usb/usb_hid.h>
 #include <driver/xhci/xhc_ring.h>
 #include <stdio.h>
+#include <intrinsic.h>
 
 XHCI_USB_DEVICE *USB_KEYBOARD;
+volatile BYTE KEY_COUNT = 0;
 
 DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
 {
@@ -63,19 +65,31 @@ void xhci_keyboard_process()
 		return;
 
 	XHCI_TRANSFER_RING *transfer = 0;
-	for (DWORD i = 3; i < 32; i += 2)
+	DWORD epid = 3;
+	for (; epid < 32; epid += 2)
 	{
-		if (device->transfer[i])
+		if (device->transfer[epid])
 		{
-			transfer = device->transfer[i];
+			transfer = device->transfer[epid];
 			break;
 		}
 	}
 	if (!transfer)
 		return;
-	XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(transfer);
-	if (blk != 0)
+	HID_STANDARD_KEYEVENT event;
+	__memset(&event, 0, sizeof(HID_STANDARD_KEYEVENT));
+	event.RSV = 1;
+	DWORD cc;
+	if ((cc = xhci_transfer(device, epid, 0, &event, sizeof(HID_STANDARD_KEYEVENT))) != XHCI_CODE_SUCCESS)
 	{
-		printf("Keyboard Event @ %p\n", blk);
+		printf("Keyboard Transfer Error: %lu\n", cc);
+		return;
 	}
+	printf("HID_STANDARD_EVENT %02x:", KEY_COUNT++);
+	BYTE *mem = (BYTE *) &event;
+	for (int i = 0; i < sizeof(HID_STANDARD_KEYEVENT); i++)
+	{
+		printf(" %02x", mem[i]);
+	}
+	printf("\n");
 }

@@ -63,7 +63,7 @@ typedef struct _XHCI_TRB_GENERIC
 } XHCI_TRB_GENERIC;
 typedef struct _XHCI_TRB_NORMAL
 {
-             	/**
+	/**
 	 * Data Buffer Pointer Hi and Lo. These fields represent the 64-bit address of the TRB data area
 	 * for this transaction or 8 bytes of immediate data. The Immediate Data (IDT) control flag selects
 	 * this option for each Normal TRB.

@@ -195,17 +195,17 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 		return 1;
 	}
 
-	DWORD isIn = requ->DIRE;
-
 	// For OUT data stage, copy caller data into DMA buffer enqueue
 	void *dmaBuffer = (void *) core_mapping(device->persistent);
-	if (len && !isIn && buf)
-		__memcpy(dmaBuffer, buf, len);
-	else
-		__memset(dmaBuffer, 0, 0x1000);
 
 	if (requ)
 	{
+		// For OUT data stage, copy caller data into DMA buffer enqueue
+		DWORD isIn = requ->DIRE;
+		if (!isIn && buf)
+			__memcpy(dmaBuffer, buf, len);
+		else
+			__memset(dmaBuffer, 0, 0x1000);
 		// Setup Stage TRB
 		volatile XHCI_TRB_SETUP_STAGE setup;
 		__memset(&setup, 0, sizeof(XHCI_TRB_SETUP_STAGE));
@@ -240,6 +240,7 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 	}
 	else
 	{
+		__memset(dmaBuffer, 0, 0x1000);
 		XHCI_TRB_NORMAL normal;
 		__memset(&normal, 0, sizeof(XHCI_TRB_NORMAL));
 		normal.DATA = device->persistent;

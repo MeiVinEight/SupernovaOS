@@ -46,10 +46,10 @@ typedef union _PCI_DEVICE_VENDOR
 {
 	struct
 	{
-		volatile WORD VENDOR;
-		volatile WORD DEVICE;
+		WORD VENDOR;
+		WORD DEVICE;
 	};
-	volatile DWORD ID;
+	DWORD ID;
 } PCI_DEVICE_VENDOR;
 typedef union _PCI_DEVICE_SUBSYSTEM
 {

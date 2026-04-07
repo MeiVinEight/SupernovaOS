@@ -1,4 +1,4 @@
-#include <driver/usb/xhci/xhc_ring.h>
+#include <driver/xhci/xhc_ring.h>
 #include <core.h>
 #include <memory/virtmem.h>
 #include <intrinsic.h>

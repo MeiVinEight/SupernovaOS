@@ -5,7 +5,7 @@
 #ifndef SUPERNOVAOS_XHCI_PORT_H
 #define SUPERNOVAOS_XHCI_PORT_H
 
-#include <driver/usb/xhci/xhci.h>
+#include <driver/xhci/xhci.h>
 
 #define XHCI_PORTSC_RWX_MASK 0x0E01C3E0
 #define XHCI_PORTSC_W1C_MASK 0x00FE0002

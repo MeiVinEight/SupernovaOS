@@ -1,4 +1,4 @@
-#include <driver/usb/xhci/xhci_context.h>
+#include <driver/xhci/xhci_context.h>
 
 void *xhci_context_get(void *context, DWORD idx, DWORD cx64)
 {

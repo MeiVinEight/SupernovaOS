@@ -6,7 +6,7 @@
 #define SUPERNOVAOS_XHCI_DEVICE_H
 
 #include <types.h>
-#include <driver/usb/xhci/xhc_ring.h>
+#include <driver/xhci/xhc_ring.h>
 #include <driver/usb/usb_desc.h>
 
 /*

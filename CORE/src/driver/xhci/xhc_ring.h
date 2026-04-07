@@ -5,8 +5,8 @@
 #define SUPERNOVA_XHC_RING_H
 
 #include <types.h>
-#include <driver/usb/xhci/xhc_trb.h>
-#include <driver/usb/xhci/xhc_regs.h>
+#include <driver/xhci/xhc_trb.h>
+#include <driver/xhci/xhc_regs.h>
 
 #define XHCI_DOORBELL_COMMAND_RING 0
 #define XHCI_DOORBELL_CONTROL_RING 1

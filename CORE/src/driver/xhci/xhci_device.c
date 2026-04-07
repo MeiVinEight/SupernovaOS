@@ -1,6 +1,6 @@
-#include <driver/usb/xhci/xhci_device.h>
-#include <driver/usb/xhci/xhci_context.h>
-#include <driver/usb/xhci/xhci.h>
+#include <driver/xhci/xhci_device.h>
+#include <driver/xhci/xhci_context.h>
+#include <driver/xhci/xhci.h>
 #include <driver/usb/usb_desc.h>
 #include <memory/virtmem.h>
 #include <core.h>

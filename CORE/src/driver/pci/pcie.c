@@ -2,7 +2,7 @@
 #include <intrinsic.h>
 #include <core.h>
 #include <driver/pci/pci.h>
-#include <driver/usb/xhci/xhci.h>
+#include <driver/xhci/xhci.h>
 #include <driver/pci/msi/msix.h>
 #include <driver/pci/msi/msi.h>
 #include <console.h>

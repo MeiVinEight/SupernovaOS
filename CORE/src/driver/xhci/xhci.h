@@ -7,8 +7,8 @@
 
 #include <types.h>
 #include <driver/pci/pcie.h>
-#include <driver/usb/xhci/xhc_regs.h>
-#include <driver/usb/xhci/xhc_ring.h>
+#include <driver/xhci/xhc_regs.h>
+#include <driver/xhci/xhc_ring.h>
 #include <interrupt/interrupt.h>
 
 typedef struct _PCI_EXPRESS_XHCI_CONTROLLER

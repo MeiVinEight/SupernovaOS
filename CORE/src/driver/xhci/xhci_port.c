@@ -1,4 +1,4 @@
-#include <driver/usb/xhci/xhci_port.h>
+#include <driver/xhci/xhci_port.h>
 #include <core.h>
 #include <timer/timer.h>
 #include <console.h>

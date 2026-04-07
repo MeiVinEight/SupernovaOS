@@ -1,13 +1,13 @@
-#include <driver/usb/xhci/xhci.h>
+#include <driver/xhci/xhci.h>
 #include <console.h>
 #include <core.h>
 #include <intrinsic.h>
 #include <memory/virtmem.h>
-#include <driver/usb/xhci/xhc_regs.h>
+#include <driver/xhci/xhc_regs.h>
 #include <driver/pci/pci.h>
 #include <interrupt/apic.h>
-#include <driver/usb/xhci/xhci_port.h>
-#include <driver/usb/xhci/xhci_device.h>
+#include <driver/xhci/xhci_port.h>
+#include <driver/xhci/xhci_device.h>
 #include <stdio.h>
 #include <timer/timer.h>
 #include <arch/processor.h>

@@ -169,7 +169,7 @@ DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLE
 	trb.SLOT = device->slot;
 	return xhci_send_command(device->controller, (void *) &trb, completion);
 }
-DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DATA *requ, void *buf, WORD len)
+DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, DWORD wait, USB_DEVICE_SETUP_DATA *requ, void *buf, WORD len)
 {
 	if (!endpoint)
 		return -1;
@@ -243,7 +243,7 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 		__memset(dmaBuffer, 0, 0x1000);
 		XHCI_TRB_NORMAL normal;
 		__memset(&normal, 0, sizeof(XHCI_TRB_NORMAL));
-		normal.DATA = device->persistent;
+		normal.DATA = physical_address((QWORD) buf);
 		normal.TTRL = len;
 		normal.IONC = 1;
 		normal.TYPE = XHCI_TRB_TYPE_NORMAL;
@@ -267,14 +267,17 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 	volatile XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) &transfer->COMP;
 	xfer->CCOD = 0;
 	xhc_ring_doorbell(controller->doorbell, device->slot, endpoint);
-	while (!xfer->CCOD) delay(1);
-	if (len && buf)
-		__memcpy(buf, dmaBuffer, len);
+	if (wait)
+	{
+		while (!xfer->CCOD) delay(1);
+		if (len && buf && requ)
+			__memcpy(buf, dmaBuffer, len);
+	}
 	return xfer->CCOD;
 }
 DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len)
 {
-	return xhci_transfer((XHCI_USB_DEVICE *) device, 1, requ, buf, len);
+	return xhci_transfer((XHCI_USB_DEVICE *) device, 1, 1, requ, buf, len);
 }
 DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
 {

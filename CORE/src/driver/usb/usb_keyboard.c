@@ -4,8 +4,10 @@
 #include <driver/xhci/xhc_ring.h>
 #include <stdio.h>
 #include <intrinsic.h>
+#include <acpi/fadt.h>
 
 XHCI_USB_DEVICE *USB_KEYBOARD;
+HID_STANDARD_KEYEVENT KEYEVENT;
 volatile BYTE KEY_COUNT = 0;
 
 DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
@@ -56,6 +58,8 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	if (xhci_usb_configure_xfer_endpoint(device, endpoint))
 		return 1;
 	USB_KEYBOARD = device;
+	BYTE epid = ((endpoint->ADDR << 1) | (endpoint->ADDR >> 7)) & 31;
+	device->transfer[epid]->COMP.CCOD = XHCI_CODE_SUCCESS;
 	return 0;
 }
 void xhci_keyboard_process()
@@ -76,20 +80,33 @@ void xhci_keyboard_process()
 	}
 	if (!transfer)
 		return;
-	HID_STANDARD_KEYEVENT event;
-	__memset(&event, 0, sizeof(HID_STANDARD_KEYEVENT));
-	event.RSV = 1;
-	DWORD cc;
-	if ((cc = xhci_transfer(device, epid, 0, &event, sizeof(HID_STANDARD_KEYEVENT))) != XHCI_CODE_SUCCESS)
+
+	if (transfer->COMP.CCOD)
 	{
-		printf("Keyboard Transfer Error: %lu\n", cc);
-		return;
+		if (transfer->COMP.CCOD != XHCI_CODE_SUCCESS)
+		{
+			printf("USB Keyboard Error: %u\n", transfer->COMP.CCOD);
+			// Disable USB Keyboard
+			transfer->COMP.CCOD = 0;
+			return;
+		}
+
+		printf("HID_STANDARD_EVENT %02x:", KEY_COUNT++);
+		BYTE *mem = (BYTE *) &KEYEVENT;
+		for (int i = 0; i < sizeof(HID_STANDARD_KEYEVENT); i++)
+		{
+			printf(" %02x", mem[i]);
+		}
+		printf("\n");
+
+		for (int i = 0; i < 6; i++)
+		{
+			if ((KEYEVENT.KEY[i] == KEYEVENT_KEY_ESC) && (KEYEVENT.MOD & KEYEVENT_CTRL_LCTRL))
+				acpi_shutdown();
+		}
+
+		__memset(&KEYEVENT, 0, sizeof(HID_STANDARD_KEYEVENT));
+		KEYEVENT.RSV = 1;
+		xhci_transfer(device, epid, 0, 0, &KEYEVENT, sizeof(HID_STANDARD_KEYEVENT));
 	}
-	printf("HID_STANDARD_EVENT %02x:", KEY_COUNT++);
-	BYTE *mem = (BYTE *) &event;
-	for (int i = 0; i < sizeof(HID_STANDARD_KEYEVENT); i++)
-	{
-		printf(" %02x", mem[i]);
-	}
-	printf("\n");
 }

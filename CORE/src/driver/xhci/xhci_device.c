@@ -71,89 +71,61 @@ DWORD xhci_usb_initial_max_packet_size(DWORD speed)
 			return 8;
 	}
 }
-void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
+void xhci_usb_configure_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *epdesc)
 {
-	__memset(device->context, 0, 0x1000);
-	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
-	DWORD ctx64 = controller->capability->CSZE;
-	volatile XHCI_INPUT_CONTROL_CONTEXT32 *control = xhci_context_get(device->context, -1, ctx64);
-	// Enable A0 (Slot Context) and A1 (Endpoint Control Context: EP Context 0)
-	control->ADDX = 3;
-	control->DROP = 0;
+	BYTE epid = ((epdesc->ADDR << 1) | (epdesc->ADDR >> 7)) & 31;
+	BYTE eptype = epdesc->ATTR & USB_ENDPOINT_XFER_TYPE;
+	if (!epid)
+		return;
+	if (epid > 31)
+		return;
 
-	volatile XHCI_SLOT_CONTEXT32 *slot = xhci_context_get(device->context, 0, ctx64);
-	slot->RSTR = device->route;
-	slot->SPED = device->speed;
-	slot->CENT = 1;
-	slot->INTX = 0;
-	if (!device->route)
+	DWORD type = eptype;
+	if ((epdesc->ADDR & USB_ENDPOINT_MASK_DIR) || eptype == USB_XFER_TYPE_CTRL)
+		type |= 4;
+	DWORD interval = epdesc->ITVL;
+	if (device->speed == XHCI_USB_SPEED_FULL_SPEED || device->speed == XHCI_USB_SPEED_LOW_SPEED)
 	{
-		// Root Hub device: port id is the root hub port number
-		slot->RHPN = device->port + 1;
+		DWORD microframes = (interval ? interval : 1) << 3;
+		BYTE exponent = 0;
+		for (DWORD v = microframes; v > 1; v >>= 1) exponent++;
+		if (exponent < 3) exponent = 3;
+		if (exponent > 10) exponent = 10;
+		interval = exponent;
 	}
 	else
-	{
-		simple_output("Not root hub\n");
-		// Hub-downstream device: use the root port of the topology chain
-		slot->RHPN = device->root + 1;
+		interval -= !!interval;
 
-		// xHCI spec Section 6.2.2: parent hub slot id and parent port number
-		// shall reference the nearest HS hub providing the TT, only for LS/FS
-		// device. Walk up the hub chain to find it.
-		if (device->speed == XHCI_USB_SPEED_LOW_SPEED || device->speed == XHCI_USB_SPEED_FULL_SPEED)
-		{
-			XHCI_USB_DEVICE *hub = device->parent;
-			while (hub && hub->speed != XHCI_USB_SPEED_HIGH_SPEED)
-				hub = hub->parent;
-			if (hub && hub->speed == XHCI_USB_SPEED_HIGH_SPEED)
-			{
-				slot->PSID = hub->slot;
-				slot->PRPN = hub->port + 1;
-				slot->MTTT = ((XHCI_SLOT_CONTEXT32 *) xhci_context_get(hub->context, 0, ctx64))->MTTT;
-				simple_output("xHCI: slot ");
-				simple_output_number(device->slot);
-				simple_output(" TT: hub slog=");
-				simple_output_number(hub->slot);
-				simple_output(" hub port=");
-				simple_output_number(hub->port);
-				simple_output(" MTT=");
-				simple_output_number(slot->MTTT);
-				outchar('\n');
-			}
-			else
-			{
-				simple_output("xHCI: slot ");
-				simple_output_number(device->slot);
-				simple_output(" TT: no HS hub found (parent slot ");
-				simple_output_number((device->parent) ? (device->parent->slot) : 0);
-				simple_output(" speed ");
-				simple_output_number((device->parent) ? (device->parent->speed) : 0);
-				outchar('\n');
-			}
-		}
-	}
+	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
+	DWORD ctx64 = controller->capability->CSZE;
+	XHCI_INPUT_CONTROL_CONTEXT32 *control = device->context;
+	__memset(control, 0, 33 * (32 << ctx64));
+	control->DROP = 0;
+	control->ADDX = 1 | (1 << epid);
 
-	XHCI_TRANSFER_RING *transfer = device->transfer[1];
+	XHCI_SLOT_CONTEXT32 *slot = (XHCI_SLOT_CONTEXT32 *) (control + (1 << ctx64));
+	slot->SPED = device->speed;
+	slot->CENT = epid;
+	slot->RHPN = device->port + 1;
 
-	volatile XHCI_ENDPOINT_CONTEXT32 *endpoint0 = xhci_context_get(device->context, 1, ctx64);
-	endpoint0->STAT = XHCI_ENDPOINT_STATE_DISABLED; // 0
-	endpoint0->TYPE = XHCI_ENDPOINT_TYPE_CONTROL; // 4
-	// Max Packet Size
-	endpoint0->MPSZ = maxPs;
-	// Max Brush Size
-	endpoint0->MBSZ = 0;
-	// Error Count
-	//endpoint0->CERR = 3;
-	// Interval
-	endpoint0->ITVL = 0;
-	// Average TRB Length
-	endpoint0->AVRT = maxPs;
-	// Max ESIT Payload Lo
-	endpoint0->MEPL = 0;
-	// Max ESIT Payload Hi
-	endpoint0->MEPH = 0;
-	endpoint0->TRDP = physical_address((QWORD) transfer->RING);
-	endpoint0->TRDP |= transfer->CYCL;
+	XHCI_ENDPOINT_CONTEXT32 *endpoint = (XHCI_ENDPOINT_CONTEXT32 *) (slot + (epid << ctx64));
+	XHCI_TRANSFER_RING *transfer = device->transfer[epid];
+	if (eptype == USB_XFER_TYPE_INT)
+		endpoint->ITVL = interval;
+	endpoint->TYPE = type;
+	endpoint->MPSZ = epdesc->MPSZ;
+	endpoint->TRDP = physical_address((QWORD) transfer->RING);
+	endpoint->TRDP |= transfer->CYCL;
+	endpoint->AVRT = epdesc->MPSZ;
+}
+void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
+{
+	STANDARD_USB_ENDPOINT epdesc;
+	__memset(&epdesc, 0, sizeof(STANDARD_USB_ENDPOINT));
+	epdesc.ADDR = 0x80;
+	epdesc.ATTR = 0;
+	epdesc.MPSZ = maxPs;
+	xhci_usb_configure_endpoint(device, &epdesc);
 }
 void xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
 {

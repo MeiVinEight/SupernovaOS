@@ -8,6 +8,7 @@
 #include <types.h>
 #include <driver/usb/usb_req.h>
 
+#define XHCI_TRB_TYPE_NORMAL             1
 #define XHCI_TRB_TYPE_SETUP_STAGE        2
 #define XHCI_TRB_TYPE_DATA_STAGE         3
 #define XHCI_TRB_TYPE_STATUS_STAGE       4

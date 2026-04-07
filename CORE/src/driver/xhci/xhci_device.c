@@ -169,7 +169,7 @@ DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLE
 	trb.SLOT = device->slot;
 	return xhci_send_command(device->controller, (void *) &trb, completion);
 }
-DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DATA *requ, void *buf)
+DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DATA *requ, void *buf, WORD len)
 {
 	if (!endpoint)
 		return -1;
@@ -178,7 +178,6 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
 	XHCI_TRANSFER_RING *transfer = device->transfer[endpoint];
-	DWORD len = requ->LENG;
 
 	// Use the device's persisitent DMA buffer
 	if (!device->persistent)
@@ -205,37 +204,50 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 	else
 		__memset(dmaBuffer, 0, 0x1000);
 
-	// Setup Stage TRB
-	volatile XHCI_TRB_SETUP_STAGE setup;
-	__memset(&setup, 0, sizeof(XHCI_TRB_SETUP_STAGE));
-	__memcpy(&setup, requ, sizeof(USB_DEVICE_SETUP_DATA));
-	setup.TYPE = XHCI_TRB_TYPE_SETUP_STAGE;
-	setup.TTRL = 8;
-	setup.INTT = 0;
-	setup.IDAT = 1;
-	setup.IONC = 0;
-	// TRT: 0=No Data, 2=OUT Data, 3=IN Data
-	setup.TRTY = (len) ? (isIn ? 3 : 2) : 0;
-
-	xhc_queue_transfer(transfer, (void *) &setup);
-	if (len)
+	if (requ)
 	{
-		volatile XHCI_TRB_DATA_STAGE data;
-		__memset(&data, 0, sizeof(XHCI_TRB_DATA_STAGE));
-		data.TYPE = XHCI_TRB_TYPE_DATA_STAGE;
-		data.DATA = device->persistent;
-		data.TTRL = len;
-		data.DIRE = isIn;
+		// Setup Stage TRB
+		volatile XHCI_TRB_SETUP_STAGE setup;
+		__memset(&setup, 0, sizeof(XHCI_TRB_SETUP_STAGE));
+		__memcpy(&setup, requ, sizeof(USB_DEVICE_SETUP_DATA));
+		setup.TYPE = XHCI_TRB_TYPE_SETUP_STAGE;
+		setup.TTRL = 8;
+		setup.INTT = 0;
+		setup.IDAT = 1;
+		setup.IONC = 0;
+		// TRT: 0=No Data, 2=OUT Data, 3=IN Data
+		setup.TRTY = (len) ? (isIn ? 3 : 2) : 0;
 
-		xhc_queue_transfer(transfer, (void *) &data);
+		xhc_queue_transfer(transfer, (void *) &setup);
+		if (len)
+		{
+			volatile XHCI_TRB_DATA_STAGE data;
+			__memset(&data, 0, sizeof(XHCI_TRB_DATA_STAGE));
+			data.TYPE = XHCI_TRB_TYPE_DATA_STAGE;
+			data.DATA = device->persistent;
+			data.TTRL = len;
+			data.DIRE = isIn;
+
+			xhc_queue_transfer(transfer, (void *) &data);
+		}
+
+		volatile XHCI_TRB_STATUS_STAGE status;
+		__memset(&status, 0, sizeof(XHCI_TRB_STATUS_STAGE));
+		status.TYPE = XHCI_TRB_TYPE_STATUS_STAGE;
+		status.IONC = 1;
+		status.DIRE = (len) ? (isIn ^ 1) : 1;
+		xhc_queue_transfer(transfer, (void *) &status);
 	}
-
-	volatile XHCI_TRB_STATUS_STAGE status;
-	__memset(&status, 0, sizeof(XHCI_TRB_STATUS_STAGE));
-	status.TYPE = XHCI_TRB_TYPE_STATUS_STAGE;
-	status.IONC = 1;
-	status.DIRE = (len) ? (isIn ^ 1) : 1;
-	xhc_queue_transfer(transfer, (void *) &status);
+	else
+	{
+		XHCI_TRB_NORMAL normal;
+		__memset(&normal, 0, sizeof(XHCI_TRB_NORMAL));
+		normal.DATA = device->persistent;
+		normal.TTRL = len;
+		normal.IONC = 1;
+		normal.TYPE = XHCI_TRB_TYPE_NORMAL;
+		xhc_queue_transfer(transfer, &normal);
+	}
 
 	// VL805 quirk: avoid ringing the doorbell near the SOF boundary for
 	// FS non-periodic transfers behind a hub (TT babble avoidance).
@@ -255,12 +267,13 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DA
 	xfer->CCOD = 0;
 	xhc_ring_doorbell(controller->doorbell, device->slot, endpoint);
 	while (!xfer->CCOD) delay(1);
-	__memcpy(buf, dmaBuffer, len);
+	if (len && buf)
+		__memcpy(buf, dmaBuffer, len);
 	return xfer->CCOD;
 }
 DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len)
 {
-	return xhci_transfer((XHCI_USB_DEVICE *) device, 1, requ, buf);
+	return xhci_transfer((XHCI_USB_DEVICE *) device, 1, requ, buf, len);
 }
 DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
 {

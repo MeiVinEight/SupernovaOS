@@ -73,7 +73,7 @@ DWORD xhci_usb_initial_max_packet_size(DWORD speed)
 }
 void xhci_usb_configure_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *epdesc)
 {
-	BYTE epid = ((epdesc->ADDR << 1) | (epdesc->ADDR >> 7)) & 31;
+	BYTE epid = xhci_endpoint_id(epdesc);
 	BYTE eptype = epdesc->ATTR & USB_ENDPOINT_XFER_TYPE;
 	if (!epid)
 		return;
@@ -129,8 +129,7 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 }
 DWORD xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
 {
-	BYTE eptype = endpoint->ATTR & USB_ENDPOINT_XFER_TYPE;
-	BYTE epid = ((endpoint->ADDR << 1) | (endpoint->ADDR >> 7)) & 31;
+	BYTE epid = xhci_endpoint_id(endpoint);
 	printf("Create Endpoint %u\n", epid);
 	((volatile XHCI_USB_DEVICE *) device)->transfer[epid] = heap_alloc(sizeof(XHCI_TRANSFER_RING));
 	XHCI_TRANSFER_RING *transfer = device->transfer[epid];

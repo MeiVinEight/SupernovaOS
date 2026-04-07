@@ -1,7 +1,6 @@
 #include <driver/xhci/xhci_context.h>
 
-void *xhci_context_get(void *context, DWORD idx, DWORD cx64)
+DWORD xhci_endpoint_id(STANDARD_USB_ENDPOINT *endpoint)
 {
-	BYTE *addr = context;
-	return (addr + ((0x20 << cx64) * (idx + 1)));
+	return ((endpoint->ADDR << 1) | (endpoint->ADDR >> 7)) & 0x1F;
 }

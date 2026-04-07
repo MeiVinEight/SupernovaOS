@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <intrinsic.h>
 #include <acpi/fadt.h>
+#include <driver/xhci/xhci_context.h>
 
 XHCI_USB_DEVICE *USB_KEYBOARD;
 HID_STANDARD_KEYEVENT KEYEVENT;
@@ -58,7 +59,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	if (xhci_usb_configure_xfer_endpoint(device, endpoint))
 		return 1;
 	USB_KEYBOARD = device;
-	BYTE epid = ((endpoint->ADDR << 1) | (endpoint->ADDR >> 7)) & 31;
+	BYTE epid = xhci_endpoint_id(endpoint);
 	device->transfer[epid]->COMP.CCOD = XHCI_CODE_SUCCESS;
 	return 0;
 }

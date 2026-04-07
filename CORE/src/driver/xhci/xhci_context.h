@@ -2,10 +2,10 @@
 // Created by MeiVi on 2026/04/01.
 //
 
-#ifndef SUPERNOVAOS_XHCI_CONTEXT_H
-#define SUPERNOVAOS_XHCI_CONTEXT_H
+#pragma once
 
 #include <types.h>
+#include <driver/usb/usb_desc.h>
 
 #define XHCI_ENDPOINT_STATE_DISABLED    0
 #define XHCI_ENDPOINT_STATE_RUNNING     1
@@ -766,6 +766,5 @@ typedef struct _XHCI_INPUT_CONTEXT64
 	XHCI_ENDPOINT_CONTEXT64 ENDP[31];
 } XHCI_INPUT_CONTEXT64;
 
-void *xhci_context_get(void *context, DWORD idx, DWORD cx64);
+DWORD xhci_endpoint_id(STANDARD_USB_ENDPOINT *endpoint);
 
-#endif //SUPERNOVAOS_XHCI_CONTEXT_H

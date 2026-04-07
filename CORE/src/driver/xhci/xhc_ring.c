@@ -47,7 +47,8 @@ void *xhc_queue_transfer(XHCI_TRANSFER_RING *ring, void *trb)
 	// Advance and possibly wrap the enqueue pointer if needed.
 	if (ring->INDX == 0xFF)
 	{
-		ring->RING[0xFF].CTRL ^= 1;
+		(ring->RING[0xFF]).DATA = physical_address((QWORD) ring->RING);
+		(ring->RING[0xFF]).CTRL = (XHCI_TRB_TYPE_LINK << 10) | 2 | ring->CYCL;
 		ring->CYCL ^= 1;
 		ring->INDX = 0;
 	}

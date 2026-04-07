@@ -44,11 +44,11 @@ void setup_pcie()
 					if ((!conf->device) || (conf->device == 0xFFFF))
 						continue;
 
+					/*
 					PCI_DEVICE_VENDOR vendor;
 					vendor.VENDOR = conf->vendor;
 					vendor.DEVICE = conf->device;
 
-					/*
 					printf("PCI Express (%02lX.%02lX.%X) @ %016llX: %06X - ", bus, device, func, funcAddr, conf->class);
 					const char *vendorName = pci_vendor_name(vendor.VENDOR);
 					const char *deviceName = pci_device_name(vendor);

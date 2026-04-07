@@ -276,7 +276,10 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		{
 			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
 			XHCI_USB_DEVICE *usbdev = device->device[xfer->SLOT];
-			__memcpy(&usbdev->transfer.COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
+			WORD epid = xfer->EPID;
+			printf("Transfer Event @ slot=%u, endpoint=%u\n", xfer->SLOT, epid);
+			printf("Endpoint: %p\n", usbdev->endpoint[epid]);
+			__memcpy(&usbdev->endpoint[epid]->COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
@@ -371,6 +374,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	device->device[slotId] = usbdev;
 
 	usbdev->controller = (void *) device;
+	usbdev->endpoint[1] = &usbdev->transfer;
 	if (xhci_setup_usb_device(usbdev, portId, slotId))
 	{
 		simple_output("Setup device failed\n");

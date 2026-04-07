@@ -48,5 +48,7 @@ typedef struct _XHCI_USB_DEVICE
 
 DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId);
 void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device);
+DWORD xhci_usb_hid_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface);
+DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len);
 
 #endif //SUPERNOVAOS_XHCI_DEVICE_H

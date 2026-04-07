@@ -9,6 +9,7 @@
 #include <driver/usb/usb_req.h>
 #include <timer/timer.h>
 #include <stdio.h>
+#include <driver/usb/usb_keyboard.h>
 
 DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 {
@@ -152,6 +153,9 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 	endpoint0->MEPH = 0;
 	endpoint0->TRDP = physical_address((QWORD) device->transfer.RING);
 	endpoint0->TRDP |= device->transfer.CYCL;
+}
+void xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
+{
 }
 DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLETION *completion, const DWORD bsr)
 {
@@ -406,7 +410,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 
 	DWORD offset = 0;
 	DWORD dataLen = (conf->TLEN > 9) ? (conf->TLEN - 9) : 0;
-	STANDARD_USB_INTERFACE *iface;
+	STANDARD_USB_INTERFACE *iface = 0;
 	while (offset + 2 <= dataLen)
 	{
 		iface = (STANDARD_USB_INTERFACE *) (conf->DATA + offset);
@@ -432,4 +436,24 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		printf("xHCI: USB Set Configuration failed: %lu\n", rc);
 		return;
 	}
+
+	if (!iface)
+	{
+		printf("xHCI: USB Interface NOT FOUND for slot %u\n", device->slot);
+		return;
+	}
+
+	printf("USB Interface: num=%u, setting=%u, endpoint=%u, class=%02x, subclass=%02x, proto=%u, iface=%u\n",
+		iface->IFCN, iface->SETT, iface->ENDP, iface->CCOD, iface->SCOD, iface->POTO, iface->IFAC);
+	if (iface->CCOD == USB_CLASS_HID)
+		xhci_usb_hid_setup(device, iface);
+}
+DWORD xhci_usb_hid_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
+{
+	// Doesn't support boot protocol.
+	if (iface->SCOD != USB_INTERFACE_SUBCLASS_BOOT)
+		return -1;
+	if (iface->POTO == USB_INTERFACE_PROTOCOL_KEYBOARD)
+		return xhci_usb_keyboard_setup(device, iface);
+	return -1;
 }

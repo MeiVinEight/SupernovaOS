@@ -29,6 +29,12 @@
 
 #define USB_ENDPOINT_XFER_TYPE 0x03    /* in bmAttributes */
 
+#define USB_CLASS_HID  0x03
+
+#define USB_INTERFACE_SUBCLASS_BOOT     1
+#define USB_INTERFACE_PROTOCOL_KEYBOARD 1
+#define USB_INTERFACE_PROTOCOL_MOUSE    2
+
 typedef struct _STANDARD_USB_DEVICE
 {
 	// Size of this descriptor in bytes
@@ -222,7 +228,7 @@ typedef struct _STANDARD_USB_INTERFACE
 	 * value is zero, this interface only uses the
 	 * Default Control Pipe.
 	 */
-	BYTE ENDC;
+	BYTE ENDP;
 	/**
 	 * Class code (assigned by the USB-IF).
 	 * A value of zero is reserved for future
@@ -267,7 +273,7 @@ typedef struct _STANDARD_USB_INTERFACE
 	 * interface.
 	 */
 	BYTE POTO;
-	// ndex of string descriptor describing this interface
+	// Index of string descriptor describing this interface
 	BYTE IFAC;
 } STANDARD_USB_INTERFACE;
 typedef struct _STANDARD_USB_ENDPOINT

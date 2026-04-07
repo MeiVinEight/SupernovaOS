@@ -19,6 +19,18 @@
 #define USB_REQ_SET_INTERFACE      11
 #define USB_REQ_SYNCH_FRAME        12
 
+#define USB_RECIP_DEVICE    0
+#define USB_RECIP_INTERFACE 1
+#define USB_RECIP_ENDPOINT  2
+#define USB_RECIP_OTHER     3
+
+#define USB_RTYPE_STANDARD  0
+#define USB_RTYPE_CLASS     1
+#define USB_RTYPE_VENDOR    2
+
+#define USB_RDIR_OUT  0
+#define USB_RDIR_IN   1
+
 /*
 bmRequestType |bRequest         |wValue          |wIndex    |wLength    |Data
 --------------------------------------------------------------------------------------

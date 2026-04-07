@@ -8,7 +8,7 @@ XHCI_TRB_GENERIC *xhc_event_ring_pop(XHCI_TRANSFER_RING *ring)
 	if ((ring->RING[ring->INDX].CTRL & XHCI_TRB_CTRL_CYCLE) != ring->CYCL)
 		return 0;
 
-	XHCI_TRB_GENERIC *ret = (XHCI_TRB_GENERIC *) ring->RING + ring->INDX;
+	XHCI_TRB_GENERIC *ret = ring->RING + ring->INDX;
 
 	++ring->INDX;
 	if (!ring->INDX)

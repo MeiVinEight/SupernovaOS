@@ -11,6 +11,7 @@
 #include <driver/pci/pcie.h>
 #include <memory/virtmem.h>
 #include <stdio.h>
+#include <driver/usb/usb_keyboard.h>
 
 QWORD __stdcall coreCRTStartup();
 
@@ -57,5 +58,9 @@ QWORD coreCRTStartup()
 
 	simple_output("OK\n");
 
-	while (1) __halt();
+	while (1)
+	{
+		xhci_keyboard_process();
+		__halt();
+	}
 }

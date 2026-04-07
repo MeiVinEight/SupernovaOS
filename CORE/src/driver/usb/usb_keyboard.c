@@ -1,7 +1,10 @@
 #include <driver/usb/usb_keyboard.h>
 #include <driver/usb/usb_req.h>
 #include <driver/usb/usb_hid.h>
+#include <driver/xhci/xhc_ring.h>
 #include <stdio.h>
+
+XHCI_USB_DEVICE *USB_KEYBOARD;
 
 DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
 {
@@ -48,6 +51,31 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 		return 0x80 + cc;
 	}
 
-	
+	if (xhci_usb_configure_xfer_endpoint(device, endpoint))
+		return 1;
+	USB_KEYBOARD = device;
 	return 0;
+}
+void xhci_keyboard_process()
+{
+	XHCI_USB_DEVICE *device = USB_KEYBOARD;
+	if (!device)
+		return;
+
+	XHCI_TRANSFER_RING *transfer = 0;
+	for (DWORD i = 3; i < 32; i += 2)
+	{
+		if (device->transfer[i])
+		{
+			transfer = device->transfer[i];
+			break;
+		}
+	}
+	if (!transfer)
+		return;
+	XHCI_TRB_GENERIC *blk = xhc_event_ring_pop(transfer);
+	if (blk != 0)
+	{
+		printf("Keyboard Event @ %p\n", blk);
+	}
 }

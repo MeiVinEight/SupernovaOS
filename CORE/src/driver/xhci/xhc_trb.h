@@ -15,6 +15,7 @@
 #define XHCI_TRB_TYPE_ENABLE_SLOT        9
 #define XHCI_TRB_TYPE_DISABLE_SLOT       10
 #define XHCI_TRB_TYPE_ADDRESS_DEVICE     11
+#define XHCI_TRB_TYPE_CONFIGURE_ENDPOINT 12
 #define XHCI_TRB_TYPE_EVALUATE_CONTEXT   13
 #define XHCI_TRB_TYPE_TRANSFER_EVENT     32
 #define XHCI_TRB_TYPE_COMMAND_COMPLETION 33
@@ -341,6 +342,31 @@ typedef struct _XHCI_TRB_ADDRESS_DEVICE
 	// Slot ID. The ID of the Device Slot that is the target of this command.
 	DWORD SLOT:8;
 } XHCI_TRB_ADDRESS_DEVICE;
+typedef struct _XHCI_TRB_CONFIGURE_ENDPOINT
+{
+	/**
+	 * Input Context Pointer Hi and Lo. This field represents the high order bits of the 64-bit base
+	 * address of the Input Context data structure associated with this event. Refer to section 6.2.5 for
+	 * more information on the Input Context data structure.
+	 * The memory structure referenced by this physical memory pointer shall be aligned on a 16-byte
+	 * address boundary.
+	 */
+	QWORD CTXT;
+	DWORD RSV0;
+	// Cycle bit (C). This bit is used to mark the Enqueue Pointer of a Command Ring
+	WORD  CYCL:1;
+	WORD  RSV1:8;
+	/**
+	 * Deconfigure (DC). Set to ‘1’ by software to “deconfigure” the Device Slot. If the DC flag = ‘1’, the
+	 * Input Context Pointer field is ignored by the xHC.
+	 */
+	WORD  DCNF:1;
+	// TRB Type. This field identifies the type of the TRB. Refer to Table 6-91 for the definition of the  Configure Endpoint Command TRB type ID.
+	WORD  TYPE:6;
+	BYTE  RSV2;
+	// Slot ID. The ID of the Device Slot that is the target of this command.
+	BYTE  SLOT;
+} XHCI_TRB_CONFIGURE_ENDPOINT;
 typedef struct _XHCI_TRB_EVALUATE_CONTEXT
 {
 	/**

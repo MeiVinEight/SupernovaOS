@@ -49,7 +49,7 @@ typedef struct _XHCI_USB_DEVICE
 } XHCI_USB_DEVICE;
 
 DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId);
-void xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint);
+DWORD xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint);
 void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device);
 DWORD xhci_usb_hid_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface);
 DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DATA *requ, void *buf);

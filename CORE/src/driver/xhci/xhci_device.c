@@ -127,8 +127,29 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 	epdesc.MPSZ = maxPs;
 	xhci_usb_configure_endpoint(device, &epdesc);
 }
-void xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
+DWORD xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
 {
+	BYTE eptype = endpoint->ATTR & USB_ENDPOINT_XFER_TYPE;
+	BYTE epid = ((endpoint->ADDR << 1) | (endpoint->ADDR >> 7)) & 31;
+	printf("Create Endpoint %u\n", epid);
+	((volatile XHCI_USB_DEVICE *) device)->transfer[epid] = heap_alloc(sizeof(XHCI_TRANSFER_RING));
+	XHCI_TRANSFER_RING *transfer = device->transfer[epid];
+	__memset(transfer, 0, sizeof(XHCI_TRANSFER_RING));
+	printf("Create Transfer: %p\n", transfer);
+	xhc_transfer_ring_create(transfer, (epid & 1) ^ 1);
+	xhci_usb_configure_endpoint(device, endpoint);
+	XHCI_TRB_CONFIGURE_ENDPOINT configure;
+	__memset(&configure, 0, sizeof(XHCI_TRB_CONFIGURE_ENDPOINT));
+	configure.CTXT = physical_address((QWORD) device->context);
+	configure.TYPE = XHCI_TRB_TYPE_CONFIGURE_ENDPOINT;
+	configure.SLOT = device->slot;
+	DWORD cc;
+	if ((cc = xhci_send_command(device->controller, &configure, 0)) != XHCI_CODE_SUCCESS)
+	{
+		printf("xHCI: USB Configure Endpoint failed: %lu\n", cc);
+		return 1;
+	}
+	return 0;
 }
 DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLETION *completion, const DWORD bsr)
 {

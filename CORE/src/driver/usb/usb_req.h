@@ -19,15 +19,6 @@
 #define USB_REQ_SET_INTERFACE      11
 #define USB_REQ_SYNCH_FRAME        12
 
-#define USB_DESC_DEVICE                    0x01
-#define USB_DESC_CONFIGURATION             0x02
-#define USB_DESC_STRING                    0x03
-#define USB_DESC_INTERFACE                 0x04
-#define USB_DESC_ENDPOINT                  0x05
-#define USB_DESC_DEVICE_QUALIFIER          0x06
-#define USB_DESC_OTHER_SPEED_CONFIGURATION 0x07
-#define USB_DESC_INTERFACE_POWER           0x08
-
 /*
 bmRequestType |bRequest         |wValue          |wIndex    |wLength    |Data
 --------------------------------------------------------------------------------------

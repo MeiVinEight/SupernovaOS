@@ -276,10 +276,7 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		{
 			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
 			XHCI_USB_DEVICE *usbdev = device->device[xfer->SLOT];
-			WORD epid = xfer->EPID;
-			printf("Transfer Event @ slot=%u, endpoint=%u\n", xfer->SLOT, epid);
-			printf("Endpoint: %p\n", usbdev->endpoint[epid]);
-			__memcpy(&usbdev->endpoint[epid]->COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
+			__memcpy(&usbdev->endpoint[xfer->EPID]->COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)

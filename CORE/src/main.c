@@ -45,6 +45,7 @@ QWORD coreCRTStartup()
 	setup_console();
 
 	simple_output("Supernova OS\n");
+	SYSTEM_TABLE->CRUN = 1;
 
 	setup_apic();
 
@@ -58,9 +59,9 @@ QWORD coreCRTStartup()
 
 	simple_output("OK\n");
 
-	while (1)
+	while (SYSTEM_TABLE->CRUN)
 	{
 		xhci_keyboard_process();
-		__halt();
 	}
+	return 0;
 }

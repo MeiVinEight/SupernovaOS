@@ -35,7 +35,7 @@ typedef struct _XHCI_USB_DEVICE
 	// Transfer Ring
 	XHCI_TRANSFER_RING control;
 	// Endpoint Transfer
-	XHCI_TRANSFER_RING *transfer[16];
+	XHCI_TRANSFER_RING *transfer[32];
 	// Route String
 	DWORD route;
 	// Device Port
@@ -51,6 +51,7 @@ typedef struct _XHCI_USB_DEVICE
 DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId);
 void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device);
 DWORD xhci_usb_hid_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface);
+DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, USB_DEVICE_SETUP_DATA *requ, void *buf);
 DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len);
 
 #endif //SUPERNOVAOS_XHCI_DEVICE_H

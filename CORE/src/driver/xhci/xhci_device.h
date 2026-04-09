@@ -30,7 +30,11 @@ typedef struct _XHCI_USB_DEVICE
 	struct _XHCI_USB_DEVICE *parent;
 	// Input Context
 	void *context;
+	// USB Configuration
 	STANDARD_USB_CONFIGURATION *configuration;
+	// USB Inerface
+	STANDARD_USB_INTERFACE *interface;
+	// Persistent DMA buffer
 	QWORD persistent;
 	// Transfer Ring
 	XHCI_TRANSFER_RING control;

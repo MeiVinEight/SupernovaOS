@@ -431,18 +431,26 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	DWORD offset = 0;
 	DWORD dataLen = (conf->TLEN > 9) ? (conf->TLEN - 9) : 0;
 	STANDARD_USB_INTERFACE *iface = 0;
-	while (offset + 2 <= dataLen)
+	for (STANDARD_USB_INTERFACE *sui; offset + 2 <= dataLen; offset += sui->LENG)
 	{
-		iface = (STANDARD_USB_INTERFACE *) (conf->DATA + offset);
-		if (iface->LENG < 2)
-			goto NEXT;
-		if (iface->TYPE == USB_DESC_INTERFACE && iface->LENG >= 9)
-			break;
-
-		NEXT:
-		offset += iface->LENG;
+		sui = (STANDARD_USB_INTERFACE *) (conf->DATA + offset);
+		if (sui->LENG < 2)
+			continue;
+		if (sui->TYPE == USB_DESC_INTERFACE && sui->LENG >= 9)
+		{
+			if (!iface)
+				iface = sui;
+		}
 	}
 
+	if (!iface)
+	{
+		printf("xHCI: USB Interface NOT FOUND for slot %u\n", device->slot);
+		return;
+	}
+	device->interface = iface;
+
+	// Set Configuration
 	USB_DEVICE_SETUP_DATA requ;
 	requ.RECP = 0; // Device
 	requ.RTYP = 0; // Standard

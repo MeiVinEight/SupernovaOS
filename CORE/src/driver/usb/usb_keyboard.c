@@ -13,8 +13,6 @@ volatile BYTE KEY_COUNT = 0;
 
 DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
 {
-	printf("USB Keyboard @ %u\n", device->slot);
-
 	// Search interrupt in endpoint
 	STANDARD_USB_ENDPOINT *endpoint = usb_search_endpoint(device->configuration, USB_XFER_TYPE_INT, USB_DIR_IN);
 	if (!endpoint)
@@ -22,8 +20,6 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 		printf("USB: Endpoint Interrupt In NOT FOUND for device %u\n", device->slot);
 		return -2;
 	}
-
-	printf("USB Endpoint: addr=%02x, attr=%02x, max packet size=%04x, interval=%u\n", endpoint->ADDR, endpoint->ATTR, endpoint->MPSZ, endpoint->ITVL);
 
 	// Enable "boot" protocol.
 	USB_DEVICE_SETUP_DATA requ;
@@ -35,7 +31,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	requ.INDX = iface->IFCN;
 	requ.LENG = 0;
 	DWORD cc;
-	if ((cc = xhci_send_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
+	if ((cc = xhci_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
 	{
 		printf("xHCI: USB Set Protocol failed: %lu\n", cc);
 		return 0x80 + cc;
@@ -50,7 +46,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	requ.VALU = (500 / 4) << 8;
 	requ.INDX = 0;
 	requ.LENG = 0;
-	if ((cc = xhci_send_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
+	if ((cc = xhci_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
 	{
 		printf("xHCI: USB Set Idle failed: %lu\n", cc);
 		return 0x80 + cc;
@@ -91,14 +87,6 @@ void xhci_keyboard_process()
 			transfer->COMP.CCOD = 0;
 			return;
 		}
-
-		printf("HID_STANDARD_EVENT %02x:", KEY_COUNT++);
-		BYTE *mem = (BYTE *) &KEYEVENT;
-		for (int i = 0; i < sizeof(HID_STANDARD_KEYEVENT); i++)
-		{
-			printf(" %02x", mem[i]);
-		}
-		printf("\n");
 
 		for (int i = 0; i < 6; i++)
 		{

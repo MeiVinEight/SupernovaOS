@@ -10,6 +10,7 @@
 #include <timer/timer.h>
 #include <stdio.h>
 #include <driver/usb/usb_keyboard.h>
+#include <driver/usb/usb_msc.h>
 
 DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 {
@@ -274,7 +275,7 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, DWORD wait, USB_DEV
 	}
 	return xfer->CCOD;
 }
-DWORD xhci_send_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len)
+DWORD xhci_control_transfer(volatile XHCI_USB_DEVICE *device, USB_DEVICE_SETUP_DATA *requ, void *buf, QWORD len)
 {
 	return xhci_transfer((XHCI_USB_DEVICE *) device, 1, 1, requ, buf, len);
 }
@@ -289,7 +290,7 @@ DWORD xhci_get_device_descriptor(XHCI_USB_DEVICE *device, void *out, DWORD len)
 	requ.VALU = USB_DESC_DEVICE << 8;
 	requ.INDX = 0;
 	requ.LENG = len;
-	return xhci_send_control_transfer(device, &requ, out, len);
+	return xhci_control_transfer(device, &requ, out, len);
 }
 DWORD xhci_get_config_descriptor(XHCI_USB_DEVICE *device, DWORD indx, void *out, DWORD len)
 {
@@ -304,7 +305,7 @@ DWORD xhci_get_config_descriptor(XHCI_USB_DEVICE *device, DWORD indx, void *out,
 	requ.VALU = (USB_DESC_CONFIGURATION << 8) | indx;
 	requ.INDX = 0;
 	requ.LENG = len;
-	return xhci_send_control_transfer(device, &requ, out, len);
+	return xhci_control_transfer(device, &requ, out, len);
 }
 DWORD xhci_get_string_descriptor(XHCI_USB_DEVICE *device, DWORD indx, STANDARD_USB_STRING *out, DWORD len)
 {
@@ -319,7 +320,7 @@ DWORD xhci_get_string_descriptor(XHCI_USB_DEVICE *device, DWORD indx, STANDARD_U
 	requ.VALU = (USB_DESC_STRING << 8) | indx;
 	requ.INDX = 0;
 	requ.LENG = len;
-	return xhci_send_control_transfer(device, &requ, out, len);
+	return xhci_control_transfer(device, &requ, out, len);
 }
 void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 {
@@ -390,8 +391,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	 */
 	delay(2);
 
-	printf("Device State: %u\n", ((XHCI_SLOT_CONTEXT32 *) controller->context[device->slot])->STAT);
-
 	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
 	rc = xhci_get_device_descriptor(device, &desc, sizeof(STANDARD_USB_DEVICE));
 	if (rc != XHCI_CODE_SUCCESS)
@@ -399,7 +398,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		printf("xHCI: Failed to get full device descriptor: %lu for slot %u\n", rc, device->slot);
 		return;
 	}
-	printf("USB Vendor:%04X Product:%04X, %u config(s)\n", desc.VNID, desc.PRID, desc.CNFN);
 
 	STANDARD_USB_CONFIGURATION iconf;
 	__memset(&iconf, 0, sizeof(STANDARD_USB_CONFIGURATION));
@@ -415,7 +413,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		printf("xHCI: Failed to get total configuration descriptor: %lu\n", rc);
 		return;
 	}
-	printf("USB: slot %u config: %u interface(s)\n", device->slot, conf->IFAC);
 	device->configuration = conf;
 
 	// Sync the input context with the xHC's current output context
@@ -459,29 +456,23 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	requ.VALU = conf->CNFV;
 	requ.INDX = 0;
 	requ.LENG = 0;
-	if ((rc = xhci_send_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
+	if ((rc = xhci_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
 	{
 		printf("xHCI: USB Set Configuration failed: %lu\n", rc);
 		return;
 	}
 
-	if (!iface)
-	{
-		printf("xHCI: USB Interface NOT FOUND for slot %u\n", device->slot);
-		return;
-	}
-
-	printf("USB Interface: num=%u, setting=%u, endpoint=%u, class=%02x, subclass=%02x, proto=%u, iface=%u\n",
-		iface->IFCN, iface->SETT, iface->ENDP, iface->CCOD, iface->SCOD, iface->POTO, iface->IFAC);
 	if (iface->CCOD == USB_CLASS_HID)
 		xhci_usb_hid_setup(device, iface);
+	if (iface->CCOD == USB_CLASS_MASS_STORAGE)
+		xhci_usb_msc_setup(device);
 }
 DWORD xhci_usb_hid_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
 {
 	// Doesn't support boot protocol.
-	if (iface->SCOD != USB_INTERFACE_SUBCLASS_BOOT)
+	if (iface->SCOD != USB_HID_SUBCLASS_BOOT)
 		return -1;
-	if (iface->POTO == USB_INTERFACE_PROTOCOL_KEYBOARD)
+	if (iface->POTO == USB_HID_PROTOCOL_KEYBOARD)
 		return xhci_usb_keyboard_setup(device, iface);
 	return -1;
 }

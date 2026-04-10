@@ -1,9 +1,4 @@
-//
-// Created by MeiVi on 2026/04/02.
-//
-
-#ifndef SUPERNOVAOS_USB_DESC_H
-#define SUPERNOVAOS_USB_DESC_H
+#pragma once
 
 #include <types.h>
 
@@ -393,5 +388,3 @@ typedef struct _STANDARD_USB_ENDPOINT
 } STANDARD_USB_ENDPOINT;
 
 STANDARD_USB_ENDPOINT *usb_search_endpoint(STANDARD_USB_CONFIGURATION *conf, int type, int dir);
-
-#endif //SUPERNOVAOS_USB_DESC_H

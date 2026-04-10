@@ -299,7 +299,6 @@ void setup_pci()
 	PCI_DEVICE_ADDRESS addr;
 	addr.address = 0;
 	addr.ENABLE = 1;
-	volatile DWORD *dvc = SYSTEM_TABLE->DVC;
 	for (; !addr.RSV; addr.address += 0x100)
 	{
 		PCI_DEVICE_VENDOR vendor = pci_cfg_get_vendor(addr);
@@ -325,7 +324,5 @@ void setup_pci()
 		else
 			simple_output_address(vendor.ID, 8);
 		outchar('\n');
-		*dvc++ = addr.address;
 	}
-	*dvc = 0;
 }

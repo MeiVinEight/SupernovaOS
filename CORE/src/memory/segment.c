@@ -1,5 +1,6 @@
 #include <memory/segment.h>
 #include <core.h>
+#include <arch/tss.h>
 
 COREAPI BYTE LXS1[] =
 {
@@ -25,8 +26,9 @@ void setup_segment()
 	SYSTEM_TABLE->GDT[2] = 0x0020FA0000000000ULL; // Code Segment R3
 	SYSTEM_TABLE->GDT[3] = 0x0000F20000000000ULL; // Data Segment R3
 	GDTR64 gdtr;
-	gdtr.L = 0x17;
+	gdtr.L = sizeof(SYSTEM_TABLE->GDT) - 1;
 	gdtr.A = (QWORD) SYSTEM_TABLE->GDT;
 	__lgdt((void *) core_mapping((QWORD) &gdtr));
 	((void(*)(QWORD)) LXS1)(SYSTEM_ADDRESS);
+	load_tss((void *) SYSTEM_TABLE->TSS, (void *) SYSTEM_TABLE->GDT, 0x20);
 }

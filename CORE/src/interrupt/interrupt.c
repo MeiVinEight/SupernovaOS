@@ -3,6 +3,7 @@
 #include <core.h>
 #include <intrinsic.h>
 #include <interrupt/apic.h>
+#include <stdio.h>
 
 COREAPI volatile INTERRUPT64 * volatile IDT;
 COREAPI void (*(INTERRUPT_ROUTINE[256]))(INTERRUPT_STACK *);
@@ -62,14 +63,9 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 		return;
 	}
 
-	simple_output("CPU #");
-	simple_output_number(apic_current_id());
-	simple_output(" INT: #");
-	simple_output_address(id, 2);
-	simple_output(" @ RIP ");
-	simple_output_address(stack->RIP, 16);
-	simple_output("\n");
-	while (1) __halt();
+	printf("CPU #%lu INT: #%02X @ RIP %016llX\n", apic_current_id(), id, stack->RIP);
+	printf("CODE: %016llX\n", stack->ERROR);
+	while (SYSTEM_TABLE->CRUN) __halt();
 }
 void __stdcall setup_interrupt()
 {

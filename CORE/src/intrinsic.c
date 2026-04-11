@@ -101,3 +101,8 @@ void *__memset(volatile void *, BYTE, QWORD);
 	// LOOP2:
 	0xC3,             // RET
 };
+__declspec(allocate(".text")) char __ltr[] =
+{
+	0x0F, 0x00, 0xD9, // LTR CX
+	0xC3,             // RET
+};

@@ -34,6 +34,7 @@ BYTE  _BitScanReverse(unsigned long * _Index, unsigned long _Mask);
 void  _mm_pause(void);
 
 QWORD __lgdt(void *);
+void __ltr(WORD);
 QWORD __getrsp();
 void __setrbp(QWORD);
 void *__memset128(void *, void *, unsigned long long);

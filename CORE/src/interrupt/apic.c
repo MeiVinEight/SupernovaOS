@@ -20,70 +20,56 @@ COREAPI volatile ACPI_MADT *volatile MULTIPLE_APIC_TABLE = 0;
 /*
 COREAPI BYTE AP_BOOT_CODE[] =
 {
-	0xFA,                                           // CS:0000 CLI
-	0xEA, 0x20, 0x00, 0x00, 0x00,                   // CS:0001 JMP FAR CS:0020
-	0xEB, 0xFE,                                     // CS:0006 JMP $+00
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // CS:0008 DQ 0000000000000000
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x9A, 0x20, 0x00, // CS:0010 DQ 00209A0000000000
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x92, 0x00, 0x00, // CS:0018 DQ 0000920000000000
-	0x8C, 0xC8,                                     // CS:0020 MOV AX, CS
-	0x8E, 0xD8,                                     // CS:0022 MOV DS, AX
-	0x8E, 0xC0,                                     // CS:0024 MOV ES, AX
-	0x8E, 0xD0,                                     // CS:0026 MOV SS, AX
-	0xBC, 0x00, 0x10,                               // CS:0028 MOV SP, 1000
-	0x66, 0x33, 0xC0,                               // CS:002B XOR EAX, EAX
-	0x8C, 0xC8,                                     // CS:002E MOV AX, CS
-	0xB1, 0x04,                                     // CS:0030 MOV CL, 04
-	0x66, 0xD3, 0xE0,                               // CS:0032 SHL EAX, CL
-	0xBE, 0xA5, 0x00,                               // CS:0035 MOV SI, 00A5
-	0x66, 0x01, 0x04,                               // CS:0038 ADD [SI], EAX
-	0xE4, 0x92,                                     // CS:0x3B IN AL, 92
-	0x0C, 0x02,                                     // CS:003D OR AL, 02
-	0xE6, 0x92,                                     // CS:003F OUT 92, AL
-	0x66, 0x33, 0xC0,                               // CS:0041 XOR EAX, EAX
-	0x66, 0x50,                                     // CS:0044 PUSH EAX
-	0x8C, 0xC8,                                     // CS:0046 MOV AX, CS
-	0xB1, 0x0C,                                     // CS:0048 MOV CL, 0C
-	0xD3, 0xE8,                                     // CS:004A SHR AX, CL
-	0x50,                                           // CS:004C PUSH AX
-	0x8C, 0xC8,                                     // CS:004D MOV AX, CS
-	0xB1, 0x04,                                     // CS:004F MOV CL, 04
-	0xD3, 0xE0,                                     // CS:0051 SHL AX, CL
-	0xB9, 0x08, 0x00,                               // CS:0053 MOV CX, 0008
-	0x03, 0xC1,                                     // CS:0056 ADD AX, CX
-	0x50,                                           // CS:0058 PUSH AX
-	0xB8, 0x17, 0x00,                               // CS:0059 MOV AX, 0017
-	0x50,                                           // CS:005C PUSH AX
-	0x8B, 0xF4,                                     // CS:005D MOV SI, SP
-	0x3E, 0x0F, 0x01, 0x14,                         // CS:005F LGDT DS:[SI]
-	0x83, 0xC4, 0x0A,                               // CS:0063 ADD SP, 000A
-	0x66, 0xB8, 0x00, 0x10, 0x00, 0x00,             // CS:0066 MOV EAX, 00001000
-	0x66, 0x0F, 0x22, 0x18,                         // CS:006C MOV CR3, EAX
-	0x66, 0x0F, 0x20, 0x20,                         // CS:0070 MOV EAX, CR4
-	0x66, 0x83, 0xC8, 0x20,                         // CS:0074 OR EAX, 20
-	0x66, 0x0D, 0x80, 0x00, 0x00, 0x00,             // CS:0078 OR EAX, 00000080
-	0x66, 0x0F, 0x22, 0x20,                         // CS:007E MOV CR4, EAX
-	0x66, 0xB9, 0x80, 0x00, 0x00, 0xC0,             // CS:0082 MOV ECX, C0000080
-	0x0F, 0x32,                                     // CS:0088 RDMSR
-	0x66, 0x0D, 0x00, 0x01, 0x00, 0x00,             // CS:008A OR EAX, 00000100
-	0x0F, 0x30,                                     // CS:0090 WRMSR
-	0x66, 0x0F, 0x20, 0x00,                         // CS:0092 MOV EAX, CR0
-	0x66, 0xB9, 0x01, 0x00, 0x00, 0x80,             // CS:0096 MOV ECX, 80000001
-	0x66, 0x0B, 0xC1,                               // CS:009C OR EAX, ECX
-	0x66, 0x0F, 0x22, 0x00,                         // CS:009F MOV CR0, EAX
-	0x66, 0xEA, 0xAB, 0x00, 0x00, 0x00, 0x08, 0x00, // CS:00A3 JMP FAR 0008:000000AB
-	                                                            // [Long-Mode]
-	0x31, 0xC9,                                                 // 000000AB XOR ECX, ECX
-	0x66, 0x8E, 0xE1,                                           // 000000AD MOV FS, CX
-	0x66, 0x8E, 0xE9,                                           // 000000B0 MOV GS, CX
-	0x83, 0xC1, 0x10,                                           // 000000B3 ADD ECX, 10
-	0x66, 0x8E, 0xC1,                                           // 000000B6 MOV ES, CX
-	0x66, 0x8E, 0xD1,                                           // 000000B9 MOV SS, CX
-	0x66, 0x8E, 0xD9,                                           // 000000BC MOV DS, CX
-	0x48, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 000000BF MOV RSP, 0000000000000000
-	0xB9, 0x00, 0x00, 0x00, 0x00,                               // 000000C9 MOV ECX, 00000000
-	0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,                         // 000000CE JMP QWORD PTR [00000000]
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,             // 000000D4 DQ 0000000000000000
+	0xEA, 0x05, 0x90, 0x00, 0x00,                   // 0000 JMP 0000:9005
+	0x33, 0xC0,                                     // 0005 XOR AX, AX
+	0x8E, 0xD8,                                     // 0007 MOV DS, AX
+	0x8E, 0xC0,                                     // 0009 MOV ES, AX
+	0x8E, 0xD0,                                     // 000B MOV SS, AX
+	0xB8, 0x00, 0xA0,                               // 000D MOV AX, 0A000H
+	0x8B, 0xE0,                                     // 0010 MOV SP, AX
+	0xFA,                                           // 0012 CLI
+	0xE4, 0x92,                                     // 0013 IN AL, 92H
+	0x0C, 0x02,                                     // 0015 OR AL, 2
+	0xE6, 0x92,                                     // 0017 OUT 92H, AL
+	0x66, 0x0F, 0x20, 0x20,                         // 0019 MOV EAX, CR4
+	0x66, 0x83, 0xC8, 0x20,                         // 001D OR EAX, 20H
+	0x66, 0x0D, 0x80, 0x00, 0x00, 0x00,             // 0021 OR EAX, 80H
+	0x66, 0x0F, 0x22, 0x20,                         // 0027 MOV CR4, EAX
+	0x66, 0xB8, 0x00, 0x10, 0x00, 0x00,             // 002B MOV EAX, 1000H
+	0x66, 0x0F, 0x22, 0x18,                         // 0031 MOV CR3, EAX
+	0x33, 0xC0,                                     // 0035 XOR AX, AX
+	0xB9, 0x90, 0x00,                               // 0037 MOV CX, 90H
+	0xBE, 0x18, 0x00,                               // 003A MOV SI, 18H
+	0x50,                                           // 003D PUSH AX
+	0x50,                                           // 003E PUSH AX
+	0x50,                                           // 003F PUSH AX
+	0x51,                                           // 0040 PUSH CX
+	0x56,                                           // 0041 PUSH SI
+	0x8B, 0xF4,                                     // 0042 MOV SI, SP
+	0x0F, 0x01, 0x14,                               // 0044 LGDT [SI]
+	0x83, 0xC4, 0x0A,                               // 0047 ADD SP, 0AH
+	0x66, 0xB9, 0x80, 0x00, 0x00, 0xC0,             // 004A MOV ECX, 0C0000080H
+	0x0F, 0x32,                                     // 0050 RDMSR
+	0x66, 0x0D, 0x00, 0x01, 0x00, 0x00,             // 0052 OR EAX, 100H
+	0x0F, 0x30,                                     // 0058 WRMSR
+	0x66, 0x0F, 0x20, 0x00,                         // 005A MOV EAX, CR0
+	0x66, 0xB9, 0x01, 0x00, 0x00, 0x80,             // 005E MOV ECX, 80000001H
+	0x66, 0x0B, 0xC1,                               // 0064 OR EAX, ECX
+	0x66, 0x0F, 0x22, 0x00,                         // 0067 MOV CR0, EAX
+	0x66, 0xEA, 0x73, 0x90, 0x00, 0x00, 0x08, 0x00, // 006B JMP 0008:9073H
+	// LONG MODE
+	0x31, 0xC9,                                                 // 9073 XOR ECX, ECX
+	0x66, 0x8E, 0xE1,                                           // 9075 MOV FS, CX
+	0x66, 0x8E, 0xE9,                                           // 9078 MOV GS, CX
+	0x83, 0xC1, 0x00,                                           // 907B ADD ECX, 00H
+	0x66, 0x8E, 0xC1,                                           // 907E MOV ES, CX
+	0x66, 0x8E, 0xD1,                                           // 9081 MOV SS, CX
+	0x66, 0x8E, 0xD9,                                           // 9084 MOV DS, CX
+	0x48, 0xBC, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, // 9087 MOV RSP, 0xFFFF80000000A000
+	0x6A, 0x08,                                                 // 9091 PUSH 8
+	0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, // 9093 MOV RAX, 0xFFFF800000000000
+	0x50,                                                       // 909D PUSH RAX
+	0x48, 0xCB,                                                 // 909E RETFQ
 };
 */
 
@@ -256,6 +242,7 @@ void apic_startup_ap(BYTE apicid, void (*apEntry)(void))
 	if (apicid == apic_current_id())
 		return;
 
+	*((WORD *) (SYSTEM_TABLE->APC + 0x38)) = (WORD) (((QWORD) SYSTEM_TABLE->GDT) & 0xFFFF);
 	*((QWORD *) (SYSTEM_TABLE->APC + 0x95)) = (QWORD) apEntry;
 
 	APIC_BSP_LOCK = 1;
@@ -338,7 +325,7 @@ void __stdcall aproc_startup(void)
 	kprint_cpu();
 
 	APIC_BSP_LOCK = 0;
-	while (1) __halt();
+	while (SYSTEM_TABLE->CRUN) __halt();
 }
 void apic_setup_multiprocessor()
 {

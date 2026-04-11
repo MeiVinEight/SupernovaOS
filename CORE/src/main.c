@@ -46,6 +46,7 @@ QWORD coreCRTStartup()
 
 	simple_output("Supernova OS\n");
 	SYSTEM_TABLE->CRUN = 1;
+	printf("Video: %lux%lu Memory: %lx\n", SYSTEM_TABLE->PPL, (DWORD) SYSTEM_TABLE->VRES, SYSTEM_TABLE->VRES * SYSTEM_TABLE->PPL * 4);
 
 	setup_apic();
 

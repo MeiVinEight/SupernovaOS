@@ -279,7 +279,7 @@ void *heap_alloc(QWORD allocSize)
 		QWORD pc = 1;
 		QWORD phyAddr = alloc_physical_memory(&pc, 0, 0);
 		// Mapping to Heap Space
-		QWORD heapBase = 0xFFFF810000000000ULL;
+		QWORD heapBase = 0xFFFF808000000000ULL;
 		virtual_mapping(phyAddr, heapBase, 1, PAGE_4K);
 		HEAPK = (QWORD *) heapBase;
 		// Initial block size, free, lastblock

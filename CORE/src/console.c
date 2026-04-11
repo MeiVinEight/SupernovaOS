@@ -87,23 +87,7 @@ void setup_basic_console()
 void setup_console()
 {
 	QWORD memSpace = SYSTEM_TABLE->VRES * SYSTEM_TABLE->PPL * 4;
-	memSpace += 0x1FFFFF;
-	memSpace >>= 21;
-	QWORD virtualAddr = 0xFFFF808000000000ULL;
-	QWORD flushAddr = virtualAddr;
-	QWORD pageCount = 512;
-	while (memSpace--)
-	{
-		QWORD phyAddr = alloc_physical_memory(&pageCount, 21, 1);
-		if (!phyAddr)
-		{
-			simple_output("INSUFFICIENT MEMORY FOR VIDEO");
-			while (1) __halt();
-		}
-		virtual_mapping(phyAddr, virtualAddr, 1, PAGE_2M);
-		virtualAddr += (1 << 21);
-	}
-	FLUSH_BUFFER = flushAddr;
+	FLUSH_BUFFER = (QWORD) heap_alloc(memSpace);
 	QWORD buf[3] = { 0, 0, 0 };
 	QWORD *avxBuf = buf;
 	if (((QWORD) avxBuf) & 0xF)

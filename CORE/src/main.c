@@ -45,13 +45,11 @@ QWORD coreCRTStartup()
 	setup_console();
 
 	simple_output("Supernova OS\n");
+	kprint_cpu();
 	SYSTEM_TABLE->CRUN = 1;
 	printf("Video: %lux%lu Memory: %lx\n", SYSTEM_TABLE->PPL, (DWORD) SYSTEM_TABLE->VRES, SYSTEM_TABLE->VRES * SYSTEM_TABLE->PPL * 4);
 
 	setup_apic();
-
-	kprint_cpu();
-
 	setup_acpi();
 	setup_timer();
 	apic_setup_multiprocessor();

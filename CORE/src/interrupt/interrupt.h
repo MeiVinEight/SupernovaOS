@@ -50,6 +50,8 @@ typedef struct _INTERRUPT_STACK
 	QWORD RIP;
 	QWORD CS;
 	QWORD EFLAGS;
+	QWORD SS;
+	QWORD STACK;
 } INTERRUPT_STACK;
 
 extern volatile INTERRUPT64 * volatile IDT;

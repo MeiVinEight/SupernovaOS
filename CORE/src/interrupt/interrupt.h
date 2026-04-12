@@ -49,9 +49,9 @@ typedef struct _INTERRUPT_STACK
 	// Interrupt auto push, RIP, CS, EFLAGS
 	QWORD RIP;
 	QWORD CS;
-	QWORD EFLAGS;
-	QWORD SS;
+	QWORD RFLAG;
 	QWORD STACK;
+	QWORD SS;
 } INTERRUPT_STACK;
 
 extern volatile INTERRUPT64 * volatile IDT;

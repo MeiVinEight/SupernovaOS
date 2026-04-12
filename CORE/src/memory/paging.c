@@ -14,7 +14,7 @@ void INT0E(INTERRUPT_STACK *stack)
 		{
 			QWORD phyAddr = addr & 0x0000007FFFE00000ULL;
 			addr &= ~((1ULL << 21) - 1);
-			virtual_mapping(phyAddr, addr, 1, PAGE_2M);
+			virtual_mapping(phyAddr, addr, 1, PAGE_2M, PA_WRITE);
 			return;
 		}
 	}

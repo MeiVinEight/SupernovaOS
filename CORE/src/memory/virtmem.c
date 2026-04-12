@@ -181,7 +181,14 @@ void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
 	blk->S = pageCount << 12;
 	memblk_insert_link(&MEMORY_MAP, blk, free_memblk);
 }
-void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, int pageType)
+void paging_attribute(QWORD *entry, QWORD attr)
+{
+	if (attr & PA_WRITE)
+		*entry |= PAGING_WRITE;
+	if (attr & PA_USER)
+		*entry |= PAGING_USER;
+}
+void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, int pageType, QWORD attr)
 {
 	QWORD addrMask = ~0xFFFULL;
 	QWORD page = 0x1000;
@@ -199,7 +206,8 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		{
 			QWORD allpc = 1;
 			QWORD pageAddr = alloc_physical_memory(&allpc, 0, 0);
-			pml4[offset4] = pageAddr | 3;
+			pml4[offset4] = pageAddr | PAGING_PRESENT;
+			paging_attribute(pml4 + offset4, attr);
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
 			__memset128(pageBuf, pageBuf, 512);
@@ -209,14 +217,16 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		QWORD offset3 = va.offset3;
 		if (pageType == PAGE_1G)
 		{
-			pdpt[offset3] = phyAddr | 0x83;
+			pdpt[offset3] = phyAddr | PAGING_PRESENT | PAGING_PAGESIZE;
+			paging_attribute(pdpt + offset3, attr);
 			goto CONTINU;
 		}
 		if (!(pdpt[offset3] & 1))
 		{
 			QWORD allpc = 1;
 			QWORD pageAddr = alloc_physical_memory(&allpc, 0, 0);
-			pdpt[offset3] = pageAddr | 3;
+			pdpt[offset3] = pageAddr | PAGING_PRESENT;
+			paging_attribute(pdpt + offset3, attr);
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
 			__memset128(pageBuf, pageBuf, 512);
@@ -226,14 +236,16 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		QWORD offset2 = va.offset2;
 		if (pageType == PAGE_2M)
 		{
-			pd[offset2] = phyAddr | 0x83;
+			pd[offset2] = phyAddr | PAGING_PRESENT | PAGING_PAGESIZE;
+			paging_attribute(pd + offset2, attr);
 			goto CONTINU;
 		}
 		if (!(pd[offset2] & 1))
 		{
 			QWORD allpc = 1;
 			QWORD pageAddr = alloc_physical_memory(&allpc, 0, 0);
-			pd[offset2] = pageAddr | 3;
+			pd[offset2] = pageAddr | PAGING_PRESENT;
+			paging_attribute(pd + offset2, attr);
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
 			__memset128(pageBuf, pageBuf, 512);
@@ -241,7 +253,8 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 
 		QWORD *pt = (QWORD *) core_mapping(pd[offset2] & addrMask);
 		QWORD offset1 = va.offset1;
-		pt[offset1] = phyAddr | 0x03;
+		pt[offset1] = phyAddr | PAGING_PRESENT;
+		paging_attribute(pt + offset1, attr);
 
 
 		CONTINU:;
@@ -280,7 +293,7 @@ void *heap_alloc(QWORD allocSize)
 		QWORD phyAddr = alloc_physical_memory(&pc, 0, 0);
 		// Mapping to Heap Space
 		QWORD heapBase = 0xFFFF808000000000ULL;
-		virtual_mapping(phyAddr, heapBase, 1, PAGE_4K);
+		virtual_mapping(phyAddr, heapBase, 1, PAGE_4K, PA_WRITE);
 		HEAPK = (QWORD *) heapBase;
 		// Initial block size, free, lastblock
 		HEAPK[0] = 0xFF8 | HEAP_FLAG_LAST;
@@ -343,7 +356,7 @@ void *heap_alloc(QWORD allocSize)
 				*((QWORD *) -1ULL) = 1;
 			}
 			// Mapping page to heap end
-			virtual_mapping(phyPage, heapEndAddr, 1, PAGE_4K);
+			virtual_mapping(phyPage, heapEndAddr, 1, PAGE_4K, PA_WRITE);
 			// Update block size
 			*heap += 0x1000;
 		}

@@ -121,6 +121,8 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 }
 void outchar(char ch)
 {
+	if (!ch)
+		return;
 	async_lock(&CONSOLE_LOCK);
 
 	volatile SIMPLE_TEXT_MODE *text = &SIMPLE_TEXT;

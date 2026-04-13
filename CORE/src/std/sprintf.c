@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <std/string.h>
+#include <console.h>
 
 /* =========================================================================
  * Internal write context — keeps track of the output buffer.
@@ -41,28 +42,34 @@
 
 typedef struct
 {
-	char* buf; /* start of caller's buffer (may be NULL for counting)  */
+	char flag;
+	void* buf;  /* start of caller's buffer (may be NULL for counting)  */
 	size_t cap; /* total capacity including the NUL byte                */
 	size_t pos; /* next write position (logical; may exceed cap)        */
-} ctx_t;
+} FORMAT_CONTEXT;
 
 /* Write one character to the context, advancing pos regardless of clipping. */
-static void ctx_putc(ctx_t* c, char ch)
+static void ctx_putc(FORMAT_CONTEXT* c, char ch)
 {
-	if (c->buf && c->pos + 1 < c->cap) /* +1: leave room for NUL        */
-		c->buf[c->pos] = ch;
+	if (!c->flag)
+	{
+		if (c->buf && c->pos + 1 < c->cap) /* +1: leave room for NUL        */
+			((char *) c->buf)[c->pos] = ch;
+	}
+	else
+		((void (*)(char)) c->buf)(ch);
 	c->pos++;
 }
 
 /* Write a run of `n` copies of character `ch`. */
-static void ctx_fill(ctx_t* c, char ch, size_t n)
+static void ctx_fill(FORMAT_CONTEXT* c, char ch, size_t n)
 {
 	for (size_t i = 0; i < n; i++)
 		ctx_putc(c, ch);
 }
 
 /* Write a string of known length. */
-static void ctx_write(ctx_t* c, const char* s, size_t len)
+static void ctx_write(FORMAT_CONTEXT* c, const char* s, size_t len)
 {
 	for (size_t i = 0; i < len; i++)
 		ctx_putc(c, s[i]);
@@ -124,7 +131,7 @@ static char* u64_to_str(uint64_t val, unsigned base, bool upper,
  * Emit a fully-formatted integer / pointer field
  * ========================================================================= */
 
-static void emit_int(ctx_t* c,
+static void emit_int(FORMAT_CONTEXT* c,
                      uint64_t uval,
                      unsigned base,
                      unsigned flags,
@@ -203,7 +210,7 @@ static const uint64_t POW10[10] = {
 	100000ULL, 1000000ULL, 10000000ULL, 100000000ULL, 1000000000ULL
 };
 
-static void emit_float(ctx_t* c, double val,
+static void emit_float(FORMAT_CONTEXT* c, double val,
                        unsigned flags, int width, int prec)
 {
 	if (prec < 0) prec = 6; /* default precision for %f */
@@ -278,7 +285,7 @@ static void emit_float(ctx_t* c, double val,
  * String / char field
  * ========================================================================= */
 
-static void emit_str(ctx_t* c, const char* s, unsigned flags,
+static void emit_str(FORMAT_CONTEXT* c, const char* s, unsigned flags,
                      int width, int prec)
 {
 	if (!s) s = "(null)";
@@ -296,7 +303,7 @@ static void emit_str(ctx_t* c, const char* s, unsigned flags,
 	if (flags & FL_LEFT) ctx_fill(c, ' ', pad);
 }
 
-static void emit_char(ctx_t* c, char ch, unsigned flags, int width)
+static void emit_char(FORMAT_CONTEXT* c, char ch, unsigned flags, int width)
 {
 	size_t pad = (width > 1) ? (size_t)(width - 1) : 0;
 	if (!(flags & FL_LEFT)) ctx_fill(c, ' ', pad);
@@ -308,7 +315,7 @@ static void emit_char(ctx_t* c, char ch, unsigned flags, int width)
  * Core formatter
  * ========================================================================= */
 
-static int core_vsnprintf(ctx_t* c, const char* fmt, va_list ap)
+static int core_vsnprintf(FORMAT_CONTEXT* c, const char* fmt, va_list ap)
 {
 	for (const char* p = fmt; *p; p++)
 	{
@@ -589,11 +596,7 @@ static int core_vsnprintf(ctx_t* c, const char* fmt, va_list ap)
 	}
 
 	/* NUL-terminate (does NOT count towards return value) */
-	if (c->buf && c->cap > 0)
-	{
-		size_t nul_pos = (c->pos < c->cap) ? c->pos : c->cap - 1;
-		c->buf[nul_pos] = '\0';
-	}
+	ctx_putc(c, 0);
 
 	return (int)c->pos;
 }
@@ -601,17 +604,22 @@ static int core_vsnprintf(ctx_t* c, const char* fmt, va_list ap)
 /* =========================================================================
  * Public API
  * ========================================================================= */
+int vprintf(const char *fmt, va_list ap)
+{
+	FORMAT_CONTEXT c = {1, outchar, 0, 0};
+	return core_vsnprintf(&c, fmt, ap);
+}
 
 int vsnprintf(char* buf, size_t n, const char* fmt, va_list ap)
 {
-	ctx_t c = {buf, n, 0};
+	FORMAT_CONTEXT c = {0, buf, n, 0};
 	return core_vsnprintf(&c, fmt, ap);
 }
 
 int vsprintf(char* buf, const char* fmt, va_list ap)
 {
 	/* Unbounded: cap = SIZE_MAX so clipping never fires */
-	ctx_t c = {buf, (size_t)-1, 0};
+	FORMAT_CONTEXT c = {0, buf, (size_t)-1, 0};
 	return core_vsnprintf(&c, fmt, ap);
 }
 

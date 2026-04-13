@@ -38,6 +38,7 @@ unsigned long long _DllMainCRTStartup()
 }
 QWORD coreCRTStartup()
 {
+	SYSTEM_TABLE->PAGING[0][0] = 0;
 	setup_interrupt();
 	setup_page_fault();
 	setup_basic_console();

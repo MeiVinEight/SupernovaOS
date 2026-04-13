@@ -67,8 +67,7 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 		return;
 	}
 
-	printf("CPU #%lu INT: #%02X @ RIP %016llX\n", apic_current_id(), id, stack->RIP);
-	printf("CODE: %016llX\n", stack->ERROR);
+	printf("CPU #%lu INT: #%02X @ RIP %016llX\nCODE: %016llX\n", apic_current_id(), id, stack->RIP, stack->ERROR);
 	while (SYSTEM_TABLE->CRUN) __halt();
 }
 void __stdcall setup_interrupt()
@@ -161,7 +160,7 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 {
 	printf("CPU #%lu INT: #2E @ RIP %016llX\n", apic_current_id(), stack->RIP);
 	if (stack->CS != 0x08)
-		printf("SYSTEM CALL STACK: %04llX:%016llX\n", stack->SS, stack->RSP);
+		printf("SYSTEM CALL STACK: %04llX:%016llX\n", stack->SS, stack->STACK);
 }
 void setup_system_call()
 {
@@ -171,6 +170,7 @@ void setup_system_call()
 	QWORD pc = 1;
 	QWORD rsp0 = core_mapping(alloc_physical_memory(&pc, 0, 0));
 	TASK_STATE_SEGMENT *tss = (TASK_STATE_SEGMENT *) SYSTEM_TABLE->TSS;
+	__memset(tss, 0, sizeof(TASK_STATE_SEGMENT));
 	tss->RSPX[0] = rsp0;
 	register_interrupt(vec, interrupt_system_call);
 }

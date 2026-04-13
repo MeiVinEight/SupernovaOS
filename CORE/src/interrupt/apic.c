@@ -8,6 +8,7 @@
 #include <timer/rtc.h>
 #include <interrupt/interrupt.h>
 #include <arch/processor.h>
+#include <memory/segment.h>
 
 
 #define CPUID_FEAT_EDX_APIC (1 << 9)
@@ -319,6 +320,7 @@ void __stdcall aproc_startup(void)
 	__lidt(&idtr);
 	__sti();
 
+	setup_segment();
 	setup_processor();
 	setup_apic();
 
@@ -329,9 +331,12 @@ void __stdcall aproc_startup(void)
 }
 void apic_setup_multiprocessor()
 {
+	QWORD pag0 = SYSTEM_TABLE->PAGING[0][0];
+	SYSTEM_TABLE->PAGING[0][0] = SYSTEM_TABLE->PAGING[0][256];
 	for (int i = 0; i < 64; i++)
 		if (CPU_MASK & (1ULL << i))
 			apic_startup_ap(i, aproc_startup);
+	SYSTEM_TABLE->PAGING[0][0] = pag0;
 }
 DWORD ioapic_read(volatile DWORD *base, int idx)
 {

@@ -11,25 +11,6 @@ typedef struct _SIMPLE_TEXT_MODE
 } SIMPLE_TEXT_MODE;
 REENTRANT_LOCK CONSOLE_LOCK;
 
-COREAPI char draw_char_lines[] = {
-	0xB8, 0x10, 0x00, 0x00, 0x00, // MOV EAX, 10H
-
-	// LOOP0:
-	0x85, 0xC0,                   // TEST EAX, EAX
-	0x74, 0x1D,                   // JZ   LOOP1
-
-	0xF3, 0x0F, 0x6F, 0x02,       // MOVDQU XMM0, XMMWORD PTR [RDX]
-	0xF3, 0x0F, 0x7F, 0x01,       // MOVDQU XMMWORD PTR [RCX], XMM0
-	0xF3, 0x0F, 0x6F, 0x42, 0x10, // MOVDQU XMM0, XMMWORD PTR [RDX + 10H]
-	0xF3, 0x0F, 0x7F, 0x41, 0x10, // MOVDQU XMMWORD PTR [RCX + 10H], XMM0
-	0x49, 0x03, 0xC8,             // ADD RCX, R8
-	0x48, 0x83, 0xC2, 0x20,       // ADD RDX, 20H
-	0xFF, 0xC8,                   // DEC RAX
-	0xEB, 0xDF,                   // JMP LOOP0
-
-	// LOOP1:
-	0xC3                          // RET
-};
 COREAPI char scroll_text_line[] = {
 	// LOOP0:
 	0x48, 0x85, 0xC9,             // TEST RCX, RCX
@@ -47,8 +28,6 @@ COREAPI char scroll_text_line[] = {
 	// LOOP1:
 	0xC3,                   // RET
 };
-
-COREAPI DWORD CHAR_BUFFER[128];
 COREAPI DWORD COLOR_PLAETTE[] =
 {
 	0x000000,
@@ -83,8 +62,9 @@ void setup_basic_console()
 		avxBuf++;
 
 	FRAME_BUFFER = core_mapping(SYSTEM_TABLE->FBB);
+	FLUSH_BUFFER = core_mapping(SYSTEM_TABLE->FBB);
 	__memset128((void *) FRAME_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
-
+	__memset128((void *) FLUSH_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
 }
 void setup_console()
 {
@@ -103,21 +83,17 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 	volatile BYTE(*fontMap)[16] = SYSTEM_TABLE->FONT;
 	volatile BYTE *font = fontMap[ch];
 	DWORD colorMap[2] = {COLOR_PLAETTE[(color >> 4) & 0xF], COLOR_PLAETTE[(color >> 0) & 0xF]};
+	QWORD ppl = SYSTEM_TABLE->PPL;
 	for (int i = 0; i < 16; i++)
 	{
 		BYTE fontBitLine = font[i];
 		for (int j = 8; j--;)
 		{
-			CHAR_BUFFER[i * 8 + j] = colorMap[fontBitLine & 1];
+			((DWORD *) FRAME_BUFFER)[((y << 4) + i) * ppl + (x << 3) + j] = colorMap[fontBitLine & 1];
+			((DWORD *) FLUSH_BUFFER)[((y << 4) + i) * ppl + (x << 3) + j] = colorMap[fontBitLine & 1];
 			fontBitLine >>= 1;
 		}
 	}
-	QWORD pixelPos = y * 16 * SYSTEM_TABLE->PPL;
-	pixelPos += x * 8;
-	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(FRAME_BUFFER + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
-	if (!FLUSH_BUFFER)
-		return;
-	((void (*)(QWORD, void *, QWORD)) draw_char_lines)(FLUSH_BUFFER + (pixelPos * 4), CHAR_BUFFER, SYSTEM_TABLE->PPL * 4);
 }
 void outchar(char ch)
 {
@@ -144,17 +120,6 @@ void outchar(char ch)
 	DWORD lines = text->POS / charPreLine;
 	if (lines >= maxLines)
 	{
-		if (!FLUSH_BUFFER)
-		{
-			QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
-			QWORD *src = (QWORD *) (FRAME_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
-			QWORD *dst = (QWORD *) (FRAME_BUFFER);
-			__memcpy128(dst, src, copySize);
-			text->POS -= charPreLine;
-			QWORD buf[2] = { 0, 0 };
-			__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
-			goto UNLOCK;
-		}
 		QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
 		QWORD src = (FLUSH_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
 		//while (copySize--)
@@ -168,7 +133,6 @@ void outchar(char ch)
 		__memset128((void *) (FLUSH_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
 		text->POS -= charPreLine;
 	}
-	UNLOCK:;
 	async_unlock(&CONSOLE_LOCK);
 }
 void simple_output(const void *buf)

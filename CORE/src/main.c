@@ -24,10 +24,6 @@ void kprint_cpu()
 	brand[48] = 0;
 	printf("CPU #%u %s\n", cpu_local_apic_id(), brand);
 }
-QWORD core_mapping(QWORD addr)
-{
-	return addr | SYSTEM_ADDRESS;
-}
 unsigned long long _DllMainCRTStartup()
 {
 	__setrbp(__getrsp() & ~((1ULL << 12) - 1));

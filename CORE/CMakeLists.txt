@@ -22,7 +22,7 @@ set_target_properties(CORE PROPERTIES
 
 target_compile_options(CORE PUBLIC /GS- /Gz)
 target_link_options(CORE PUBLIC
-	/BASE:0xFFFF800000000000
+	/BASE:0
 	/MANIFEST:NO    # Anti .rsrc section
 	/INCREMENTAL:NO
 	/MANIFESTUAC:NO

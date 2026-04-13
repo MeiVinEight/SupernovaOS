@@ -31,6 +31,8 @@ void  __writecr3(QWORD);
 void  __writecr4(QWORD);
 void  __writemsr(DWORD, QWORD);
 BYTE  _BitScanReverse(unsigned long * _Index, unsigned long _Mask);
+long  _InterlockedCompareExchange(long volatile * Destination, long Exchange, long Comparand);
+short _InterlockedCompareExchange16(short volatile * Destination, short Exchange, short Comparand);
 void  _mm_pause(void);
 
 QWORD __lgdt(void *);

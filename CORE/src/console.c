@@ -2,12 +2,14 @@
 #include <intrinsic.h>
 #include <core.h>
 #include <memory/virtmem.h>
+#include <arch/processor.h>
 
 typedef struct _SIMPLE_TEXT_MODE
 {
 	DWORD POS;
 	DWORD COLOR;
 } SIMPLE_TEXT_MODE;
+volatile short CORE_LOCK = 0;
 
 COREAPI char draw_char_lines[] = {
 	0xB8, 0x10, 0x00, 0x00, 0x00, // MOV EAX, 10H
@@ -119,6 +121,10 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 }
 void outchar(char ch)
 {
+	short coreId = (short) (cpu_local_apic_id() + 1);
+	while (CORE_LOCK != coreId)
+		_InterlockedCompareExchange16(&CORE_LOCK, coreId, 0);
+
 	volatile SIMPLE_TEXT_MODE *text = &SIMPLE_TEXT;
 	DWORD charPreLine = SYSTEM_TABLE->HRES / 8;
 	if (ch == '\r')
@@ -147,7 +153,7 @@ void outchar(char ch)
 			text->POS -= charPreLine;
 			QWORD buf[2] = { 0, 0 };
 			__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
-			return;
+			goto UNLOCK;
 		}
 		QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
 		QWORD src = (FLUSH_BUFFER + SYSTEM_TABLE->PPL * 16 * 4);
@@ -162,6 +168,8 @@ void outchar(char ch)
 		__memset128((void *) (FLUSH_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
 		text->POS -= charPreLine;
 	}
+	UNLOCK:;
+	CORE_LOCK = 0;
 }
 void simple_output(const void *buf)
 {

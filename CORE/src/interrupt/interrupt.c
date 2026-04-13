@@ -171,6 +171,6 @@ void setup_system_call()
 	QWORD pc = 1;
 	QWORD rsp0 = core_mapping(alloc_physical_memory(&pc, 0, 0));
 	TASK_STATE_SEGMENT *tss = (TASK_STATE_SEGMENT *) SYSTEM_TABLE->TSS;
-	tss->RSV0 = rsp0;
+	tss->RSPX[0] = rsp0;
 	register_interrupt(vec, interrupt_system_call);
 }

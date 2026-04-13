@@ -106,3 +106,12 @@ __declspec(allocate(".text")) char __ltr[] =
 	0x0F, 0x00, 0xD9, // LTR CX
 	0xC3,             // RET
 };
+__declspec(allocate(".text")) char __iret[] =
+{
+	0x41, 0x50, // PUSH R8
+	0x41, 0x51, // PUSH R9
+	0x9C,       // PUSHFQ
+	0x51,       // PUSH RCX
+	0x52,       // PUSH RDX
+	0x48, 0xCF, // IRETQ
+};

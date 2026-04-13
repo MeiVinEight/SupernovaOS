@@ -43,3 +43,4 @@ void __sti();
 void *__memcpy(volatile void *, const void *, QWORD);
 void *__memset(volatile void *, BYTE, QWORD);
 void __stdcall __int(BYTE x);
+void __iret(QWORD, QWORD, QWORD, QWORD);

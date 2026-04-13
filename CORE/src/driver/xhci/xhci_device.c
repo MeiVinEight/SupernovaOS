@@ -418,7 +418,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	// Sync the input context with the xHC's current output context
 	// so slot and EP0 state are up-to-date before we add new endpoints
 	DWORD ctx64 = controller->capability->CSZE;
-	__memcpy(((XHCI_SLOT_CONTEXT32 *) device->context) + (1 << ctx64), (void *) controller->context[device->slot], 32 * (sizeof(XHCI_SLOT_CONTEXT32) << ctx64));
+	__memcpy(((XHCI_SLOT_CONTEXT32 *) device->context) + (1 << ctx64), (void *) core_mapping(controller->context[device->slot]), 32 * (sizeof(XHCI_SLOT_CONTEXT32) << ctx64));
 
 	// Reset input control context flags (clear stale bits from ADDRESS_DEVICE)
 	XHCI_INPUT_CONTROL_CONTEXT32 *ictx = device->context;

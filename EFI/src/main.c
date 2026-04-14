@@ -654,7 +654,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	SST->RSDP = rsdp;
 
 
-	QWORD stackPoint = SST->MEMORY[0].L;
+	QWORD stackPoint = SST->MEMORY[0].L - 0x40;
 	QWORD base = 0;
 	__assume (base != 0);
 	QWORD ntHeader = *((DWORD *) (base + 0x3C));

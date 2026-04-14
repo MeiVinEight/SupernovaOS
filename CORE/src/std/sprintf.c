@@ -559,7 +559,7 @@ static int core_vsnprintf(FORMAT_CONTEXT* c, const char* fmt, va_list ap)
 			{
 				uintptr_t ptr = (uintptr_t)va_arg(ap, void *);
 				/* Always: "0x" prefix, lowercase hex, width = 2*pointer size */
-				flags |= FL_HASH;
+				flags |= FL_ZERO | FL_UPPER;
 				int ptr_width = (width > 0) ? width : (int)(sizeof(void*) * 2 + 2);
 				emit_int(c, (uint64_t)ptr, 16, flags, ptr_width, prec);
 				break;

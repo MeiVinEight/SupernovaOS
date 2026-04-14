@@ -206,8 +206,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		{
 			QWORD allpc = 1;
 			QWORD pageAddr = alloc_physical_memory(&allpc, 0, 0);
-			pml4[offset4] = pageAddr | PAGING_PRESENT;
-			paging_attribute(pml4 + offset4, attr);
+			pml4[offset4] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
 			__memset128(pageBuf, pageBuf, 512);
@@ -225,8 +224,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		{
 			QWORD allpc = 1;
 			QWORD pageAddr = alloc_physical_memory(&allpc, 0, 0);
-			pdpt[offset3] = pageAddr | PAGING_PRESENT;
-			paging_attribute(pdpt + offset3, attr);
+			pdpt[offset3] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
 			__memset128(pageBuf, pageBuf, 512);
@@ -244,8 +242,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		{
 			QWORD allpc = 1;
 			QWORD pageAddr = alloc_physical_memory(&allpc, 0, 0);
-			pd[offset2] = pageAddr | PAGING_PRESENT;
-			paging_attribute(pd + offset2, attr);
+			pd[offset2] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
 			__memset128(pageBuf, pageBuf, 512);

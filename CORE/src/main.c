@@ -80,5 +80,6 @@ QWORD coreCRTStartup()
 	SUPERNOVA_SYSTEM_TABLE *sysTab = (SUPERNOVA_SYSTEM_TABLE *) virtAddr;
 	__memcpy(sysTab->APC, sysTab->FONT, 0x1000);
 	QWORD userStack = (QWORD) sysTab->APC;
+	userStack -= 0x20;
 	return __iret(0x13, userMain, 0x1B, userStack);
 }

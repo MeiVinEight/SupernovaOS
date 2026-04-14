@@ -10,7 +10,6 @@
 #include <driver/xhci/xhci_device.h>
 #include <stdio.h>
 #include <timer/timer.h>
-#include <arch/processor.h>
 
 //COREAPI PCI_EXPRESS_XHCI_CONTROLLER DEVICE;
 COREAPI PCI_EXPRESS_XHCI_CONTROLLER *XHCI_CONTROLLER;
@@ -138,7 +137,6 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	device->operational->MDSE = maxSlot;
 
 	//Setup the device context base address array with scratchpad buffers
-	QWORD dcbaaSize = sizeof(void *) * (device->capability->SLOT + 1);
 	QWORD pageCount = 1;
 	QWORD dcbaAddr = alloc_physical_memory(&pageCount, 0, 0);
 	device->context = (QWORD *) core_mapping(dcbaAddr);
@@ -276,7 +274,10 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		{
 			XHCI_TRB_TRANSFER_EVENT *xfer = (XHCI_TRB_TRANSFER_EVENT *) blk;
 			XHCI_USB_DEVICE *usbdev = device->device[xfer->SLOT];
-			__memcpy(&usbdev->transfer[xfer->EPID]->COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
+			XHCI_TRANSFER_RING *xring = usbdev->transfer[xfer->EPID];
+			__memcpy(&xring->COMP, xfer, sizeof(XHCI_TRB_TRANSFER_EVENT));
+			if (xring->CALL)
+				xring->CALL(xring);
 			continue;
 		}
 		if (type == XHCI_TRB_TYPE_COMMAND_COMPLETION)
@@ -338,6 +339,8 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 		controller = controller->next;
 	}
 
+	WORD doorbell[32];
+	__memset(doorbell, 0, 64);
 	if (controller)
 	{
 		xhc_event_ring_process(controller);
@@ -368,6 +371,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	DWORD slotId = completion.SLID;
 
 	XHCI_USB_DEVICE *usbdev = heap_alloc(sizeof(XHCI_USB_DEVICE));
+	__memset(usbdev, 0, sizeof(XHCI_USB_DEVICE));
 	device->device[slotId] = usbdev;
 
 	usbdev->controller = (void *) device;

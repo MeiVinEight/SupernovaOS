@@ -11,6 +11,26 @@ XHCI_USB_DEVICE *USB_KEYBOARD;
 HID_STANDARD_KEYEVENT KEYEVENT;
 volatile BYTE KEY_COUNT = 0;
 
+void xhci_usb_keyboard_event(XHCI_TRANSFER_RING *ring)
+{
+	if (!ring->COMP.CCOD)
+		return;
+	if (ring->COMP.CCOD != XHCI_CODE_SUCCESS)
+	{
+		printf("USB Keyboard Error: %u\n", ring->COMP.CCOD);
+		return;
+	}
+
+	XHCI_USB_DEVICE *device = ring->DEVC;
+	for (int i = 0; i < 6; i++)
+	{
+		if ((KEYEVENT.KEY[i] == KEYEVENT_KEY_ESC) && (KEYEVENT.MOD & KEYEVENT_CTRL_LCTRL))
+			acpi_shutdown();
+	}
+	__memset(&KEYEVENT, 0, sizeof(HID_STANDARD_KEYEVENT));
+	KEYEVENT.RSV = 1;
+	xhci_transfer(device, ring->EPID, 0, 0, &KEYEVENT, sizeof(HID_STANDARD_KEYEVENT));
+}
 DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
 {
 	// Search interrupt in endpoint
@@ -57,45 +77,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	USB_KEYBOARD = device;
 	BYTE epid = xhci_endpoint_id(endpoint);
 	device->transfer[epid]->COMP.CCOD = XHCI_CODE_SUCCESS;
+	device->transfer[epid]->CALL = xhci_usb_keyboard_event;
+	xhci_usb_keyboard_event(device->transfer[epid]);
 	return 0;
-}
-void xhci_keyboard_process()
-{
-	XHCI_USB_DEVICE *device = USB_KEYBOARD;
-	if (!device)
-		return;
-
-	XHCI_TRANSFER_RING *transfer = 0;
-	DWORD epid = 3;
-	for (; epid < 32; epid += 2)
-	{
-		if (device->transfer[epid])
-		{
-			transfer = device->transfer[epid];
-			break;
-		}
-	}
-	if (!transfer)
-		return;
-
-	if (transfer->COMP.CCOD)
-	{
-		if (transfer->COMP.CCOD != XHCI_CODE_SUCCESS)
-		{
-			printf("USB Keyboard Error: %u\n", transfer->COMP.CCOD);
-			// Disable USB Keyboard
-			transfer->COMP.CCOD = 0;
-			return;
-		}
-
-		for (int i = 0; i < 6; i++)
-		{
-			if ((KEYEVENT.KEY[i] == KEYEVENT_KEY_ESC) && (KEYEVENT.MOD & KEYEVENT_CTRL_LCTRL))
-				acpi_shutdown();
-		}
-
-		__memset(&KEYEVENT, 0, sizeof(HID_STANDARD_KEYEVENT));
-		KEYEVENT.RSV = 1;
-		xhci_transfer(device, epid, 0, 0, &KEYEVENT, sizeof(HID_STANDARD_KEYEVENT));
-	}
 }

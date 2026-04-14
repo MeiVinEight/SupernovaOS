@@ -30,6 +30,8 @@ void xhc_control_doorbell(XHCI_DOORBELL *doorbell, DWORD id)
 }
 void xhc_transfer_ring_create(XHCI_TRANSFER_RING *ring, void *devc, int epid, int link)
 {
+	ring->DEVC = devc;
+	ring->EPID = epid;
 	QWORD pc = 1;
 	QWORD ringPhyAddr = alloc_physical_memory(&pc, 0, 0);
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(ringPhyAddr);

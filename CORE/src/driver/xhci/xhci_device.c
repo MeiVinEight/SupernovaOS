@@ -132,11 +132,9 @@ void xhci_usb_configure_control_endpoint(XHCI_USB_DEVICE *device, DWORD maxPs)
 DWORD xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_ENDPOINT *endpoint)
 {
 	BYTE epid = xhci_endpoint_id(endpoint);
-	printf("Create Endpoint %u\n", epid);
 	((volatile XHCI_USB_DEVICE *) device)->transfer[epid] = heap_alloc(sizeof(XHCI_TRANSFER_RING));
 	XHCI_TRANSFER_RING *transfer = device->transfer[epid];
 	__memset(transfer, 0, sizeof(XHCI_TRANSFER_RING));
-	printf("Create Transfer: %p\n", transfer);
 	xhc_transfer_ring_create(transfer, device, epid, (epid & 1) ^ 1);
 	xhci_usb_configure_endpoint(device, endpoint);
 	XHCI_TRB_CONFIGURE_ENDPOINT configure;

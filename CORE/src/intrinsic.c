@@ -115,3 +115,8 @@ __declspec(allocate(".text")) char __iret[] =
 	0x52,       // PUSH RDX
 	0x48, 0xCF, // IRETQ
 };
+__declspec(allocate(".text")) char __syscall[] =
+{
+	0xCD, 0x2E, // INT 2EH
+	0xC3,       // RET
+};

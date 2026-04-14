@@ -68,7 +68,7 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 	}
 
 	printf("CPU #%lu INT: #%02X @ RIP %016llX\nCODE: %016llX\n", apic_current_id(), id, stack->RIP, stack->ERROR);
-	while (SYSTEM_TABLE->CRUN) __halt();
+	while (SYSTEM_TABLE->RUNN) __halt();
 }
 void __stdcall setup_interrupt()
 {

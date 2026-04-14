@@ -327,7 +327,7 @@ void __stdcall aproc_startup(void)
 	kprint_cpu();
 
 	APIC_BSP_LOCK = 0;
-	while (SYSTEM_TABLE->CRUN) __halt();
+	while (SYSTEM_TABLE->RUNN) __halt();
 }
 void apic_setup_multiprocessor()
 {

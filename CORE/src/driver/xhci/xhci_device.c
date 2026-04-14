@@ -49,7 +49,8 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 	device->persistent = persPhyAddr;
 
 	// Trasnfer Ring
-	xhc_transfer_ring_create(device->transfer[1], 1);
+	device->transfer[1] = &device->control;
+	xhc_transfer_ring_create(device->transfer[1], device, 1, 1);
 
 	device->route = 0;
 	device->port = portId;
@@ -136,7 +137,7 @@ DWORD xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_END
 	XHCI_TRANSFER_RING *transfer = device->transfer[epid];
 	__memset(transfer, 0, sizeof(XHCI_TRANSFER_RING));
 	printf("Create Transfer: %p\n", transfer);
-	xhc_transfer_ring_create(transfer, (epid & 1) ^ 1);
+	xhc_transfer_ring_create(transfer, device, epid, (epid & 1) ^ 1);
 	xhci_usb_configure_endpoint(device, endpoint);
 	XHCI_TRB_CONFIGURE_ENDPOINT configure;
 	__memset(&configure, 0, sizeof(XHCI_TRB_CONFIGURE_ENDPOINT));

@@ -13,8 +13,10 @@
 
 typedef struct _XHCI_TRANSFER_RING
 {
+	void *DEVC;
 	XHCI_TRB_GENERIC *RING;
 	XHCI_TRB_COMMAND_COMPLETION COMP;
+	BYTE EPID;
 	BYTE INDX;
 	BYTE CYCL;
 } XHCI_TRANSFER_RING;
@@ -24,7 +26,7 @@ XHCI_TRB_GENERIC *xhc_event_ring_pop(XHCI_TRANSFER_RING *ring);
 void xhc_ring_doorbell(XHCI_DOORBELL *doorbell, BYTE id, BYTE target);
 void xhc_command_doorbell(XHCI_DOORBELL *doorbell);
 void xhc_control_doorbell(XHCI_DOORBELL *doorbell, DWORD id);
-void xhc_transfer_ring_create(XHCI_TRANSFER_RING *ring, int link);
+void xhc_transfer_ring_create(XHCI_TRANSFER_RING *ring, void *devc, int epid, int link);
 void *xhc_queue_transfer(XHCI_TRANSFER_RING *ring, void *trb);
 
 #endif //SUPERNOVA_XHC_RING_H

@@ -181,7 +181,7 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	device->operational->CBAA = dcbaAddr;
 
 	// Setup command ring, CRCR
-	xhc_transfer_ring_create(&device->command, 1);
+	xhc_transfer_ring_create(&device->command, device, 0, 1);
 	device->operational->CRCR = physical_address((QWORD) device->command.RING) | 1;
 	/* ==== Operational ==== */
 
@@ -189,7 +189,7 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	/* ==== Runtime ==== */
 	// Setup the event ring and write to interrupter
 	// registers to se ERSTSZ, ERDP, and ERSTBA.
-	xhc_transfer_ring_create(&device->event, 0);
+	xhc_transfer_ring_create(&device->event, device, 0, 0);
 
 	// Get the primary interrupter registers
 	volatile XHCI_INTERRUPTER *intr = device->runtime->INTR;
@@ -371,7 +371,6 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	device->device[slotId] = usbdev;
 
 	usbdev->controller = (void *) device;
-	usbdev->transfer[1] = &usbdev->control;
 	if (xhci_setup_usb_device(usbdev, portId, slotId))
 	{
 		simple_output("Setup device failed\n");

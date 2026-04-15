@@ -4,11 +4,6 @@
 #include <memory/virtmem.h>
 #include <async/async.h>
 
-typedef struct _SIMPLE_TEXT_MODE
-{
-	DWORD POS;
-	DWORD COLOR;
-} SIMPLE_TEXT_MODE;
 REENTRANT_LOCK CONSOLE_LOCK;
 
 COREAPI char scroll_text_line[] = {
@@ -28,7 +23,7 @@ COREAPI char scroll_text_line[] = {
 	// LOOP1:
 	0xC3,                   // RET
 };
-COREAPI DWORD COLOR_PLAETTE[] =
+COREAPI DWORD COLOR_PALETTE[] =
 {
 	0x000000,
 	0x0000AA,
@@ -82,7 +77,7 @@ void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 {
 	volatile BYTE(*fontMap)[16] = SYSTEM_TABLE->FONT;
 	volatile BYTE *font = fontMap[ch];
-	DWORD colorMap[2] = {COLOR_PLAETTE[(color >> 4) & 0xF], COLOR_PLAETTE[(color >> 0) & 0xF]};
+	DWORD colorMap[2] = {COLOR_PALETTE[(color >> 4) & 0xF], COLOR_PALETTE[(color >> 0) & 0xF]};
 	QWORD ppl = SYSTEM_TABLE->PPL;
 	for (int i = 0; i < 16; i++)
 	{

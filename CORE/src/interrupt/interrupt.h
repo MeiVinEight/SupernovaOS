@@ -62,4 +62,3 @@ void register_interrupt(BYTE id, void (*routine)(INTERRUPT_STACK *));
 void interrupt_set_intx(BYTE id);
 void interrupt_free_intx(BYTE id);
 BYTE interrupt_alloc_intx();
-void setup_system_call();

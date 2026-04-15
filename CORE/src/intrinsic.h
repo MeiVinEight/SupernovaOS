@@ -47,4 +47,5 @@ void *__memcpy(volatile void *, const void *, QWORD);
 void *__memset(volatile void *, BYTE, QWORD);
 void __stdcall __int(BYTE x);
 QWORD __iret(QWORD, QWORD, QWORD, QWORD);
-void __syscall(const volatile void *);
+QWORD __syscall(const volatile void *);
+DWORD __getcs();

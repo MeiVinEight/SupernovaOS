@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <file/pe32x.h>
 #include <user/user.h>
+#include <interrupt/syscall.h>
 
 extern BYTE __ImageBase;
 

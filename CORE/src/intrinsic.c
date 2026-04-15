@@ -120,3 +120,8 @@ __declspec(allocate(".text")) char __syscall[] =
 	0xCD, 0x2E, // INT 2EH
 	0xC3,       // RET
 };
+__declspec(allocate(".text")) char __getcs[] =
+{
+	0x8C, 0xC8, // MOV EAX, CS
+	0xC3,       // RET
+};

@@ -15,7 +15,6 @@
 #include <user/user.h>
 
 extern BYTE __ImageBase;
-QWORD __stdcall coreCRTStartup();
 
 COREAPI volatile SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE = (SUPERNOVA_SYSTEM_TABLE *) SYSTEM_ADDRESS;
 
@@ -28,15 +27,11 @@ void kprint_cpu()
 }
 unsigned long long _DllMainCRTStartup()
 {
-	__setrbp(__getrsp() & ~((1ULL << 12) - 1));
-	setup_paging();
+	//setup_paging();
+	SYSTEM_TABLE->PAGING[0][0] = 0;
+	setup_gdt();
 	setup_segment();
 	setup_processor();
-	return ((QWORD (*)()) core_mapping((QWORD) coreCRTStartup))();
-}
-QWORD coreCRTStartup()
-{
-	SYSTEM_TABLE->PAGING[0][0] = 0;
 	setup_interrupt();
 	setup_page_fault();
 	setup_basic_console();
@@ -52,7 +47,6 @@ QWORD coreCRTStartup()
 	setup_acpi();
 	setup_timer();
 	apic_setup_multiprocessor();
-	setup_system_call();
 	setup_pcie();
 
 

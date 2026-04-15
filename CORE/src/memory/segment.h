@@ -26,4 +26,5 @@ typedef struct _GDTR64
 } GDTR64;
 #pragma pack(pop)
 
+void setup_gdt();
 void setup_segment();

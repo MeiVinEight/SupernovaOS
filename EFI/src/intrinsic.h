@@ -14,6 +14,7 @@ void __halt();
 void __cpuid(int *, int);
 QWORD __readcr0(void);
 void __writecr0(QWORD);
+void __writecr3(QWORD);
 QWORD __readcr3(void);
 QWORD __readcr4(void);
 void __writecr4(QWORD);

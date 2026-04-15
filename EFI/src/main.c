@@ -46,6 +46,11 @@
 #define CRT_CURSOR_H 0xE
 #define CRT_CURSOR_L 0xF
 
+#define PA_PRESENT  0x001
+#define PA_WRITE    0x002
+#define PA_USER     0x004
+#define PA_PAGESIZE 0x080
+
 typedef struct _SUPERNOVA_BOOT_TABLE
 {
 	QWORD GUID0[2];
@@ -71,6 +76,7 @@ typedef struct _SUPERNOVA_SYSTEM_TABLE
 	BYTE RSV[0x970];
 	DWORD DVC[0x80];
 	MEMORY_REGION MEMORY[64];
+	QWORD PAGE[];
 } SUPERNOVA_SYSTEM_TABLE;
 
 extern char __ImageBase;
@@ -163,9 +169,6 @@ QWORD core_mapping(QWORD x)
 }
 QWORD jmp(QWORD(*entry)(), QWORD stackAddr)
 {
-	__cli();
-	char idtr[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-	__lidt(idtr);
 	if(!entry)
 		while (1) __halt();
 
@@ -484,7 +487,9 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	//__memset128((void *) fbb, buf, (info.PixelsPerScanLine * info.VerticalResolution * 4) / 16);
 
 
-	OutputText("Supernova-EFI\r\n");
+	OutputText("Supernova-EFI @ ");
+	OutputAddress((QWORD) &__ImageBase);
+	OutputText("\r\n");
 
 	int cpuid[4] = {0, 0, 0, 0};
 	char brand[51];
@@ -642,6 +647,10 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 		beg++;
 	}
 	*/
+	SYSTEM_TABLE->BootServices->ExitBootServices(handle, MapKey);
+	__cli();
+	char idtr[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	__lidt(idtr);
 
 	SST->GUID0[0] = BOOT_TABLE->GUID0[0];
 	SST->GUID0[1] = BOOT_TABLE->GUID0[1];
@@ -653,18 +662,39 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	SST->FBB = graphics->Mode->FrameBufferBase;
 	SST->RSDP = rsdp;
 
+	// Setup paging
+	QWORD *paging = SST->PAGE;
+	//paging_attribute((QWORD) paging, PA_WRITE);
+	paging[0x000] = ((QWORD) (paging + 0x200)) | 3;
+	paging[0x100] = ((QWORD) (paging + 0x200)) | 3;
+	paging += 0x200;
+	paging[0] = ((QWORD) (paging + 0x200)) | 3;
+	paging[1] = ((QWORD) (paging + 0x400)) | 3;
+	paging[2] = ((QWORD) (paging + 0x600)) | 3;
+	paging[3] = ((QWORD) (paging + 0x800)) | 3;
+	paging += 0x200;
+	QWORD memAddr = 0;
+	for (QWORD i = 0; i < 4; i++)
+	{
+		for (QWORD j = 0; j < 512; j++)
+		{
+			paging[(i * 0x200) + j] = memAddr | PA_PRESENT | PA_WRITE | PA_PAGESIZE;
+			memAddr += 0x00200000;
+		}
+	}
+	__writecr3((QWORD) SST->PAGE);
+
+
 
 	QWORD stackPoint = SST->MEMORY[0].L - 0x40;
 	QWORD base = 0;
 	__assume (base != 0);
 	QWORD ntHeader = *((DWORD *) (base + 0x3C));
 	QWORD entry = *((DWORD *) (ntHeader + 0x28));
-	OutputText("CORE ENTRY: ");
-	OutputAddress(entry);
-	OutputText("\r\n");
+	stackPoint |= 0xFFFF800000000000ULL;
+	entry |= 0xFFFF800000000000ULL;
 
 
-	SYSTEM_TABLE->BootServices->ExitBootServices(handle, MapKey);
 	jmp((QWORD(*)()) entry, stackPoint);
 	//jmp(0, 0);
 	return 0;

@@ -181,12 +181,47 @@ void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
 	blk->S = pageCount << 12;
 	memblk_insert_link(&MEMORY_MAP, blk, free_memblk);
 }
-void paging_attribute(QWORD *entry, QWORD attr)
+void modify_page_attr(QWORD virtAddr, QWORD *pageEntry, QWORD attr)
 {
-	if (attr & PA_WRITE)
-		*entry |= PAGING_WRITE;
-	if (attr & PA_USER)
-		*entry |= PAGING_USER;
+	QWORD paMask = PA_WRITE | PA_USER;
+	attr &= paMask;
+	*pageEntry &= ~paMask;
+	*pageEntry |= attr;
+	__invlpg((void *) (virtAddr));
+}
+QWORD *search_page_entry(QWORD virtAddr, int *pageType)
+{
+	QWORD addrMask = ~0xFFFULL;
+	volatile VIRTUAL_ADDRESS va;
+	va.address = virtAddr;
+	QWORD *pml4 = (QWORD *) core_mapping(__readcr3() & addrMask);
+	QWORD offset4 = va.offset4;
+	QWORD *pdpt = (QWORD *) core_mapping(pml4[offset4] & addrMask);
+	QWORD offset3 = va.offset3;
+	QWORD pdpte = pdpt[offset3];
+	if (pdpte & 0x80)
+	{
+		*pageType = PAGE_1G;
+		return &pdpt[offset3];
+	}
+	QWORD *pd = (QWORD *) core_mapping(pdpte & addrMask);
+	QWORD offset2 = va.offset2;
+	QWORD pde = pd[offset2];
+	if (pde & 0x80)
+	{
+		*pageType = PAGE_2M;
+		return &pd[offset2];
+	}
+	QWORD *pt = (QWORD *) core_mapping(pde & addrMask);
+	QWORD offset1 = va.offset1;
+	*pageType = PAGE_4K;
+	return &pt[offset1];
+}
+void paging_attribute(QWORD virtAddr, QWORD attr)
+{
+	int pType = 0;
+	QWORD *pEntry = search_page_entry(virtAddr, &pType);
+	modify_page_attr(virtAddr, pEntry, attr);
 }
 void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, int pageType, QWORD attr)
 {
@@ -200,8 +235,10 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 	va.address = virtualAddr;
 	while (pageCount--)
 	{
+		QWORD *pEntry = 0;
 		QWORD *pml4 = (QWORD *) core_mapping(__readcr3() & addrMask);
 		QWORD offset4 = va.offset4;
+		// create 512G page entry
 		if (!(pml4[offset4] & 1))
 		{
 			QWORD allpc = 1;
@@ -212,14 +249,16 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 			__memset128(pageBuf, pageBuf, 512);
 		}
 
+		// create 1G page
 		QWORD *pdpt = (QWORD *) core_mapping(pml4[offset4] & addrMask);
 		QWORD offset3 = va.offset3;
 		if (pageType == PAGE_1G)
 		{
 			pdpt[offset3] = phyAddr | PAGING_PRESENT | PAGING_PAGESIZE;
-			paging_attribute(pdpt + offset3, attr);
+			pEntry = pdpt + offset3;
 			goto CONTINU;
 		}
+		// create 1G page entry
 		if (!(pdpt[offset3] & 1))
 		{
 			QWORD allpc = 1;
@@ -230,14 +269,16 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 			__memset128(pageBuf, pageBuf, 512);
 		}
 
+		// create 2M page
 		QWORD *pd = (QWORD *) core_mapping(pdpt[offset3] & addrMask);
 		QWORD offset2 = va.offset2;
 		if (pageType == PAGE_2M)
 		{
 			pd[offset2] = phyAddr | PAGING_PRESENT | PAGING_PAGESIZE;
-			paging_attribute(pd + offset2, attr);
+			pEntry = pd + offset2;
 			goto CONTINU;
 		}
+		// create 2M page entry
 		if (!(pd[offset2] & 1))
 		{
 			QWORD allpc = 1;
@@ -248,38 +289,28 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 			__memset128(pageBuf, pageBuf, 512);
 		}
 
+		// create 4K page
 		QWORD *pt = (QWORD *) core_mapping(pd[offset2] & addrMask);
 		QWORD offset1 = va.offset1;
 		pt[offset1] = phyAddr | PAGING_PRESENT;
-		paging_attribute(pt + offset1, attr);
+		pEntry = pt + offset1;
 
 
 		CONTINU:;
+		modify_page_attr(va.address, pEntry, attr);
 		phyAddr += page;
 		va.address += page;
 	}
 }
 QWORD physical_address(QWORD virtAddr)
 {
-	QWORD addrMask = ~0xFFFULL;
-	volatile VIRTUAL_ADDRESS va;
-	va.address = virtAddr;
-	QWORD *pml4 = (QWORD *) core_mapping(__readcr3() & addrMask);
-	QWORD offset4 = va.offset4;
-	QWORD *pdpt = (QWORD *) core_mapping(pml4[offset4] & addrMask);
-	QWORD offset3 = va.offset3;
-	QWORD pdpte = pdpt[offset3];
-	if (pdpte & 0x80)
-		return (pdpte & ~(0x3FFFFFFFULL)) | (virtAddr & 0x3FFFFFFF);
-	QWORD *pd = (QWORD *) core_mapping(pdpte & addrMask);
-	QWORD offset2 = va.offset2;
-	QWORD pde = pd[offset2];
-	if (pde & 0x80)
-		return (pde & ~(0x001FFFFFULL)) | (virtAddr & 0x001FFFFF);
-	QWORD *pt = (QWORD *) core_mapping(pde & addrMask);
-	QWORD offset1 = va.offset1;
-	QWORD pte = pt[offset1];
-	return (pte & ~(0x00000FFFULL)) | va.offset0;
+	int pType = 0;
+	QWORD *pEntry = search_page_entry(virtAddr, &pType);
+	if (pType == PAGE_1G)
+		return (*pEntry & (~PAGE_1G_OFFSET)) | (virtAddr & PAGE_1G_OFFSET);
+	if (pType == PAGE_2M)
+		return (*pEntry & (~PAGE_2M_OFFSET)) | (virtAddr & PAGE_2M_OFFSET);
+	return (*pEntry & (~PAGE_4K_OFFSET)) | (virtAddr & PAGE_4K_OFFSET);
 }
 void *heap_alloc(QWORD allocSize)
 {

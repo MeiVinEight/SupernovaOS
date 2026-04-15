@@ -10,6 +10,7 @@
 #include <arch/processor.h>
 #include <memory/segment.h>
 #include <stdio.h>
+#include <smp/smp.h>
 
 
 #define CPUID_FEAT_EDX_APIC (1 << 9)
@@ -332,6 +333,7 @@ void apic_setup_multiprocessor()
 		if (CPU_MASK & (1ULL << i))
 			apic_startup_ap(i, aproc_startup);
 	SYSTEM_TABLE->PAGING[0][0] = pag0;
+	register_interrupt(SMP_INT_VECTOR, int_smp);
 }
 DWORD ioapic_read(volatile DWORD *base, int idx)
 {

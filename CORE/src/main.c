@@ -47,6 +47,7 @@ unsigned long long _DllMainCRTStartup()
 	setup_acpi();
 	setup_timer();
 	apic_setup_multiprocessor();
+	setup_system_call();
 	setup_pcie();
 
 

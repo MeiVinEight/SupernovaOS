@@ -604,10 +604,14 @@ static int core_vsnprintf(FORMAT_CONTEXT* c, const char* fmt, va_list ap)
 /* =========================================================================
  * Public API
  * ========================================================================= */
-int vprintf(const char *fmt, va_list ap)
+int vprintf(BYTE attr, const char *fmt, va_list ap)
 {
 	FORMAT_CONTEXT c = {1, outchar, 0, 0};
-	return core_vsnprintf(&c, fmt, ap);
+	DWORD color = SIMPLE_TEXT.COLOR;
+	SIMPLE_TEXT.COLOR = attr;
+	int r = core_vsnprintf(&c, fmt, ap);
+	SIMPLE_TEXT.COLOR = color;
+	return r;
 }
 
 int vsnprintf(char* buf, size_t n, const char* fmt, va_list ap)

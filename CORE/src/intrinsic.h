@@ -10,6 +10,7 @@ void  __cpuidex(int *, int, int);
 void  __halt();
 BYTE  __inbyte(DWORD);
 DWORD __indword(DWORD);
+void  __invlpg(const void *);
 WORD  __inword(DWORD);
 void  __lidt(void *);
 void  __nop();

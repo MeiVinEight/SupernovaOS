@@ -1,6 +1,6 @@
 #include  <driver/pci/pci.h>
 #include <console.h>
-#include <core.h>
+#include <stdio.h>
 
 COREAPI char PCI_VENDOR_10DE[] = "NVIDIA Corporation";
 COREAPI char PCI_VENDOR_1234[] = "QEMU Virtual Machine";
@@ -306,23 +306,12 @@ void setup_pci()
 			continue;
 		DWORD classCode = pci_cfg_get_class(addr);
 		PCI_DEVICE_SUBSYSTEM subsystem = pci_cfg_get_subsystem(addr);
-		simple_output("PCI @ ");
-		simple_output_address(addr.address, 8);
-		outchar('-');
-		simple_output_address(subsystem.value, 8);
-		simple_output(": ");
-		simple_output_address(classCode, 6);
-		simple_output(" - ");
+		printf("PCI @ %08lX-%08lX: %06lX - ", addr.address, subsystem.value, classCode);
 		const char *vendorName = pci_vendor_name(vendor.VENDOR);
 		const char *deviceName = pci_device_name(vendor);
 		if (vendorName && deviceName)
-		{
-			simple_output(vendorName);
-			outchar(' ');
-			simple_output(deviceName);
-		}
+			printf("%s %s\n", vendorName, deviceName);
 		else
-			simple_output_address(vendor.ID, 8);
-		outchar('\n');
+			printf("%08lX\n", vendor.ID);
 	}
 }

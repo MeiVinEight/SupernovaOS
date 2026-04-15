@@ -135,38 +135,3 @@ void outchar(char ch)
 	}
 	async_unlock(&CONSOLE_LOCK);
 }
-void simple_output(const void *buf)
-{
-	const char *str = buf;
-	while (*str)
-		outchar(*str++);
-}
-void simple_output_number(QWORD x)
-{
-	char buf[20] = { '0', 0 };
-	char *num = buf;
-	if (x)
-	{
-		buf[19] = 0;
-		int idx = 19;
-		while (idx && x)
-		{
-			buf[--idx] = (char) ('0' + (x % 10));
-			x /= 10;
-		}
-		num += idx;
-	}
-	simple_output(num);
-}
-void simple_output_address(QWORD val, BYTE cnt)
-{
-	char hex[] = "0123456789ABCDEF";
-	char buf[17];
-	buf[cnt] = 0;
-	for (int i = cnt; i--;)
-	{
-		buf[i] = hex[val & 0xF];
-		val >>= 4;
-	}
-	simple_output(buf);
-}

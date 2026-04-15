@@ -5,7 +5,7 @@
 void setup_8259A()
 {
 	disable_8259A();
-	simple_output("8259A PIC OFFLINE\n");
+	printf("8259A PIC OFFLINE\n");
 }
 void disable_8259A()
 {

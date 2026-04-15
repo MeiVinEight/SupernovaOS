@@ -3,6 +3,7 @@
 #include <console.h>
 #include <interrupt/interrupt.h>
 #include <intrinsic.h>
+#include <stdio.h>
 
 COREAPI volatile QWORD TSC_FREQUENCY_KHZ = 0;
 
@@ -16,7 +17,7 @@ void setup_timer()
 	// APIC timer is set up in apic.c
 	if (!USEAPIC)
 	{
-		simple_output("TIMER: APIC OFFLINE\n");
+		printf("TIMER: APIC OFFLINE\n");
 		return;
 	}
 
@@ -44,9 +45,7 @@ void setup_timer()
 		shift *= 10;
 	}
 	TSC_FREQUENCY_KHZ *= shift;
-	simple_output("CPU ");
-	simple_output_number(TSC_FREQUENCY_KHZ / 1000);
-	simple_output(" MHz\n");
+	printf("CPU %llu MHz\n", TSC_FREQUENCY_KHZ / 1000);
 }
 void delay(QWORD ms)
 {

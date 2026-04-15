@@ -180,19 +180,9 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, DWORD wait, USB_DEV
 
 	// Use the device's persisitent DMA buffer
 	if (!device->persistent)
-	{
-		simple_output("xHCI: Missing control transfer buffer for slot ");
-		simple_output_number(device->slot);
-		outchar('\n');
 		return 1;
-	}
 	if (len > 0x1000)
-	{
-		simple_output("xHCI: Control trasnfer too large: ");
-		simple_output_number(len);
-		outchar('\n');
 		return 1;
-	}
 
 	// For OUT data stage, copy caller data into DMA buffer enqueue
 	void *dmaBuffer = (void *) core_mapping(device->persistent);
@@ -336,9 +326,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	DWORD rc = xhci_address_device(device, &completion, 0);
 	if (rc != XHCI_CODE_SUCCESS)
 	{
-		simple_output("xHCI: Address Device Command failed: ");
-		simple_output_number(rc);
-		outchar('\n');
+		printf("xHCI: Address Device Command failed: %lu\n", rc);
 		return;
 	}
 
@@ -350,11 +338,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	rc = xhci_get_device_descriptor(device, &desc, 8);
 	if (rc != XHCI_CODE_SUCCESS)
 	{
-		simple_output("xHCI: Failed to get device descriptor: ");
-		simple_output_number(rc);
-		simple_output(" for slot ");
-		simple_output_number(device->slot);
-		outchar('\n');
+		printf("xHCI: Failed to get device descriptor: %lu for slot %u\n", rc, device->slot);
 		return;
 	}
 

@@ -23,10 +23,9 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 	const char *vendorName = pci_vendor_name(vendor.VENDOR);
 	const char *deviceName = pci_device_name(vendor);
 	if (vendorName && deviceName)
-		printf("%s %s", vendorName, deviceName);
+		printf("%s %s\n", vendorName, deviceName);
 	else
-		simple_output_address(vendor.ID, 8);
-	outchar('\n');
+		printf("%08lX\n", vendor.ID);
 
 	BYTE intvec = interrupt_alloc_intx();
 	pcie_setup_interrupt(dev, xhci_interrupt, intvec);
@@ -51,7 +50,7 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 	DWORD reset = xhci_reset_controller(controller);
 	if (!reset)
 	{
-		simple_output("Reset failed\n");
+		printf("Reset failed\n");
 		return;
 	}
 
@@ -59,7 +58,7 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 
 	if (!xhci_start_controller(controller))
 	{
-		simple_output("XHCI start failed\n");
+		printf("XHCI start failed\n");
 		return;
 	}
 
@@ -299,21 +298,21 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 			if (port->WRCH)
 			{
 				status->RST = 1;
-				simple_output("Warm Reset complete\n");
+				printf("Warm Reset complete\n");
 			}
 			if (port->OCCH)
 				printf("Over-current condition: %u\n", port->OCAC);
 			if (port->PRCH)
 			{
 				status->RST = 1;
-				simple_output("Reset complete\n");
+				printf("Reset complete\n");
 			}
 			if (port->PLCH)
 				printf("Port Link Status: %u\n", port->PLST);
 			if (port->CECH)
 			{
 				status->ERR = 1;
-				simple_output("Port Config Error\n");
+				printf("Port Config Error\n");
 			}
 			// Clear port status change bits
 			xhci_port_ack_port_changes(device, portId, XHCI_PORTSC_PSC_MASK);
@@ -352,7 +351,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	if (xhci_port_reset(device, portId))
 	{
-		simple_output("Reset port failed\n");
+		printf("Reset port failed\n");
 		return;
 	}
 
@@ -363,9 +362,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	xhci_send_command(device, &trb, &completion);
 	if (completion.CCOD != XHCI_CODE_SUCCESS)
 	{
-		simple_output("Enable slot failed: ");
-		simple_output_number(completion.CCOD);
-		outchar('\n');
+		printf("Enable slot failed: %u\n", completion.CCOD);
 		return;
 	}
 	DWORD slotId = completion.SLID;
@@ -377,7 +374,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	usbdev->controller = (void *) device;
 	if (xhci_setup_usb_device(usbdev, portId, slotId))
 	{
-		simple_output("Setup device failed\n");
+		printf("Setup device failed\n");
 		xhci_disable_slot(device, slotId);
 	}
 	usbdev->root = portId;

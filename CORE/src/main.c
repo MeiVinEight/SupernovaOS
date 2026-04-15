@@ -43,7 +43,7 @@ QWORD coreCRTStartup()
 	setup_memory();
 	setup_console();
 
-	simple_output("Supernova OS\n");
+	printf("Supernova OS\n");
 	kprint_cpu();
 	SYSTEM_TABLE->RUNN = 1;
 	printf("Video: %lux%lu Memory: %lx\n", SYSTEM_TABLE->PPL, (DWORD) SYSTEM_TABLE->VRES, SYSTEM_TABLE->VRES * SYSTEM_TABLE->PPL * 4);
@@ -56,7 +56,7 @@ QWORD coreCRTStartup()
 	setup_pcie();
 
 
-	simple_output("OK\n");
+	printf("OK\n");
 
 	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) &__ImageBase;
 	DWORD userMainOffset = ((QWORD) user_main) & 0xFFFFFFFF;

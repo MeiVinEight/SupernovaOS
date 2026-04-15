@@ -1,9 +1,9 @@
 #include <memory/paging.h>
 #include <intrinsic.h>
 #include <interrupt/interrupt.h>
-#include <console.h>
 #include <arch/processor.h>
 #include <memory/virtmem.h>
+#include <stdio.h>
 
 void INT0E(INTERRUPT_STACK *stack)
 {
@@ -19,18 +19,7 @@ void INT0E(INTERRUPT_STACK *stack)
 		}
 	}
 
-	simple_output("CPU #");
-	simple_output_number(cpu_local_apic_id());
-	simple_output(" INT: #PF @ RIP ");
-	simple_output_address(stack->RIP, 16);
-	simple_output("\n");
-	simple_output("CODE: ");
-	simple_output_address(stack->ERROR, 16);
-	simple_output("\n");
-	simple_output("ADDR: ");
-	simple_output_address(__readcr2(), 16);
-	outchar('\n');
-
+	printf("CPU #%u INT: #PF @ RIP %p\nCODE: %p\nADDR: %p\n", cpu_local_apic_id(), (void *) stack->RIP, (void *) stack->ERROR, (void *) __readcr2());
 	while (1) __halt();
 }
 void setup_paging()

@@ -9,6 +9,7 @@
 #include <interrupt/interrupt.h>
 #include <arch/processor.h>
 #include <memory/segment.h>
+#include <stdio.h>
 
 
 #define CPUID_FEAT_EDX_APIC (1 << 9)
@@ -165,9 +166,7 @@ void setup_apic_timer(DWORD rate)
 	QWORD hpetHwFreq = hpet_query_frequency();
 	if (hpetHwFreq)
 	{
-		simple_output("HPET ");
-		simple_output_number(hpetHwFreq);
-		simple_output(" Hz\n");
+		printf("HPET %llu Hz\n", hpetHwFreq);
 		QWORD startHpet = hpet_get_counter();
 		// Reset APIC timer (set counter to 0xFFFFFFFF)
 		APIC_REGISTERS[APIC_TICR][0] = 0xFFFFFFFFUL;
@@ -214,11 +213,7 @@ void setup_apic_timer(DWORD rate)
 		shift *= 10;
 	}
 	freqKHz *= shift;
-	simple_output("APIC ");
-	simple_output_number(freqKHz / 1000);
-	simple_output(" MHz (");
-	simple_output_number(freq);
-	simple_output(" Hz)\n");
+	printf("APIC %llu MHz (%llu Hz)\n", freqKHz / 1000, freqKHz);
 
 	// Use it as APIC timer counter initializer
 	APIC_REGISTERS[APIC_TICR][0] = freq / rate;

@@ -5,6 +5,7 @@
 #include <intrinsic.h>
 #include <console.h>
 #include <core.h>
+#include <stdio.h>
 
 volatile ACPI_FADT *volatile FIXED_ACPI_TABLE = 0;
 
@@ -66,7 +67,7 @@ void setup_fadt(volatile ACPI_FADT *fadt)
 
 	if (ioapic_redirect(FIXED_ACPI_TABLE->SCIV, FIXED_ACPI_TABLE->SCIV + 0x20))
 	{
-		simple_output("I/O APIC Redirect IRQ FAILED\n");
+		printf("I/O APIC Redirect IRQ FAILED\n");
 		return;
 	}
 	register_interrupt(FIXED_ACPI_TABLE->SCIV + 0x20, system_control_interrupt);

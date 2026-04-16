@@ -167,19 +167,22 @@ QWORD core_mapping(QWORD x)
 {
 	return x;
 }
-QWORD jmp(QWORD(*entry)(), QWORD stackAddr)
+QWORD jmp(SUPERNOVA_SYSTEM_TABLE *sst, QWORD(*entry)(), QWORD stackAddr)
 {
 	if(!entry)
 		while (1) __halt();
 
-	BYTE call[24] = {
-		0x48, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // MOV RSP, stackAddr
-		0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,                         // JMP [RIP+0x00000000]
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,             // entry (8 bytes)
-	};
-	*((QWORD *) (call + 2)) = stackAddr;
-	*((QWORD *) (call + 16)) = (QWORD) entry;
-	return ((QWORD (*)()) call)();
+	BYTE *call = (BYTE *) ((stackAddr - 9) & 0xFFFFFFFFULL);
+	call[0] = 0x0F;
+	call[1] = 0x22;
+	call[2] = 0xD9; // MOV CR3, RCX
+	call[3] = 0x48;
+	call[4] = 0x8B;
+	call[5] = 0xE2; // MOV RSP, RDX
+	call[6] = 0x41;
+	call[7] = 0xFF;
+	call[8] = 0xE0;
+	return ((QWORD (*)(QWORD, QWORD, QWORD)) call)((QWORD) sst->PAGE, stackAddr, (QWORD) entry);
 }
 
 void BlockIORead(EFI_BLOCK_IO_PROTOCOL *proto, QWORD lba, QWORD scnt, QWORD buffer)
@@ -189,14 +192,14 @@ void BlockIORead(EFI_BLOCK_IO_PROTOCOL *proto, QWORD lba, QWORD scnt, QWORD buff
 	{
 		OutputText("DISK READ ERROR: ");
 		OutputNumber(stat);
-		jmp(0, 0);
+		jmp(0, 0, 0);
 	}
 }
 void DetectingMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *graphics)
 {
-	int defaultMode = graphics->Mode->Mode;
+	DWORD defaultMode = graphics->Mode->Mode;
 	QWORD sqr = graphics->Mode->Info->HorizontalResolution * graphics->Mode->Info->VerticalResolution;
-	int usedMode = defaultMode;
+	DWORD usedMode = defaultMode;
 	for (int i = 0; i < graphics->Mode->MaxMode; i++)
 	{
 		EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
@@ -543,7 +546,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	if (!DetectingDisk(systemTable))
 	{
 		OutputText("CORE.DLL NOT FOUND");
-		jmp(0, 0);
+		jmp(0, 0, 0);
 	}
 
 	QWORD memMapSize = 0;
@@ -682,7 +685,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 			memAddr += 0x00200000;
 		}
 	}
-	__writecr3((QWORD) SST->PAGE);
+	//__writecr3((QWORD) SST->PAGE);
 
 
 
@@ -695,7 +698,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	entry |= 0xFFFF800000000000ULL;
 
 
-	jmp((QWORD(*)()) entry, stackPoint);
+	jmp(SST, (QWORD(*)()) entry, stackPoint);
 	//jmp(0, 0);
 	return 0;
 }

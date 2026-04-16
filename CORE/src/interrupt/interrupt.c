@@ -59,9 +59,9 @@ void __stdcall __isr_common(INTERRUPT_STACK *stack)
 	if (INTERRUPT_ROUTINE[id])
 	{
 		QWORD rsp = stack->RSP;
-		stack->RSP = ((QWORD) stack) - sizeof(INTERRUPT_STACK);
-		if (stack->CS != 0x08)
-			stack->RSP -= 0x10;
+		stack->RSP = ((QWORD) stack) + sizeof(INTERRUPT_STACK) - 0x10;
+		if (!(stack->CS & 3))
+			stack->RSP = stack->STACK;
 		INTERRUPT_ROUTINE[id](stack);
 		stack->RSP = rsp;
 		return;

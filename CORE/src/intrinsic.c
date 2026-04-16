@@ -44,6 +44,11 @@ __declspec(allocate(".text")) char __lgdt[] =
 	0x0F, 0x01, 0x11, // LGDT [RCX]
 	0xC3              // RET
 };
+__declspec(allocate(".text")) char __sgdt[] =
+{
+	0x0F, 0x01, 0x01, // SGDT [RCX]
+	0xC3              // RET
+};
 __declspec(allocate(".text")) char __sti[] =
 {
 	0xFB, // STI
@@ -106,6 +111,16 @@ __declspec(allocate(".text")) char __ltr[] =
 	0x0F, 0x00, 0xD9, // LTR CX
 	0xC3,             // RET
 };
+__declspec(allocate(".text")) char __str[] =
+{
+	0x0F, 0x00, 0xC8, // STR AX
+	0xC3,             // RET
+};
+__declspec(allocate(".text")) char __sldt[] =
+{
+	0x0F, 0x00, 0xC0, // SLDT AX
+	0xC3,             // RET
+};
 __declspec(allocate(".text")) char __iret[] =
 {
 	0x41, 0x50, // PUSH R8
@@ -120,8 +135,52 @@ __declspec(allocate(".text")) char __syscall[] =
 	0xCD, 0x2E, // INT 2EH
 	0xC3,       // RET
 };
+__declspec(allocate(".text")) char __getes[] =
+{
+	0x8C, 0xC0, // MOV EAX, ES
+	0xC3,       // RET
+};
 __declspec(allocate(".text")) char __getcs[] =
 {
 	0x8C, 0xC8, // MOV EAX, CS
+	0xC3,       // RET
+};
+__declspec(allocate(".text")) char __getss[] =
+{
+	0x8C, 0xD0, // MOV EAX, ES
+	0xC3,       // RET
+};
+__declspec(allocate(".text")) char __getds[] =
+{
+	0x8C, 0xD8, // MOV EAX, CS
+	0xC3,       // RET
+};
+__declspec(allocate(".text")) char __getfs[] =
+{
+	0x8C, 0xE0, // MOV EAX, ES
+	0xC3,       // RET
+};
+__declspec(allocate(".text")) char __getgs[] =
+{
+	0x8C, 0xE8, // MOV EAX, CS
+	0xC3,       // RET
+};
+
+__declspec(allocate(".text")) char __getrfl[] =
+{
+	0x9C, // PUSHFQ
+	0x58, // POP RAX
+	0xC3, // RET
+};
+__declspec(allocate(".text")) char __rdmsr[] =
+{
+	0x0F, 0x32, // RDMSR
+	0xC3,       // RET
+};
+__declspec(allocate(".text")) char __wrmsr[] =
+{
+	0x8B, 0xC2, // MOV EAX, EDX
+	0x33, 0xD2, // XOR EDX, EDX
+	0x0F, 0x30, // WRMSR
 	0xC3,       // RET
 };

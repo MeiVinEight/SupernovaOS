@@ -1,10 +1,11 @@
 #include <arch/tss.h>
 #include <intrinsic.h>
+#include <memory/segment.h>
 
 void load_tss(void *tss0, void *gdt0, WORD off)
 {
 	QWORD tssAddr = (QWORD) tss0;
-	TSS_DESCRIPTOR *tssd = (TSS_DESCRIPTOR *) (((QWORD) gdt0) + off);
+	SYSTEM_SEGMENT_DESCRIPTOR *tssd = (SYSTEM_SEGMENT_DESCRIPTOR *) (((QWORD) gdt0) + off);
 	tssd->LIMT = 0x67; // 103, 1 less than sizeof (tss)
 	tssd->ADD0 = (tssAddr >>  0) & 0xFFFF;
 	tssd->ADD1 = (tssAddr >> 16) & 0xFF;

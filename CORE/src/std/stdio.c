@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <intrinsic.h>
 #include <interrupt/syscall.h>
+#include <console.h>
 
 int __cdecl printf(const char* fmt, ...)
 {
@@ -12,7 +13,7 @@ int __cdecl printf(const char* fmt, ...)
 	WORD cs = __getcs();
 	int r;
 	if (!(cs & 3))
-		r = vprintf(0x0F, fmt, va);
+		r = vprintf(SIMPLE_TEXT.COLOR, fmt, va);
 	else
 	{
 		SYSCALL_PRINTF arg;

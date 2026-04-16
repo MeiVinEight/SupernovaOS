@@ -26,6 +26,26 @@ COREAPI volatile MEMORY_BLOCK *volatile BLOCK_HEAP = 0;
 COREAPI volatile DWORD MEMORY_MAP = 0;
 COREAPI QWORD *volatile HEAPK;
 
+void INT0E(INTERRUPT_STACK *stack)
+{
+	QWORD addr = __readcr2();
+	if (addr >= 0xFFFF800000000000ULL)
+	{
+		if (addr < 0xFFFF808000000000ULL)
+		{
+			QWORD phyAddr = addr & 0x0000007FFFE00000ULL;
+			addr &= ~((1ULL << 21) - 1);
+			virtual_mapping(phyAddr, addr, 1, PAGE_2M, PA_WRITE);
+			return;
+		}
+	}
+
+	panic(stack);
+}
+void setup_page_fault()
+{
+	register_interrupt(0x0E, INT0E);
+}
 volatile MEMORY_BLOCK *alloc_memblk()
 {
 	volatile MEMORY_BLOCK *volatile val = 0;
@@ -54,9 +74,12 @@ volatile MEMORY_BLOCK *alloc_memblk()
 		NEXT_BLK:;
 		blks = (volatile MEMORY_BLOCK *) (blks[MEMBLK_NODE_PRE_PAGE].S);
 	}
+	if (!val)
+		*((DWORD *) 1) = 0; // Insufficient memory, panic
 	FOUND_OVER:;
 	if (blks && (blks[MEMBLK_NODE_PRE_PAGE].X < 4) && (!blks[MEMBLK_NODE_PRE_PAGE].S))
 	{
+		blks[MEMBLK_NODE_PRE_PAGE].S = -1ULL;
 		QWORD pageCount = 1;
 		QWORD pageAddr = alloc_physical_memory(&pageCount, 0, 0);
 		pageAddr = core_mapping(pageAddr);

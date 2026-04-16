@@ -28,6 +28,7 @@
  * 1111 1111 1111 1111 |1000 0000 0|000 0000 00|00 0000 000|0 0000 0000 |0000 0000 0000
  */
 
+void setup_page_fault();
 void setup_memory();
 QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu);
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount);

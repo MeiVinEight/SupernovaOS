@@ -9,6 +9,7 @@
 
 #include <types.h>
 #include <file/pe32x.h>
+#include <interrupt/interrupt.h>
 
 typedef struct _EFI_MEMORY_REGION
 {
@@ -45,5 +46,6 @@ extern volatile SUPERNOVA_SYSTEM_TABLE *SYSTEM_TABLE;
 
 QWORD core_mapping(QWORD addr);
 void kprint_cpu();
+void panic(INTERRUPT_STACK *stack);
 
 #endif //SUPERNOVA_CORE_H

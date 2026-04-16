@@ -10,18 +10,21 @@
 
 void interrupt_system_call(INTERRUPT_STACK *stack)
 {
+	if (!(stack->CS & 3))
+	{
+		stack->RIP = *((QWORD *) stack->RSP);
+		panic(stack);
+	}
+
+	if (!stack->RCX)
+		return;
+
 	QWORD type = *((QWORD *) stack->RCX);
 	if (type == SYSCALL_TYPE_PRINTF)
 	{
 		SYSCALL_PRINTF *arg = (SYSCALL_PRINTF *) stack->RCX;
 		stack->RAX = vprintf(arg->ATTR, arg->FMRT, arg->VARG);
-		return;
 	}
-
-	printf("CPU #%lu INT: #2E @ RIP %016llX\n", apic_current_id(), stack->RIP);
-	if (stack->CS != 0x08)
-		printf("SYSTEM CALL STACK: %04llX:%016llX\n", stack->SS, stack->STACK);
-	printf("TYPE=%04llX\nRCX=%p\n", type, (void *) stack->RCX);
 }
 void setup_system_call()
 {

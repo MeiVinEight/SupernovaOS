@@ -3,7 +3,6 @@
 #include <console.h>
 #include <interrupt/interrupt.h>
 #include <memory/segment.h>
-#include <memory/paging.h>
 #include <arch/processor.h>
 #include <interrupt/apic.h>
 #include <timer/timer.h>

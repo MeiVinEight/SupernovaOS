@@ -1,10 +1,17 @@
 #include <user/user.h>
 #include <intrinsic.h>
 #include <stdio.h>
+#include <core.h>
+#include <console.h>
+
+extern BYTE __ImageBase;
 
 void user_main()
 {
-	cprintf(0x0A, "SupernovaOS User space\n");
-	*((DWORD *) 1) = 0;
-	while (1) _mm_pause();
+	SYSTEM_TABLE = (SUPERNOVA_SYSTEM_TABLE *) &__ImageBase;
+	SYSTEM_TABLE->USER = 1;
+	SIMPLE_TEXT.COLOR = 0x0A;
+	printf("SupernovaOS @ %p\n", SYSTEM_TABLE);
+	SIMPLE_TEXT.COLOR = 0x0F;
+	while (SYSTEM_TABLE->RUNN) _mm_pause();
 }

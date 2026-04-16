@@ -12,6 +12,8 @@ COREAPI DWORD _fltused = 1;
 
 QWORD core_mapping(QWORD addr)
 {
+	if (SYSTEM_TABLE->USER)
+		return addr;
 	return addr | SYSTEM_ADDRESS;
 }
 void panic(INTERRUPT_STACK *stack)

@@ -67,8 +67,6 @@ unsigned long long _DllMainCRTStartup()
 		size += 0x1000;
 	}
 	__memcpy((void *) virtAddr, &__ImageBase, imageSize);
-	// Modify first page DOS HEADER not writable
-	paging_attribute(virtAddr, PA_USER);
 	dosHeader = (IMAGE_DOS_HEADER *) (virtAddr);
 	ntHeaders = (IMAGE_NT_HEADERS *) (virtAddr + dosHeader->PEHO);
 	ntHeaders->OPTI.IMGE = virtAddr;

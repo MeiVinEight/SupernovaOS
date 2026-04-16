@@ -20,7 +20,7 @@ int __cdecl printf(const char* fmt, ...)
 		arg.TYPE = SYSCALL_TYPE_PRINTF;
 		arg.FMRT = fmt;
 		arg.VARG = va;
-		arg.ATTR = 0x0F;
+		arg.ATTR = SIMPLE_TEXT.COLOR;
 		r = (int) __syscall(&arg);
 	}
 	va_end(va);

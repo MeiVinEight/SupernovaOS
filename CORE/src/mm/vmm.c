@@ -138,26 +138,32 @@ void setup_memory()
 		}
 	}
 }
-QWORD vmm_alloc(void *root, QWORD *pageCount, int align, int continu)
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int continu)
 {
+	if (align > 63)
+		goto ALLOC_FAILED;
+
 	LINEAR_MEMORY_BLOCK **ref = root;
 	while (*ref)
 	{
 		LINEAR_MEMORY_BLOCK *node = *ref;
+		ref = &node->NEXT;
 
 		QWORD allocAddr = node->ADDR;
+		if (allocAddr < *addr)
+			allocAddr = *addr;
 		allocAddr += ((1ULL << align) - 1);
 		allocAddr &= ~((1ULL << align) - 1);
+		if (node->ADDR + node->SIZE <= allocAddr)
+			continue;
+
 		QWORD size = ((node->ADDR + node->SIZE) - allocAddr);
 		QWORD allocSize = size >> 12;
 
 		if (continu)
 		{
 			if (allocSize < *pageCount)
-			{
-				ref = &node->NEXT;
 				continue;
-			}
 		}
 		else
 		{
@@ -188,9 +194,14 @@ QWORD vmm_alloc(void *root, QWORD *pageCount, int align, int continu)
 		{
 			pmm_delete_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, node, vmm_free_node);
 		}
-		return allocAddr;
+		*addr = allocAddr;
+		return 0;
 	}
-	return 0;
+
+	ALLOC_FAILED:
+	*addr = 0;
+	*pageCount = 0;
+	return 1;
 }
 void vmm_free(void *ref, QWORD addr, QWORD pageCount)
 {
@@ -199,9 +210,11 @@ void vmm_free(void *ref, QWORD addr, QWORD pageCount)
 	blk->SIZE = pageCount << 12;
 	pmm_insert_link(ref, blk, vmm_free_node);
 }
-QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
+QWORD alloc_physical_memory(QWORD *pageCount, int align, int continu)
 {
-	return vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, pageCount, align, continu);
+	QWORD addr = 0;
+	vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, &addr, pageCount, align, continu);
+	return addr;
 }
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
 {

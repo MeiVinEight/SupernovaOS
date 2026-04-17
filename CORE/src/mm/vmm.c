@@ -22,7 +22,7 @@ typedef union _VIRTUAL_ADDRESS
 	QWORD address;
 } VIRTUAL_ADDRESS;
 
-COREAPI volatile MEMORY_BLOCK *volatile BLOCK_HEAP = 0;
+COREAPI volatile LINEAR_MEMORY_BLOCK *volatile BLOCK_HEAP = 0;
 COREAPI volatile DWORD MEMORY_MAP = 0;
 COREAPI QWORD *volatile HEAPK;
 
@@ -46,10 +46,10 @@ void setup_page_fault()
 {
 	register_interrupt(0x0E, INT0E);
 }
-volatile MEMORY_BLOCK *alloc_memblk()
+volatile LINEAR_MEMORY_BLOCK *alloc_memblk()
 {
-	volatile MEMORY_BLOCK *volatile val = 0;
-	volatile MEMORY_BLOCK *volatile blks = BLOCK_HEAP;
+	volatile LINEAR_MEMORY_BLOCK *volatile val = 0;
+	volatile LINEAR_MEMORY_BLOCK *volatile blks = BLOCK_HEAP;
 	while (blks)
 	{
 		if (!blks[MEMBLK_NODE_PRE_PAGE].X)
@@ -72,7 +72,7 @@ volatile MEMORY_BLOCK *alloc_memblk()
 		}
 		blks[MEMBLK_NODE_PRE_PAGE].X = 0;
 		NEXT_BLK:;
-		blks = (volatile MEMORY_BLOCK *) (blks[MEMBLK_NODE_PRE_PAGE].S);
+		blks = (volatile LINEAR_MEMORY_BLOCK *) (blks[MEMBLK_NODE_PRE_PAGE].S);
 	}
 	if (!val)
 		*((DWORD *) 1) = 0; // Insufficient memory, panic
@@ -85,24 +85,22 @@ volatile MEMORY_BLOCK *alloc_memblk()
 		pageAddr = core_mapping(pageAddr);
 		for (DWORD i = 0; i < (4096 >> 3); i++)
 			((volatile QWORD *) pageAddr)[i] = 0;
-		volatile MEMORY_BLOCK *newBlk = (volatile MEMORY_BLOCK *) pageAddr;
+		volatile LINEAR_MEMORY_BLOCK *newBlk = (volatile LINEAR_MEMORY_BLOCK *) pageAddr;
 		newBlk[MEMBLK_NODE_PRE_PAGE].X = MEMBLK_NODE_PRE_PAGE;
 		blks[MEMBLK_NODE_PRE_PAGE].S = pageAddr;
 	}
-	val->P = 0;
 	val->L = 0;
 	val->R = 0;
-	val->H = 0;
 	val->X = 1;
 	val->A = 0;
 	val->S = 0;
 	return val;
 }
-void free_memblk(volatile MEMORY_BLOCK *blk)
+void free_memblk(volatile LINEAR_MEMORY_BLOCK *blk)
 {
 	QWORD pageAddr = (QWORD) blk;
 	pageAddr &= ~0xFFFULL;
-	volatile MEMORY_BLOCK *blks = (volatile MEMORY_BLOCK *) pageAddr;
+	volatile LINEAR_MEMORY_BLOCK *blks = (volatile LINEAR_MEMORY_BLOCK *) pageAddr;
 	blk->X = 0;
 	blks[MEMBLK_NODE_PRE_PAGE].X++;
 }
@@ -121,7 +119,7 @@ void setup_memory()
 			QWORD size = beg->L;
 			if (!BLOCK_HEAP)
 			{
-				BLOCK_HEAP = (volatile MEMORY_BLOCK *) core_mapping(addr);
+				BLOCK_HEAP = (volatile LINEAR_MEMORY_BLOCK *) core_mapping(addr);
 				for (DWORD i = 0; i < MEMBLK_NODE_PRE_PAGE; i++)
 					BLOCK_HEAP[i].X = 0;
 				BLOCK_HEAP[MEMBLK_NODE_PRE_PAGE].X = MEMBLK_NODE_PRE_PAGE;
@@ -129,7 +127,7 @@ void setup_memory()
 				addr += 0x1000;
 				size -= 0x1000;
 			}
-			volatile MEMORY_BLOCK *blk = alloc_memblk();
+			volatile LINEAR_MEMORY_BLOCK *blk = alloc_memblk();
 			if (!blk)
 				break;
 			blk->A = addr;
@@ -143,7 +141,7 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 	volatile DWORD *volatile ref = &MEMORY_MAP;
 	while (*ref)
 	{
-		volatile MEMORY_BLOCK *node = memblk_mapping_node(*ref);
+		volatile LINEAR_MEMORY_BLOCK *node = memblk_mapping_node(*ref);
 
 		QWORD allocAddr = node->A;
 		allocAddr += ((1ULL << align) - 1);
@@ -173,7 +171,7 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 
 			if (size)
 			{
-				volatile MEMORY_BLOCK *blk = alloc_memblk();
+				volatile LINEAR_MEMORY_BLOCK *blk = alloc_memblk();
 				if (!blk)
 				{
 					node->S = newAddr + size;
@@ -199,7 +197,7 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 }
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
 {
-	volatile MEMORY_BLOCK *blk = alloc_memblk();
+	volatile LINEAR_MEMORY_BLOCK *blk = alloc_memblk();
 	blk->A = addr;
 	blk->S = pageCount << 12;
 	memblk_insert_link(&MEMORY_MAP, blk, free_memblk);

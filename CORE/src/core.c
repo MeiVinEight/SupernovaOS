@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <console.h>
 #include <arch/processor.h>
-#include <memory/segment.h>
+#include <mm/segment.h>
 #include <arch/rflag.h>
 #include <arch/efer.h>
 #include <arch/msr.h>

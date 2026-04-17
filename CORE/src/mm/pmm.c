@@ -1,4 +1,4 @@
-#include <memory/memblk.h>
+#include <mm/pmm.h>
 #include <core.h>
 
 volatile MEMORY_BLOCK *memblk_mapping_node(DWORD addr)

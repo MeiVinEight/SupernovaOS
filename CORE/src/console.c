@@ -1,7 +1,7 @@
 #include <console.h>
 #include <intrinsic.h>
 #include <core.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <async/async.h>
 
 REENTRANT_LOCK CONSOLE_LOCK;

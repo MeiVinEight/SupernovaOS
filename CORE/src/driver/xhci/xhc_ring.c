@@ -1,6 +1,6 @@
 #include <driver/xhci/xhc_ring.h>
 #include <core.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <intrinsic.h>
 
 XHCI_TRB_GENERIC *xhc_event_ring_pop(XHCI_TRANSFER_RING *ring)

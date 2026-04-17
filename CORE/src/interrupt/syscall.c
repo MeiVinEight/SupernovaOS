@@ -1,11 +1,9 @@
 #include <interrupt/syscall.h>
 #include <interrupt/interrupt.h>
 #include <core.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <arch/tss.h>
 #include <intrinsic.h>
-#include <stdio.h>
-#include <interrupt/apic.h>
 #include <std/string.h>
 
 void interrupt_system_call(INTERRUPT_STACK *stack)

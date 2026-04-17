@@ -2,7 +2,7 @@
 #include <driver/xhci/xhci_context.h>
 #include <driver/xhci/xhci.h>
 #include <driver/usb/usb_desc.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <core.h>
 #include <intrinsic.h>
 #include <console.h>

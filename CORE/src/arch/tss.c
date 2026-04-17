@@ -1,6 +1,6 @@
 #include <arch/tss.h>
 #include <intrinsic.h>
-#include <memory/segment.h>
+#include <mm/segment.h>
 
 void load_tss(void *tss0, void *gdt0, WORD off)
 {

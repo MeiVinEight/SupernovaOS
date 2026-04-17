@@ -5,7 +5,7 @@
 #include <intrinsic.h>
 #include <driver/scsi/scsi_cmd.h>
 #include <driver/scsi/scsi.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <core.h>
 
 DWORD scsi_command(XHCI_USB_DEVICE *device, DWORD iepid, DWORD oepid, DWORD isIn, DWORD lun, const void *cmd, DWORD cmdLen, void *data, DWORD dataLen)

@@ -8,7 +8,7 @@
 #include <timer/rtc.h>
 #include <interrupt/interrupt.h>
 #include <arch/processor.h>
-#include <memory/segment.h>
+#include <mm/segment.h>
 #include <stdio.h>
 #include <smp/smp.h>
 

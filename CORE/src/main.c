@@ -2,13 +2,13 @@
 #include <intrinsic.h>
 #include <console.h>
 #include <interrupt/interrupt.h>
-#include <memory/segment.h>
+#include <mm/segment.h>
 #include <arch/processor.h>
 #include <interrupt/apic.h>
 #include <timer/timer.h>
 #include <acpi/acpi.h>
 #include <driver/pci/pcie.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <stdio.h>
 #include <file/pe32x.h>
 #include <user/user.h>

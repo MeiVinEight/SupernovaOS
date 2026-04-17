@@ -5,7 +5,7 @@
 #include <interrupt/apic.h>
 #include <stdio.h>
 #include <arch/tss.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 
 COREAPI volatile INTERRUPT64 * volatile IDT;
 COREAPI void (*(INTERRUPT_ROUTINE[256]))(INTERRUPT_STACK *);

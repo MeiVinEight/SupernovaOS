@@ -1,5 +1,5 @@
-#include <memory/virtmem.h>
-#include <memory/memblk.h>
+#include <mm/vmm.h>
+#include <mm/pmm.h>
 #include <core.h>
 #include <intrinsic.h>
 

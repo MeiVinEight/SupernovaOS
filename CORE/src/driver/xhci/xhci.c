@@ -2,7 +2,7 @@
 #include <console.h>
 #include <core.h>
 #include <intrinsic.h>
-#include <memory/virtmem.h>
+#include <mm/vmm.h>
 #include <driver/xhci/xhc_regs.h>
 #include <driver/pci/pci.h>
 #include <interrupt/apic.h>

@@ -1,4 +1,4 @@
-#include <memory/segment.h>
+#include <mm/segment.h>
 #include <core.h>
 #include <arch/tss.h>
 

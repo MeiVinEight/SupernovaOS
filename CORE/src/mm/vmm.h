@@ -37,5 +37,6 @@ void virtual_mapping(QWORD phyAddr, QWORD virtualAddr, QWORD pageCount, int page
 QWORD physical_address(QWORD virtAddr);
 void *heap_alloc(QWORD allocSize);
 void heap_free(const volatile void *addr);
+QWORD virtual_alloc(QWORD *virtAddr, QWORD *allocSize, DWORD allocType);
 
 #endif //SUPERNOVA_VIRTMEM_H

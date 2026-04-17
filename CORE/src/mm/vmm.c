@@ -46,7 +46,7 @@ void setup_page_fault()
 {
 	register_interrupt(0x0E, INT0E);
 }
-LINEAR_MEMORY_BLOCK *alloc_memblk()
+LINEAR_MEMORY_BLOCK *vmm_alloc_node()
 {
 	LINEAR_MEMORY_BLOCK *val = 0;
 	LINEAR_MEMORY_BLOCK *blks = BLOCK_HEAP;
@@ -100,7 +100,7 @@ LINEAR_MEMORY_BLOCK *alloc_memblk()
 	val->SIZE = 0;
 	return val;
 }
-void free_memblk(LINEAR_MEMORY_BLOCK *blk)
+void vmm_free_node(LINEAR_MEMORY_BLOCK *blk)
 {
 	QWORD pageAddr = (QWORD) blk;
 	pageAddr &= ~0xFFFULL;
@@ -131,10 +131,10 @@ void setup_memory()
 				addr += 0x1000;
 				size -= 0x1000;
 			}
-			LINEAR_MEMORY_BLOCK *blk = alloc_memblk();
+			LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
 			blk->ADDR = addr;
 			blk->SIZE = size;
-			memblk_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, free_memblk);
+			pmm_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, vmm_free_node);
 		}
 	}
 }
@@ -173,10 +173,10 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 
 			if (size)
 			{
-				LINEAR_MEMORY_BLOCK *blk = alloc_memblk();
+				LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
 				blk->ADDR = newAddr;
 				blk->SIZE = size;
-				memblk_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, free_memblk);
+				pmm_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, vmm_free_node);
 			}
 		}
 		else if (size)
@@ -186,7 +186,7 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 		}
 		else
 		{
-			memblk_delete_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, node, free_memblk);
+			pmm_delete_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, node, vmm_free_node);
 		}
 		return allocAddr;
 	}
@@ -194,10 +194,10 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 }
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
 {
-	LINEAR_MEMORY_BLOCK *blk = alloc_memblk();
+	LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
 	blk->ADDR = addr;
 	blk->SIZE = pageCount << 12;
-	memblk_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, free_memblk);
+	pmm_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, vmm_free_node);
 }
 void modify_page_attr(QWORD virtAddr, QWORD *pageEntry, QWORD attr)
 {

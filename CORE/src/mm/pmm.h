@@ -23,8 +23,8 @@ struct _LINEAR_MEMORY_BLOCK
 	QWORD                XDAT:8;  // Memory block flags
 };
 
-void memblk_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *));
-void memblk_insert_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *));
+void pmm_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *));
+void pmm_insert_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *));
 
 
 #endif //SUPERNOVA_MEMBLK_H

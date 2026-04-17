@@ -1,7 +1,7 @@
 #include <mm/pmm.h>
 #include <core.h>
 
-int memblk_merge(LINEAR_MEMORY_BLOCK *dst, LINEAR_MEMORY_BLOCK *src)
+int pmm_merge(LINEAR_MEMORY_BLOCK *dst, LINEAR_MEMORY_BLOCK *src)
 {
 	if ((src->ADDR >= dst->ADDR) && (src->ADDR <= (dst->ADDR + dst->SIZE)))
 	{
@@ -13,7 +13,7 @@ int memblk_merge(LINEAR_MEMORY_BLOCK *dst, LINEAR_MEMORY_BLOCK *src)
 	}
 	return 0;
 }
-void memblk_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *))
+void pmm_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *))
 {
 	LINEAR_MEMORY_BLOCK *lnode = blk->PREV;
 	LINEAR_MEMORY_BLOCK *rnode = blk->NEXT;
@@ -25,22 +25,22 @@ void memblk_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, vo
 		rnode->PREV = blk->PREV;
 	freeNode(blk);
 }
-void memblk_insert_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *))
+void pmm_insert_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *))
 {
 	LINEAR_MEMORY_BLOCK **lref = root;
 	LINEAR_MEMORY_BLOCK *prev = 0;
 	while (*lref)
 	{
 		LINEAR_MEMORY_BLOCK *node = (*lref);
-		if (memblk_merge(node, blk))
+		if (pmm_merge(node, blk))
 		{
 			freeNode(blk);
 			LINEAR_MEMORY_BLOCK *next = (node->NEXT);
-			if (next && memblk_merge(node, next))
-				memblk_delete_link(root, next, freeNode);
+			if (next && pmm_merge(node, next))
+				pmm_delete_link(root, next, freeNode);
 			return;
 		}
-		if (memblk_merge(blk, node))
+		if (pmm_merge(blk, node))
 		{
 			node->ADDR = blk->ADDR;
 			node->SIZE = blk->SIZE;

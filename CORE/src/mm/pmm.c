@@ -1,73 +1,63 @@
 #include <mm/pmm.h>
 #include <core.h>
 
-volatile LINEAR_MEMORY_BLOCK *memblk_mapping_node(DWORD addr)
+int memblk_merge(LINEAR_MEMORY_BLOCK *dst, LINEAR_MEMORY_BLOCK *src)
 {
-	if (addr)
-		return (volatile LINEAR_MEMORY_BLOCK *) core_mapping(addr);
-	return 0;
-}
-DWORD memblk_node_addr(volatile LINEAR_MEMORY_BLOCK *node)
-{
-	return ((QWORD) node) & 0xFFFFFFFF;
-}
-int memblk_merge(volatile LINEAR_MEMORY_BLOCK *dst, volatile LINEAR_MEMORY_BLOCK *src)
-{
-	if ((src->A >= dst->A) && (src->A <= (dst->A + dst->S)))
+	if ((src->ADDR >= dst->ADDR) && (src->ADDR <= (dst->ADDR + dst->SIZE)))
 	{
-		QWORD z = src->A + src->S;
-		if (dst->A + dst->S > z)
-			z = dst->A + dst->S;
-		dst->S = z - dst->A;
+		QWORD z = src->ADDR + src->SIZE;
+		if (dst->ADDR + dst->SIZE > z)
+			z = dst->ADDR + dst->SIZE;
+		dst->SIZE = z - dst->ADDR;
 		return 1;
 	}
 	return 0;
 }
-void memblk_delete_link(volatile DWORD *root, volatile LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(volatile LINEAR_MEMORY_BLOCK *))
+void memblk_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *))
 {
-	volatile LINEAR_MEMORY_BLOCK *lnode = memblk_mapping_node(blk->L);
-	volatile LINEAR_MEMORY_BLOCK *rnode = memblk_mapping_node(blk->R);
-	volatile DWORD *lref = root;
+	LINEAR_MEMORY_BLOCK *lnode = blk->PREV;
+	LINEAR_MEMORY_BLOCK *rnode = blk->NEXT;
+	LINEAR_MEMORY_BLOCK **lref = root;
 	if (lnode)
-		lref = &lnode->R;
-	*lref = blk->R;
+		lref = &lnode->NEXT;
+	*lref = blk->NEXT;
 	if (rnode)
-		rnode->L = blk->L;
+		rnode->PREV = blk->PREV;
 	freeNode(blk);
 }
-void memblk_insert_link(volatile DWORD *root, volatile LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(volatile LINEAR_MEMORY_BLOCK *))
+void memblk_insert_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *))
 {
-	volatile DWORD *volatile lref = root;
-	volatile LINEAR_MEMORY_BLOCK *volatile prev = 0;
+	LINEAR_MEMORY_BLOCK **lref = root;
+	LINEAR_MEMORY_BLOCK *prev = 0;
 	while (*lref)
 	{
-		volatile LINEAR_MEMORY_BLOCK *node = memblk_mapping_node(*lref);
+		LINEAR_MEMORY_BLOCK *node = (*lref);
 		if (memblk_merge(node, blk))
 		{
 			freeNode(blk);
-			volatile LINEAR_MEMORY_BLOCK *next = memblk_mapping_node(node->R);
+			LINEAR_MEMORY_BLOCK *next = (node->NEXT);
 			if (next && memblk_merge(node, next))
-				memblk_delete_link(root, blk, freeNode);
+				memblk_delete_link(root, next, freeNode);
 			return;
 		}
 		if (memblk_merge(blk, node))
 		{
-			node->A = blk->A;
-			node->S = blk->S;
+			node->ADDR = blk->ADDR;
+			node->SIZE = blk->SIZE;
 			freeNode(blk);
 			return;
 		}
-		if (node->A >= blk->A)
+		if (node->ADDR >= blk->ADDR)
 		{
-			*lref = memblk_node_addr(blk);
-			blk->L = memblk_node_addr(prev);
-			blk->R = memblk_node_addr(node);
-			node->L = memblk_node_addr(blk);
+			*lref = (blk);
+			blk->PREV = (prev);
+			blk->NEXT = (node);
+			node->PREV = (blk);
 			return;
 		}
 		prev = node;
-		lref = &node->R;
+		lref = &node->NEXT;
 	}
-	*lref = memblk_node_addr(blk);
-	blk->L = memblk_node_addr(prev);
+	*lref = (blk);
+	blk->PREV = (prev);
 }

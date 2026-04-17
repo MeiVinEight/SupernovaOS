@@ -186,7 +186,7 @@ QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu)
 		}
 		else
 		{
-			memblk_delete_link(&MEMORY_MAP, node, free_memblk);
+			memblk_delete_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, node, free_memblk);
 		}
 		return allocAddr;
 	}

@@ -2,10 +2,6 @@
 #include <console.h>
 #include <core.h>
 #include <intrinsic.h>
-#include <interrupt/apic.h>
-#include <stdio.h>
-#include <arch/tss.h>
-#include <mm/vmm.h>
 
 COREAPI volatile INTERRUPT64 * volatile IDT;
 COREAPI void (*(INTERRUPT_ROUTINE[256]))(INTERRUPT_STACK *);
@@ -29,9 +25,9 @@ COREAPI BYTE __isr[] =
 	0x41, 0x56,                   // PUSH R14
 	0x41, 0x57,                   // PUSH R15
 	0x48, 0x8B, 0xCC,             // MOV RCX, RSP
-	0x48, 0x83, 0xEC, 0x10,       // SUB RSP, 10H
+	0x48, 0x83, 0xEC, 0x20,       // SUB RSP, 10H
 	0xE8, 0x00, 0x00, 0x00, 0x00, // CALL 00000000
-	0x48, 0x83, 0xC4, 0x10,       // ADD RSP, 10H
+	0x48, 0x83, 0xC4, 0x20,       // ADD RSP, 10H
 	0x41, 0x5F,                   // POP R15
 	0x41, 0x5E,                   // POP R14
 	0x41, 0x5D,                   // POP R13

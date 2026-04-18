@@ -3,6 +3,10 @@
 
 int pmm_merge(LINEAR_MEMORY_BLOCK *dst, LINEAR_MEMORY_BLOCK *src)
 {
+	if (!dst->VALD || !src->VALD)
+		return 0;
+	if (dst->XDAT != src->XDAT)
+		return 0;
 	if ((src->ADDR >= dst->ADDR) && (src->ADDR <= (dst->ADDR + dst->SIZE)))
 	{
 		QWORD z = src->ADDR + src->SIZE;

@@ -52,7 +52,7 @@ LINEAR_MEMORY_BLOCK *vmm_alloc_node()
 	LINEAR_MEMORY_BLOCK *blks = BLOCK_HEAP;
 	while (blks)
 	{
-		if (!blks[MEMBLK_NODE_PRE_PAGE].XDAT)
+		if (!blks[MEMBLK_NODE_PRE_PAGE].SIZE)
 			goto NEXT_BLK;
 		/*
 		while (blks && (!blks[MEMBLK_NODE_PRE_PAGE].X))
@@ -62,17 +62,16 @@ LINEAR_MEMORY_BLOCK *vmm_alloc_node()
 		*/
 		for (DWORD i = 0; i < MEMBLK_NODE_PRE_PAGE; i++)
 		{
-			if (!(blks[i].XDAT & 1))
+			if (!blks[i].VALD)
 			{
-				blks[i].XDAT |= 1;
-				blks[MEMBLK_NODE_PRE_PAGE].XDAT--;
+				blks[MEMBLK_NODE_PRE_PAGE].SIZE--;
 				val = blks + i;
 				goto FOUND_OVER;
 			}
 		}
-		blks[MEMBLK_NODE_PRE_PAGE].XDAT = 0;
+		blks[MEMBLK_NODE_PRE_PAGE].SIZE = 0;
 		NEXT_BLK:;
-		blks = (LINEAR_MEMORY_BLOCK *) (blks[MEMBLK_NODE_PRE_PAGE].SIZE);
+		blks = (LINEAR_MEMORY_BLOCK *) (blks[MEMBLK_NODE_PRE_PAGE].ADDR);
 	}
 	FOUND_OVER:;
 	if (!val)
@@ -81,23 +80,24 @@ LINEAR_MEMORY_BLOCK *vmm_alloc_node()
 		return (LINEAR_MEMORY_BLOCK *) -1ULL;
 	}
 
-	if (blks && (blks[MEMBLK_NODE_PRE_PAGE].XDAT < 4) && (!blks[MEMBLK_NODE_PRE_PAGE].SIZE))
+	if (blks && (blks[MEMBLK_NODE_PRE_PAGE].SIZE < 4) && (!blks[MEMBLK_NODE_PRE_PAGE].ADDR))
 	{
-		blks[MEMBLK_NODE_PRE_PAGE].SIZE = 1;
+		blks[MEMBLK_NODE_PRE_PAGE].ADDR = 1;
 		QWORD pageCount = 1;
 		QWORD pageAddr = alloc_physical_memory(&pageCount, 0, 0);
 		pageAddr = core_mapping(pageAddr);
 		for (DWORD i = 0; i < (4096 >> 3); i++)
 			((volatile QWORD *) pageAddr)[i] = 0;
 		volatile LINEAR_MEMORY_BLOCK *newBlk = (volatile LINEAR_MEMORY_BLOCK *) pageAddr;
-		newBlk[MEMBLK_NODE_PRE_PAGE].XDAT = MEMBLK_NODE_PRE_PAGE;
-		blks[MEMBLK_NODE_PRE_PAGE].SIZE = pageAddr;
+		newBlk[MEMBLK_NODE_PRE_PAGE].SIZE = MEMBLK_NODE_PRE_PAGE;
+		blks[MEMBLK_NODE_PRE_PAGE].ADDR = pageAddr;
 	}
 	val->PREV = 0;
 	val->NEXT = 0;
-	val->XDAT = 1;
 	val->ADDR = 0;
 	val->SIZE = 0;
+	val->XDAT = 0;
+	val->VALD = 1;
 	return val;
 }
 void vmm_free_node(LINEAR_MEMORY_BLOCK *blk)
@@ -105,8 +105,8 @@ void vmm_free_node(LINEAR_MEMORY_BLOCK *blk)
 	QWORD pageAddr = (QWORD) blk;
 	pageAddr &= ~0xFFFULL;
 	volatile LINEAR_MEMORY_BLOCK *blks = (volatile LINEAR_MEMORY_BLOCK *) pageAddr;
-	blk->XDAT = 0;
-	blks[MEMBLK_NODE_PRE_PAGE].XDAT++;
+	blk->VALD = 0;
+	blks[MEMBLK_NODE_PRE_PAGE].SIZE++;
 }
 void setup_memory()
 {
@@ -125,9 +125,9 @@ void setup_memory()
 			{
 				BLOCK_HEAP = (LINEAR_MEMORY_BLOCK *) core_mapping(addr);
 				for (DWORD i = 0; i < MEMBLK_NODE_PRE_PAGE; i++)
-					BLOCK_HEAP[i].XDAT = 0;
-				BLOCK_HEAP[MEMBLK_NODE_PRE_PAGE].XDAT = MEMBLK_NODE_PRE_PAGE;
-				BLOCK_HEAP[MEMBLK_NODE_PRE_PAGE].SIZE = 0;
+					BLOCK_HEAP[i].VALD = 0;
+				BLOCK_HEAP[MEMBLK_NODE_PRE_PAGE].SIZE = MEMBLK_NODE_PRE_PAGE;
+				BLOCK_HEAP[MEMBLK_NODE_PRE_PAGE].ADDR = 0;
 				addr += 0x1000;
 				size -= 0x1000;
 			}
@@ -138,10 +138,26 @@ void setup_memory()
 		}
 	}
 }
-QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int continu)
+void vmm_free(void *ref, QWORD addr, QWORD pageCount)
 {
+	LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
+	blk->ADDR = addr;
+	blk->SIZE = pageCount << 12;
+	pmm_insert_link(ref, blk, vmm_free_node);
+}
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int continu, DWORD type, DWORD protect, DWORD keep)
+{
+	if (!*pageCount)
+		return 0;
 	if (align > 63)
 		goto ALLOC_FAILED;
+	if (type > 2)
+		goto ALLOC_FAILED;
+	if (type == VMM_TYPE_FREE)
+	{
+		vmm_free(root, *addr, *pageCount);
+		return 0;
+	}
 
 	LINEAR_MEMORY_BLOCK **ref = root;
 	while (*ref)
@@ -182,6 +198,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int contin
 				LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
 				blk->ADDR = newAddr;
 				blk->SIZE = size;
+				blk->XDAT = node->XDAT;
 				pmm_insert_link(root, blk, vmm_free_node);
 			}
 		}

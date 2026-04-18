@@ -24,8 +24,13 @@
 #define PA_USER  (1ULL <<  2)
 #define PA_EXED  (1ULL << 63)
 
-#define VMM_WRITE   2
-#define VMM_EXECUTE 4
+#define VMM_TYPE_FREE    0
+#define VMM_TYPE_RESERVE 1
+#define VMM_TYPE_COMMIT  2
+#define VMM_TYPE_MASK    3
+
+#define VMM_WRITE     4
+#define VMM_EXECUTE   8
 
 /**
  * F    F    F    F     8    0    0     0    0     0    0     0    0     0    0    0
@@ -34,8 +39,8 @@
 
 void setup_page_fault();
 void setup_memory();
-QWORD vmm_alloc(void *ref, QWORD *addr, QWORD *pageCount, int align, int continu);
 void vmm_free(void *ref, QWORD addr, QWORD pageCount);
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int continu, DWORD type, DWORD protect, DWORD keep);
 QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align, int continu);
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount);
 void paging_attribute(QWORD virtAddr, QWORD attr);

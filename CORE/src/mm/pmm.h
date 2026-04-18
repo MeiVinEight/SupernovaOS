@@ -19,8 +19,21 @@ struct _LINEAR_MEMORY_BLOCK
 	LINEAR_MEMORY_BLOCK *PREV;    // Left Node
 	LINEAR_MEMORY_BLOCK *NEXT;    // Right Node
 	QWORD                ADDR;    // Memory block address
-	QWORD                SIZE:56; // Memory block size
-	QWORD                XDAT:8;  // Memory block flags
+	union
+	{
+		struct
+		{
+			QWORD        SIZE:56; // Memory block size
+			QWORD        XDAT:8;  // Memory block flags
+		};
+		struct
+		{
+			BYTE         RSV0[7];
+			BYTE         TYPE:2;
+			BYTE         PROT:5;
+			BYTE         VALD:1;
+		};
+	};
 };
 
 void pmm_delete_link(LINEAR_MEMORY_BLOCK **root, LINEAR_MEMORY_BLOCK *blk, void (*freeNode)(LINEAR_MEMORY_BLOCK *));

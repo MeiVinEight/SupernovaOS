@@ -20,8 +20,12 @@
 #define PAGING_USER     0x004
 #define PAGING_PAGESIZE 0x080
 
-#define PA_WRITE 0x002
-#define PA_USER  0x004
+#define PA_WRITE (1ULL <<  1)
+#define PA_USER  (1ULL <<  2)
+#define PA_EXED  (1ULL << 63)
+
+#define VMM_WRITE   2
+#define VMM_EXECUTE 4
 
 /**
  * F    F    F    F     8    0    0     0    0     0    0     0    0     0    0    0

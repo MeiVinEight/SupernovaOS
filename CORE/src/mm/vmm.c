@@ -222,7 +222,7 @@ void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
 }
 void modify_page_attr(QWORD virtAddr, QWORD *pageEntry, QWORD attr)
 {
-	QWORD paMask = PA_WRITE | PA_USER;
+	QWORD paMask = PA_WRITE | PA_USER | PA_EXED;
 	attr &= paMask;
 	*pageEntry &= ~paMask;
 	*pageEntry |= attr;
@@ -230,7 +230,7 @@ void modify_page_attr(QWORD virtAddr, QWORD *pageEntry, QWORD attr)
 }
 QWORD *search_page_entry(QWORD virtAddr, int *pageType)
 {
-	QWORD addrMask = ~0xFFFULL;
+	QWORD addrMask = ~(0xFFFULL | PA_EXED);
 	volatile VIRTUAL_ADDRESS va;
 	va.address = virtAddr;
 	QWORD *pml4 = (QWORD *) core_mapping(__readcr3() & addrMask);
@@ -264,7 +264,7 @@ void paging_attribute(QWORD virtAddr, QWORD attr)
 }
 void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, int pageType, QWORD attr)
 {
-	QWORD addrMask = ~0xFFFULL;
+	QWORD addrMask = ~(0xFFFULL | PA_EXED);
 	QWORD page = 0x1000;
 	page <<= (pageType * 9);
 
@@ -346,10 +346,10 @@ QWORD physical_address(QWORD virtAddr)
 	int pType = 0;
 	QWORD *pEntry = search_page_entry(virtAddr, &pType);
 	if (pType == PAGE_1G)
-		return (*pEntry & (~PAGE_1G_OFFSET)) | (virtAddr & PAGE_1G_OFFSET);
+		return (*pEntry & (~(PAGE_1G_OFFSET | PA_EXED))) | (virtAddr & PAGE_1G_OFFSET);
 	if (pType == PAGE_2M)
-		return (*pEntry & (~PAGE_2M_OFFSET)) | (virtAddr & PAGE_2M_OFFSET);
-	return (*pEntry & (~PAGE_4K_OFFSET)) | (virtAddr & PAGE_4K_OFFSET);
+		return (*pEntry & (~(PAGE_2M_OFFSET | PA_EXED))) | (virtAddr & PAGE_2M_OFFSET);
+	return (*pEntry & (~(PAGE_4K_OFFSET | PA_EXED))) | (virtAddr & PAGE_4K_OFFSET);
 }
 void *heap_alloc(QWORD allocSize)
 {

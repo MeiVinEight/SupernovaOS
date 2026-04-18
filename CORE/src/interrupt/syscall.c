@@ -22,6 +22,14 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 	{
 		SYSCALL_PRINTF *arg = (SYSCALL_PRINTF *) stack->RCX;
 		stack->RAX = vprintf(arg->ATTR, arg->FMRT, arg->VARG);
+		return;
+	}
+	if (type == SYSCALL_TYPE_VIRTUAL_ALLOC)
+	{
+		SYSCALL_VIRTUAL_ALLOC *arg = (SYSCALL_VIRTUAL_ALLOC *) stack->RCX;
+		if (arg->ADDR > ((QWORD *) (1ULL << 47)))
+			return;
+		stack->RAX = virtual_alloc(arg->PROC, arg->ADDR, arg->SIZE, arg->ATYP, arg->PROT);
 	}
 }
 void setup_system_call()

@@ -2,6 +2,8 @@
 #include <mm/pmm.h>
 #include <core.h>
 #include <intrinsic.h>
+#include <interrupt/syscall.h>
+#include <proc/proc.h>
 
 #define MEMBLK_NODE_PRE_PAGE 0x7F
 
@@ -220,17 +222,10 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int contin
 	*pageCount = 0;
 	return 1;
 }
-void vmm_free(void *ref, QWORD addr, QWORD pageCount)
-{
-	LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
-	blk->ADDR = addr;
-	blk->SIZE = pageCount << 12;
-	pmm_insert_link(ref, blk, vmm_free_node);
-}
 QWORD alloc_physical_memory(QWORD *pageCount, int align, int continu)
 {
 	QWORD addr = 0;
-	vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, &addr, pageCount, align, continu);
+	vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, &addr, pageCount, align, continu, VMM_TYPE_RESERVE, 0, 0);
 	return addr;
 }
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
@@ -485,4 +480,28 @@ void heap_free(const volatile void *addr)
 		}
 		return;
 	}
+}
+QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocType, DWORD protect)
+{
+	if (__getcs() & 3)
+	{
+		SYSCALL_VIRTUAL_ALLOC call;
+		call.TYPE = SYSCALL_TYPE_VIRTUAL_ALLOC;
+		call.PROC = proc;
+		call.ADDR = virtAddr;
+		call.SIZE = allocSize;
+		call.ATYP = allocType;
+		call.PROT = protect;
+		__syscall(&call);
+	}
+	if (!proc)
+		return 0xFFF;
+
+	QWORD flag = 0;
+	if (allocSize & VMM_WRITE)
+		flag |= PA_WRITE;
+	if (!(allocSize & VMM_EXECUTE))
+		flag |= PA_EXED;
+	PROCESS_CONTROL_BLOCK *currproc = (PROCESS_CONTROL_BLOCK *) core_mapping(proc);
+	return vmm_alloc(&currproc->VMMA, virtAddr, &allocSize, 0, 1, allocType, protect, 1);
 }

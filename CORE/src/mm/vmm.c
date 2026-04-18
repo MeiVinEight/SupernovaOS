@@ -182,7 +182,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int contin
 				LINEAR_MEMORY_BLOCK *blk = vmm_alloc_node();
 				blk->ADDR = newAddr;
 				blk->SIZE = size;
-				pmm_insert_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, blk, vmm_free_node);
+				pmm_insert_link(root, blk, vmm_free_node);
 			}
 		}
 		else if (size)
@@ -192,7 +192,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, int contin
 		}
 		else
 		{
-			pmm_delete_link((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, node, vmm_free_node);
+			pmm_delete_link(root, node, vmm_free_node);
 		}
 		*addr = allocAddr;
 		return 0;

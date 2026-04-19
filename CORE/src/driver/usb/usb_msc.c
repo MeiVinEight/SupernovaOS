@@ -148,7 +148,7 @@ void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 	printf("USB Massage Storage Capacity: LBA=%llu, sector=%lu\n", scsi_reverse8(capa.LBAX), scsi_reverse4(capa.LBLX));
 
 	QWORD pc = 1;
-	QWORD bufPhy = alloc_physical_memory(&pc, 0, 0);
+	QWORD bufPhy = alloc_physical_memory(&pc, 0);
 	BYTE *buf = (BYTE *) core_mapping(bufPhy);
 	SCSI_READ16_COMMAND read16;
 	__memset(&read16, 0, sizeof(SCSI_READ16_COMMAND));

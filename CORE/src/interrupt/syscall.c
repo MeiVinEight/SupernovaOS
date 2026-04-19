@@ -38,7 +38,7 @@ void setup_system_call()
 	interrupt_set_intx(vec);
 	IDT[vec].PRVL = 3;
 	QWORD pc = 1;
-	QWORD rsp0 = core_mapping(alloc_physical_memory(&pc, 0, 0));
+	QWORD rsp0 = core_mapping(alloc_physical_memory(&pc, 0));
 	TASK_STATE_SEGMENT *tss = (TASK_STATE_SEGMENT *) SYSTEM_TABLE->TSS;
 	__memset(tss, 0, sizeof(TASK_STATE_SEGMENT));
 	tss->RSPX[0] = rsp0;

@@ -13,6 +13,7 @@
 #include <file/pe32x.h>
 #include <user/user.h>
 #include <interrupt/syscall.h>
+#include <proc/proc.h>
 
 extern BYTE __ImageBase;
 
@@ -62,7 +63,7 @@ unsigned long long _DllMainCRTStartup()
 	while (size < imageSize)
 	{
 		QWORD pc = 1;
-		QWORD phyAddr = alloc_physical_memory(&pc, 0, 0);
+		QWORD phyAddr = alloc_physical_memory(&pc, 0);
 		virtual_mapping(phyAddr, virtAddr + size, 1, PAGE_4K, PA_WRITE | PA_USER);
 		size += 0x1000;
 	}

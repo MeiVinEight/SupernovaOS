@@ -18,14 +18,14 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
 
 	QWORD pc = 1;
-	QWORD outCtxPhy = alloc_physical_memory(&pc, 0, 0);
+	QWORD outCtxPhy = alloc_physical_memory(&pc, 0);
 	if (!outCtxPhy)
 		return 1;
 	__memset((void *) core_mapping(outCtxPhy), 0, pc << 12);
 	// Setup Output Context
 	controller->context[slotId] = outCtxPhy;
 
-	QWORD inputCtxPhy = alloc_physical_memory(&pc, 0, 0);
+	QWORD inputCtxPhy = alloc_physical_memory(&pc, 0);
 	if (!inputCtxPhy)
 	{
 		free_physical_memory(outCtxPhy, 1);
@@ -38,7 +38,7 @@ DWORD xhci_setup_usb_device(XHCI_USB_DEVICE *device, DWORD portId, DWORD slotId)
 
 	// Allocate a persistent DMA page for control transfer payloads.
 	pc = 1;
-	QWORD persPhyAddr = alloc_physical_memory(&pc, 0, 0);
+	QWORD persPhyAddr = alloc_physical_memory(&pc, 0);
 	if (!persPhyAddr)
 	{
 		free_physical_memory(outCtxPhy, 1);

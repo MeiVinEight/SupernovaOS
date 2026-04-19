@@ -15,22 +15,19 @@
 #define PAGE_2M_OFFSET 0x1FFFFFULL
 #define PAGE_1G_OFFSET 0x3FFFFFFFULL
 
-#define PAGING_PRESENT  0x001
-#define PAGING_WRITE    0x002
-#define PAGING_USER     0x004
-#define PAGING_PAGESIZE 0x080
-
-#define PA_WRITE (1ULL <<  1)
-#define PA_USER  (1ULL <<  2)
-#define PA_EXED  (1ULL << 63)
+#define PAGING_PRESENT  (1ULL <<  0)
+#define PAGING_WRITE    (1ULL <<  1)
+#define PAGING_USER     (1ULL <<  2)
+#define PAGING_PAGESIZE (1ULL <<  7)
+#define PAGING_EXED     (1ULL << 63)
 
 #define VMM_TYPE_FREE    0
 #define VMM_TYPE_RESERVE 1
 #define VMM_TYPE_COMMIT  2
 #define VMM_TYPE_MASK    3
 
-#define VMM_WRITE     4
-#define VMM_EXECUTE   8
+#define VMM_WRITE     1
+#define VMM_EXECUTE   2
 
 /**
  * F    F    F    F     8    0    0     0    0     0    0     0    0     0    0    0

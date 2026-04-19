@@ -7,6 +7,7 @@ struct _PROCESS_CONTROL_BLOCK
 {
 	PROCESS_CONTROL_BLOCK *NEXT;
 	void                  *VMMA;
+	QWORD                  CORE;
 	WORD                   PCID;
 };
 

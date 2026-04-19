@@ -40,8 +40,8 @@
 void setup_page_fault();
 void setup_memory();
 void vmm_free(void *ref, QWORD addr, QWORD pageCount);
-QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, DWORD type, DWORD protect, DWORD keep);
-QWORD __stdcall alloc_physical_memory(QWORD *pageCount, int align);
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type, DWORD protect, DWORD keep);
+QWORD __stdcall alloc_physical_memory(QWORD pageCount, int align);
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount);
 void paging_attribute(QWORD virtAddr, QWORD attr);
 void virtual_mapping(QWORD phyAddr, QWORD virtualAddr, QWORD pageCount, int pageType, QWORD attr);

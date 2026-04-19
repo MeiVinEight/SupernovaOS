@@ -85,8 +85,7 @@ LINEAR_MEMORY_BLOCK *vmm_alloc_node()
 	if (blks && (blks[MEMBLK_NODE_PRE_PAGE].SIZE < 4) && (!blks[MEMBLK_NODE_PRE_PAGE].ADDR))
 	{
 		blks[MEMBLK_NODE_PRE_PAGE].ADDR = 1;
-		QWORD pageCount = 1;
-		QWORD pageAddr = alloc_physical_memory(&pageCount, 0);
+		QWORD pageAddr = alloc_physical_memory(1, 0);
 		pageAddr = core_mapping(pageAddr);
 		for (DWORD i = 0; i < (4096 >> 3); i++)
 			((volatile QWORD *) pageAddr)[i] = 0;
@@ -147,9 +146,9 @@ void vmm_free(void *ref, QWORD addr, QWORD pageCount)
 	blk->SIZE = pageCount << 12;
 	pmm_insert_link(ref, blk, vmm_free_node);
 }
-QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, DWORD type, DWORD protect, DWORD keep)
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type, DWORD protect, DWORD keep)
 {
-	if (!*pageCount)
+	if (!pageCount)
 		return 0;
 	if (align > 63)
 		goto ALLOC_FAILED;
@@ -157,7 +156,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, DWORD type
 		goto ALLOC_FAILED;
 	if (type == VMM_TYPE_FREE)
 	{
-		vmm_free(root, *addr, *pageCount);
+		vmm_free(root, *addr, pageCount);
 		return 0;
 	}
 
@@ -178,9 +177,9 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, DWORD type
 		QWORD size = ((node->ADDR + node->SIZE) - allocAddr);
 		QWORD allocSize = size >> 12;
 
-		if (allocSize < *pageCount)
+		if (allocSize < pageCount)
 			continue;
-		size -= *pageCount << 12;
+		size -= pageCount << 12;
 		QWORD newAddr = (node->ADDR + node->SIZE) - size;
 
 		if (allocAddr != node->ADDR)
@@ -211,10 +210,9 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD *pageCount, int align, DWORD type
 
 	ALLOC_FAILED:
 	*addr = 0;
-	*pageCount = 0;
 	return 1;
 }
-QWORD alloc_physical_memory(QWORD *pageCount, int align)
+QWORD alloc_physical_memory(QWORD pageCount, int align)
 {
 	QWORD addr = 0;
 	vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, &addr, pageCount, align, VMM_TYPE_RESERVE, 0, 0);
@@ -284,8 +282,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		// create 512G page entry
 		if (!(pml4[offset4] & 1))
 		{
-			QWORD allpc = 1;
-			QWORD pageAddr = alloc_physical_memory(&allpc, 0);
+			QWORD pageAddr = alloc_physical_memory(1, 0);
 			pml4[offset4] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
@@ -304,8 +301,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		// create 1G page entry
 		if (!(pdpt[offset3] & 1))
 		{
-			QWORD allpc = 1;
-			QWORD pageAddr = alloc_physical_memory(&allpc, 0);
+			QWORD pageAddr = alloc_physical_memory(1, 0);
 			pdpt[offset3] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
@@ -324,8 +320,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 		// create 2M page entry
 		if (!(pd[offset2] & 1))
 		{
-			QWORD allpc = 1;
-			QWORD pageAddr = alloc_physical_memory(&allpc, 0);
+			QWORD pageAddr = alloc_physical_memory(1, 0);
 			pd[offset2] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
@@ -360,8 +355,7 @@ void *heap_alloc(QWORD allocSize)
 	if (!HEAPK)
 	{
 		// Create a new Heap with 1*4K page
-		QWORD pc = 1;
-		QWORD phyAddr = alloc_physical_memory(&pc, 0);
+		QWORD phyAddr = alloc_physical_memory(1, 0);
 		// Mapping to Heap Space
 		QWORD heapBase = 0xFFFF808000000000ULL;
 		virtual_mapping(phyAddr, heapBase, 1, PAGE_4K, PA_WRITE);
@@ -419,8 +413,7 @@ void *heap_alloc(QWORD allocSize)
 			QWORD *heapEnd = heap + 1 + (*heap >> 3);
 			QWORD heapEndAddr = (QWORD) heapEnd;
 			// Allocate one 4K page
-			QWORD pc = 1;
-			QWORD phyPage = alloc_physical_memory(&pc, 0);
+			QWORD phyPage = alloc_physical_memory(1, 0);
 			if (!phyPage)
 			{
 				// No free page, kernel panic
@@ -495,5 +488,5 @@ QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocTyp
 	if (!(allocSize & VMM_EXECUTE))
 		flag |= PA_EXED;
 	PROCESS_CONTROL_BLOCK *currproc = (PROCESS_CONTROL_BLOCK *) core_mapping(proc);
-	return vmm_alloc(&currproc->VMMA, virtAddr, &allocSize, 0, allocType, protect, 1);
+	return vmm_alloc(&currproc->VMMA, virtAddr, allocSize, 0, allocType, protect, 1);
 }

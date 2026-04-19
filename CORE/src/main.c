@@ -54,6 +54,7 @@ unsigned long long _DllMainCRTStartup()
 
 	printf("OK\n");
 
+	create_process();
 	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) &__ImageBase;
 	DWORD userMainOffset = ((QWORD) user_main) & 0xFFFFFFFF;
 	IMAGE_NT_HEADERS *ntHeaders = (IMAGE_NT_HEADERS *) ((&__ImageBase) + dosHeader->PEHO);
@@ -62,8 +63,7 @@ unsigned long long _DllMainCRTStartup()
 	QWORD size = 0;
 	while (size < imageSize)
 	{
-		QWORD pc = 1;
-		QWORD phyAddr = alloc_physical_memory(&pc, 0);
+		QWORD phyAddr = alloc_physical_memory(1, 0);
 		virtual_mapping(phyAddr, virtAddr + size, 1, PAGE_4K, PA_WRITE | PA_USER);
 		size += 0x1000;
 	}

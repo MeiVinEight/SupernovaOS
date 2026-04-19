@@ -136,8 +136,7 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 	device->operational->MDSE = maxSlot;
 
 	//Setup the device context base address array with scratchpad buffers
-	QWORD pageCount = 1;
-	QWORD dcbaAddr = alloc_physical_memory(&pageCount, 0);
+	QWORD dcbaAddr = alloc_physical_memory(1, 0);
 	device->context = (QWORD *) core_mapping(dcbaAddr);
 	__memset(device->context, 0, 0x1000);
 
@@ -159,14 +158,14 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
 		QWORD pcnt = maxScratchpadBuf << 3;
 		pcnt += 0xFFF;
 		pcnt >>= 12;
-		QWORD scrArrAddr = alloc_physical_memory(&pcnt, 0);
+		QWORD scrArrAddr = alloc_physical_memory(pcnt, 0);
 		QWORD *scrpadArr = (QWORD *) core_mapping(scrArrAddr);
 		__memset(scrpadArr, 0, pcnt << 12);
 		// Create scratchpad pages
 		pcnt = 1;
 		for (DWORD i = 0; i < maxScratchpadBuf; i++)
 		{
-			scrpadArr[i] = alloc_physical_memory(&pcnt, 0);
+			scrpadArr[i] = alloc_physical_memory(pcnt, 0);
 			__memset((void *) core_mapping(scrpadArr[i]), 0, pcnt << 12);
 		}
 

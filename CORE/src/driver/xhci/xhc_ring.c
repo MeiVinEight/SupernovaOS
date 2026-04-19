@@ -33,7 +33,7 @@ void xhc_transfer_ring_create(XHCI_TRANSFER_RING *ring, void *devc, int epid, in
 	ring->DEVC = devc;
 	ring->EPID = epid;
 	QWORD pc = 1;
-	QWORD ringPhyAddr = alloc_physical_memory(&pc, 0);
+	QWORD ringPhyAddr = alloc_physical_memory(pc, 0);
 	ring->RING = (XHCI_TRB_GENERIC *) core_mapping(ringPhyAddr);
 	ring->CYCL = 1;
 	ring->INDX = 0;

@@ -30,7 +30,7 @@ PROCESS_CONTROL_BLOCK *create_process()
 	ntHeaders->OPTI.IMGE = virtAddr;
 	ntHeaders->OPTI.ENTY = ((QWORD) user_main) & 0xFFFFFFFF;
 	SUPERNOVA_SYSTEM_TABLE *sysTab = (SUPERNOVA_SYSTEM_TABLE *) virtAddr;
-	__memcpy(sysTab->APC, sysTab->FONT, 0x1000);
+	sysTab->USER = 1;
 	pcb->CORE = virtAddr;
 	return pcb;
 }
@@ -42,8 +42,9 @@ QWORD process_start(PROCESS_CONTROL_BLOCK *pcb)
 {
 	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) (pcb->CORE);
 	IMAGE_NT_HEADERS *ntHeaders = (IMAGE_NT_HEADERS *) (pcb->CORE + dosHeader->PEHO);
-	SUPERNOVA_SYSTEM_TABLE *sysTab = (SUPERNOVA_SYSTEM_TABLE *) pcb->CORE;
-	QWORD stack = ((QWORD) sysTab->APC) - 0x40;
+	QWORD virtAddr = 0x1000;
+	virtual_alloc(physical_address((QWORD) pcb), &virtAddr, 0x3FFFF, VMM_TYPE_COMMITXF);
+	QWORD stack = 0x40000000 - 0x40;
 	QWORD entry = ntHeaders->OPTI.ENTY + pcb->CORE;
 	CURRENT_PROCESS = pcb;
 	return __iret(0x13, entry, 0x1B, stack);

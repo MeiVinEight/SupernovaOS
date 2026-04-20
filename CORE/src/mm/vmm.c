@@ -194,12 +194,17 @@ void vmm_uncommit(QWORD addr, QWORD pageCount)
 	for (; pageCount--; addr += 0x1000)
 	{
 		int pageType;
-		QWORD *pageEntry = search_page_entry(addr, &pageType);
-		if (pageEntry)
-		{
-			*pageEntry = 0;
-			__invlpg((void *) addr);
-		}
+		QWORD *pEntry = search_page_entry(addr, &pageType);
+		if (!pEntry)
+			continue;
+
+		if (pageType == PAGE_1G)
+			free_physical_memory((*pEntry & (~(PAGE_1G_OFFSET | PAGING_EXED))) | (addr & PAGE_1G_OFFSET), 1 << 18);
+		if (pageType == PAGE_2M)
+			free_physical_memory((*pEntry & (~(PAGE_2M_OFFSET | PAGING_EXED))) | (addr & PAGE_2M_OFFSET), 1 << 9);
+		free_physical_memory((*pEntry & (~(PAGE_4K_OFFSET | PAGING_EXED))) | (addr & PAGE_4K_OFFSET), 1);
+		*pEntry = 0;
+		__invlpg((void *) addr);
 	}
 }
 void vmm_free(void *ref, QWORD addr, QWORD pageCount)

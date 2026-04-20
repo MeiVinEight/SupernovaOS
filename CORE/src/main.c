@@ -10,8 +10,6 @@
 #include <driver/pci/pcie.h>
 #include <mm/vmm.h>
 #include <stdio.h>
-#include <file/pe32x.h>
-#include <user/user.h>
 #include <interrupt/syscall.h>
 #include <proc/proc.h>
 
@@ -54,28 +52,5 @@ unsigned long long _DllMainCRTStartup()
 
 	printf("OK\n");
 
-	create_process();
-	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) &__ImageBase;
-	DWORD userMainOffset = ((QWORD) user_main) & 0xFFFFFFFF;
-	IMAGE_NT_HEADERS *ntHeaders = (IMAGE_NT_HEADERS *) ((&__ImageBase) + dosHeader->PEHO);
-	DWORD imageSize = ntHeaders->OPTI.SIMG;
-	QWORD virtAddr = 0x00007FFF00000000ULL;
-	QWORD size = 0;
-	while (size < imageSize)
-	{
-		QWORD phyAddr = alloc_physical_memory(1, 0);
-		virtual_mapping(phyAddr, virtAddr + size, 1, PAGE_4K, PA_WRITE | PA_USER);
-		size += 0x1000;
-	}
-	__memcpy((void *) virtAddr, &__ImageBase, imageSize);
-	dosHeader = (IMAGE_DOS_HEADER *) (virtAddr);
-	ntHeaders = (IMAGE_NT_HEADERS *) (virtAddr + dosHeader->PEHO);
-	ntHeaders->OPTI.IMGE = virtAddr;
-	ntHeaders->OPTI.ENTY = userMainOffset;
-	QWORD userMain = userMainOffset + virtAddr;
-	SUPERNOVA_SYSTEM_TABLE *sysTab = (SUPERNOVA_SYSTEM_TABLE *) virtAddr;
-	__memcpy(sysTab->APC, sysTab->FONT, 0x1000);
-	QWORD userStack = (QWORD) sysTab->APC;
-	userStack -= 0x20;
-	return __iret(0x13, userMain, 0x1B, userStack);
+	return process_start(create_process());
 }

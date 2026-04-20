@@ -570,6 +570,12 @@ void heap_free(const volatile void *addr)
 }
 QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocType, DWORD protect)
 {
+	if (*virtAddr + (allocSize << 12) > 0x0000800000000000ULL)
+	{
+		*virtAddr = 0;
+		return -1;
+	}
+
 	if (__getcs() & 3)
 	{
 		SYSCALL_VIRTUAL_ALLOC call;

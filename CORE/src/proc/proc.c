@@ -15,10 +15,9 @@ PROCESS_CONTROL_BLOCK *create_process()
 {
 	PROCESS_CONTROL_BLOCK *pcb = heap_alloc(sizeof(PROCESS_CONTROL_BLOCK));
 	__memset(pcb, 0, sizeof(PROCESS_CONTROL_BLOCK));
-	vmm_free(&pcb->VMMA, 0, 0x7FFFFFFFFULL);
+	vmm_free(&pcb->VMMA, 0x1000, 0x7FFFFFFFFULL);
 
 	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) &__ImageBase;
-	DWORD userMainOffset = ((QWORD) user_main) & 0xFFFFFFFF;
 	IMAGE_NT_HEADERS *ntHeaders = (IMAGE_NT_HEADERS *) ((&__ImageBase) + dosHeader->PEHO);
 	DWORD imageSize = ntHeaders->OPTI.SIMG;
 	DWORD allocSize = (imageSize + 0xFFF) & ~0xFFF;
@@ -28,7 +27,7 @@ PROCESS_CONTROL_BLOCK *create_process()
 	dosHeader = (IMAGE_DOS_HEADER *) (virtAddr);
 	ntHeaders = (IMAGE_NT_HEADERS *) (virtAddr + dosHeader->PEHO);
 	ntHeaders->OPTI.IMGE = virtAddr;
-	ntHeaders->OPTI.ENTY = userMainOffset;
+	ntHeaders->OPTI.ENTY = ((QWORD) user_main) & 0xFFFFFFFF;
 	SUPERNOVA_SYSTEM_TABLE *sysTab = (SUPERNOVA_SYSTEM_TABLE *) virtAddr;
 	__memcpy(sysTab->APC, sysTab->FONT, 0x1000);
 	pcb->CORE = virtAddr;
@@ -37,4 +36,14 @@ PROCESS_CONTROL_BLOCK *create_process()
 PROCESS_CONTROL_BLOCK *current_process()
 {
 	return CURRENT_PROCESS;
+}
+QWORD process_start(PROCESS_CONTROL_BLOCK *pcb)
+{
+	CURRENT_PROCESS = pcb;
+	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) (pcb->CORE);
+	IMAGE_NT_HEADERS *ntHeaders = (IMAGE_NT_HEADERS *) (pcb->CORE + dosHeader->PEHO);
+	SUPERNOVA_SYSTEM_TABLE *sysTab = (SUPERNOVA_SYSTEM_TABLE *) pcb->CORE;
+	QWORD stack = ((QWORD) sysTab->APC) - 0x40;
+	QWORD entry = ntHeaders->OPTI.ENTY + pcb->CORE;
+	return __iret(0x13, entry, 0x1B, stack);
 }

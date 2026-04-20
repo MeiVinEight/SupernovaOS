@@ -13,3 +13,4 @@ struct _PROCESS_CONTROL_BLOCK
 
 PROCESS_CONTROL_BLOCK *create_process();
 PROCESS_CONTROL_BLOCK *current_process();
+QWORD process_start(PROCESS_CONTROL_BLOCK *pcb);

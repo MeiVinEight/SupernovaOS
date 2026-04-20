@@ -590,11 +590,6 @@ QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocTyp
 	if (!proc)
 		return 0xFFF;
 
-	QWORD flag = 0;
-	if (allocSize & VMM_WRITE)
-		flag |= PAGING_WRITE;
-	if (!(allocSize & VMM_EXECUTE))
-		flag |= PAGING_EXED;
 	PROCESS_CONTROL_BLOCK *currproc = (PROCESS_CONTROL_BLOCK *) core_mapping(proc);
 	return vmm_alloc(&currproc->VMMA, virtAddr, allocSize, 0, allocType, protect, 1);
 }

@@ -41,7 +41,24 @@ void INT0E(INTERRUPT_STACK *stack)
 			return;
 		}
 	}
+	if (addr >= 0x100 && addr < 0x0000800000000000ULL)
+	{
+		PROCESS_CONTROL_BLOCK *pcb = current_process();
+		if (!pcb)
+			goto PANIC;
+		LINEAR_MEMORY_BLOCK *pmm = pcb->VMMA;
+		while (pmm)
+		{
+			if ((pmm->ADDR <= addr) && ((pmm->ADDR + pmm->SIZE) > addr) && (pmm->TYPE == VMM_TYPE_COMMIT))
+			{
+				virtual_mapping(alloc_physical_memory(1, 0), addr, 1, PAGE_4K, PAGING_USER | PAGING_WRITE);
+				return;
+			}
+			pmm = pmm->NEXT;
+		}
+	}
 
+	PANIC:
 	panic(stack);
 }
 void setup_page_fault()
@@ -175,47 +192,18 @@ void setup_memory()
 		}
 	}
 }
-void vmm_change_attr(LINEAR_MEMORY_BLOCK *blk, DWORD type, DWORD protect)
+void vmm_uncommit(QWORD addr, QWORD pageCount)
 {
-	if (blk->TYPE == VMM_TYPE_COMMIT)
+	for (; pageCount--; addr += 0x1000)
 	{
-		if (type < VMM_TYPE_COMMIT)
+		int pageType;
+		QWORD *pageEntry = search_page_entry(addr, &pageType);
+		if (pageEntry)
 		{
-			// Uncommit block
-			for (QWORD va = blk->ADDR; va < blk->ADDR + blk->SIZE; va += 0x1000)
-			{
-				int pageType;
-				QWORD *pageEntry = search_page_entry(va, &pageType);
-				if (pageEntry)
-				{
-					*pageEntry = 0;
-					__invlpg((void *) va);
-				}
-			}
-		}
-		else if (protect != blk->PROT)
-		{
-			QWORD attr = PAGING_USER;
-			if (protect & VMM_WRITE)
-				attr |= PAGING_WRITE;
-			if (!(protect & VMM_EXECUTE))
-				attr |= PAGING_EXED;
-			for (QWORD va = blk->ADDR; va < blk->ADDR + blk->SIZE; va += 0x1000)
-				paging_attribute(va, attr);
+			*pageEntry = 0;
+			__invlpg((void *) addr);
 		}
 	}
-	if (type == VMM_TYPE_COMMIT)
-	{
-		QWORD attr = PAGING_USER;
-		if (protect & VMM_WRITE)
-			attr |= PAGING_WRITE;
-		if (!(protect & VMM_EXECUTE))
-			attr |= PAGING_EXED;
-		for (QWORD va = blk->ADDR; va < blk->ADDR + blk->SIZE; va += 0x1000)
-			virtual_mapping(alloc_physical_memory(1, 0), va, 1, PAGE_4K, attr);
-	}
-	blk->TYPE = type;
-	blk->PROT = protect;
 }
 void vmm_free(void *ref, QWORD addr, QWORD pageCount)
 {
@@ -224,18 +212,16 @@ void vmm_free(void *ref, QWORD addr, QWORD pageCount)
 	blk->SIZE = pageCount << 12;
 	pmm_insert_link(ref, blk, vmm_free_node);
 }
-QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type, DWORD protect, DWORD virt)
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type, DWORD virt)
 {
 	*addr += 0xFFF;
 	*addr &= ~0xFFFULL;
-	if (type == VMM_TYPE_FREE)
-		protect = 0;
 	QWORD pc = pageCount;
 	if (!pageCount)
 		return 0;
 	if (align > 63)
 		goto ALLOC_FAILED;
-	if (type > 2)
+	if (type > 4)
 		goto ALLOC_FAILED;
 
 	LINEAR_MEMORY_BLOCK **ref = root;
@@ -257,6 +243,19 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 
 		if ((!virt) && (allocSize < pageCount))
 			continue;
+		if (virt)
+		{
+			if (type == VMM_TYPE_RESERVE && node->TYPE != VMM_TYPE_FREE)
+				continue;
+			if (type == VMM_TYPE_COMMIT && node->TYPE != VMM_TYPE_RESERVE)
+				continue;
+			if (type == VMM_TYPE_COMMITXF && node->TYPE != VMM_TYPE_FREE)
+				continue;
+			if ((type == VMM_TYPE_RESERVE || type == VMM_TYPE_COMMIT || type == VMM_TYPE_COMMITXF) && (allocSize < pageCount))
+				continue;
+		}
+
+
 		if (allocSize > pageCount)
 			allocSize = pageCount;
 		size -= allocSize << 12;
@@ -264,8 +263,14 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 
 		if (virt)
 		{
-			if ((node->TYPE != type) || (node->PROT != protect))
+			if (node->TYPE != type)
 			{
+				BYTE blkType = type;
+				if (blkType == VMM_TYPE_COMMITXF)
+					blkType = VMM_TYPE_COMMIT;
+				if (blkType == VMM_TYPE_UNCOMMIT)
+					blkType = (node->TYPE) ? VMM_TYPE_RESERVE : VMM_TYPE_FREE;
+
 				QWORD leftAddr = node->ADDR;
 				QWORD leftSize = allocAddr - leftAddr;
 				QWORD leftXdat = node->XDAT;
@@ -274,6 +279,8 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 				QWORD rightAddr = midAddr + midSize;
 				QWORD rightSize = size;
 				QWORD rightXdat = node->XDAT;
+				if (node->TYPE == VMM_TYPE_COMMIT && (type == VMM_TYPE_UNCOMMIT || type == VMM_TYPE_FREE))
+					vmm_uncommit(midAddr, allocSize);
 				pmm_delete_link(root, node, vmm_free_node);
 
 				if (leftSize)
@@ -290,7 +297,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 					blk->ADDR = midAddr;
 					blk->SIZE = midSize;
 					blk->XDAT = leftXdat;
-					vmm_change_attr(blk, type, protect);
+					blk->TYPE = blkType;
 					pmm_insert_link(root, blk, vmm_free_node);
 				}
 				if (rightSize)
@@ -345,7 +352,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 QWORD alloc_physical_memory(QWORD pageCount, int align)
 {
 	QWORD addr = 0;
-	vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, &addr, pageCount, align, VMM_TYPE_RESERVE, 0, 0);
+	vmm_alloc((LINEAR_MEMORY_BLOCK **) &MEMORY_MAP, &addr, pageCount, align, VMM_TYPE_RESERVE, 0);
 	return addr;
 }
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount)
@@ -568,7 +575,7 @@ void heap_free(const volatile void *addr)
 		return;
 	}
 }
-QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocType, DWORD protect)
+QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocType)
 {
 	if (*virtAddr + (allocSize << 12) > 0x0000800000000000ULL)
 	{
@@ -584,12 +591,13 @@ QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocTyp
 		call.ADDR = virtAddr;
 		call.SIZE = allocSize;
 		call.ATYP = allocType;
-		call.PROT = protect;
 		__syscall(&call);
 	}
 	if (!proc)
 		return 0xFFF;
 
+	if (proc == CURRENT_PROCESS_HANDLE)
+		proc = (QWORD) current_process();
 	PROCESS_CONTROL_BLOCK *currproc = (PROCESS_CONTROL_BLOCK *) core_mapping(proc);
-	return vmm_alloc(&currproc->VMMA, virtAddr, allocSize, 0, allocType, protect, 1);
+	return vmm_alloc(&currproc->VMMA, virtAddr, allocSize, 0, allocType, 1);
 }

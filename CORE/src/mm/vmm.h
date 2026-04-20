@@ -21,10 +21,11 @@
 #define PAGING_PAGESIZE (1ULL <<  7)
 #define PAGING_EXED     (1ULL << 63)
 
-#define VMM_TYPE_FREE    0
-#define VMM_TYPE_RESERVE 1
-#define VMM_TYPE_COMMIT  2
-#define VMM_TYPE_MASK    3
+#define VMM_TYPE_FREE     0
+#define VMM_TYPE_RESERVE  1
+#define VMM_TYPE_COMMIT   2
+#define VMM_TYPE_COMMITXF 3
+#define VMM_TYPE_UNCOMMIT 4
 
 #define VMM_WRITE     1
 #define VMM_EXECUTE   2
@@ -37,7 +38,7 @@
 void setup_page_fault();
 void setup_memory();
 void vmm_free(void *ref, QWORD addr, QWORD pageCount);
-QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type, DWORD protect, DWORD keep);
+QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type, DWORD keep);
 QWORD __stdcall alloc_physical_memory(QWORD pageCount, int align);
 void __stdcall free_physical_memory(QWORD addr, QWORD pageCount);
 void paging_attribute(QWORD virtAddr, QWORD attr);
@@ -45,6 +46,6 @@ void virtual_mapping(QWORD phyAddr, QWORD virtualAddr, QWORD pageCount, int page
 QWORD physical_address(QWORD virtAddr);
 void *heap_alloc(QWORD allocSize);
 void heap_free(const volatile void *addr);
-QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocType, DWORD protect);
+QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocType);
 
 #endif //SUPERNOVA_VIRTMEM_H

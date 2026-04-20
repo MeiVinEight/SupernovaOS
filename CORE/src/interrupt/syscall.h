@@ -20,7 +20,6 @@ typedef struct _SYSCALL_VIRTUAL_ALLOC
 	QWORD *ADDR;
 	QWORD  SIZE;
 	DWORD  ATYP;
-	DWORD  PROT;
 } SYSCALL_VIRTUAL_ALLOC;
 
 void setup_system_call();

@@ -24,14 +24,20 @@ struct _LINEAR_MEMORY_BLOCK
 		struct
 		{
 			QWORD        SIZE:56; // Memory block size
-			QWORD        XDAT:8;  // Memory block flags
+			QWORD        RSV0:8;  // Memory block flags
 		};
 		struct
 		{
-			BYTE         RSV0[7];
-			BYTE         TYPE:2;
-			BYTE         PROT:5;
-			BYTE         VALD:1;
+			BYTE         RSV1[7];
+			union
+			{
+				BYTE     XDAT;   // Memory block flags
+				struct
+				{
+					BYTE TYPE:7;
+					BYTE VALD:1;
+				};
+			};
 		};
 	};
 };

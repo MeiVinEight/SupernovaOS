@@ -21,6 +21,9 @@
 #define PAGING_PAGESIZE (1ULL <<  7)
 #define PAGING_EXED     (1ULL << 63)
 
+#define HEAP_FLAG_USING 1ULL
+#define HEAP_FLAG_LAST  2ULL
+
 #define VMM_TYPE_FREE     0
 #define VMM_TYPE_RESERVE  1
 #define VMM_TYPE_COMMIT   2
@@ -29,6 +32,8 @@
 
 #define VMM_WRITE     1
 #define VMM_EXECUTE   2
+
+extern QWORD *volatile HEAPK;
 
 /**
  * F    F    F    F     8    0    0     0    0     0    0     0    0     0    0    0

@@ -7,9 +7,6 @@
 
 #define MEMBLK_NODE_PRE_PAGE 0x7F
 
-#define HEAP_FLAG_USING 1ULL
-#define HEAP_FLAG_LAST  2ULL
-
 typedef union _VIRTUAL_ADDRESS
 {
 	struct
@@ -516,6 +513,8 @@ void *heap_alloc(QWORD allocSize)
 			heap += 1 + (*heap >> 3);
 		}
 		// No free block
+		if (__getcs() & 3)
+			return 0;
 		// Expand the heap
 		while ((*heap & (~7ULL)) < allocSize)
 		{

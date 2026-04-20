@@ -591,7 +591,7 @@ QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocTyp
 		call.ADDR = virtAddr;
 		call.SIZE = allocSize;
 		call.ATYP = allocType;
-		__syscall(&call);
+		return __syscall(&call);
 	}
 	if (!proc)
 		return 0xFFF;

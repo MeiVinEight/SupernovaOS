@@ -2,6 +2,8 @@
 
 #include <types.h>
 
+#define CURRENT_PROCESS_HANDLE (-1ULL)
+
 typedef struct _PROCESS_CONTROL_BLOCK PROCESS_CONTROL_BLOCK;
 struct _PROCESS_CONTROL_BLOCK
 {

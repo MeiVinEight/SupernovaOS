@@ -557,6 +557,11 @@ void heap_free(const volatile void *addr)
 			continue;
 		}
 
+		QWORD addr0 = (QWORD) (heap + 1);
+		QWORD addr1 = (QWORD) (heap + 1 + (*heap >> 3));
+		addr0 += 0xFFF;
+		addr0 &= ~0xFFFULL;
+		addr1 &= ~0xFFFULL;
 		// Found the block
 		// Free the block by clear using flag
 		*heap &= ~HEAP_FLAG_USING;
@@ -568,13 +573,33 @@ void heap_free(const volatile void *addr)
 		}
 
 		if ((*heap & HEAP_FLAG_LAST))
-			return;
+			goto FREE_RETURN;
 		// Try merge with next block
 		QWORD *next = heap + 1 + (*heap >> 3);
 		if (!(*next & HEAP_FLAG_USING))
 		{
 			*heap += 8 + (*next & ~7ULL);
 			*heap |= (*next & 7);
+		}
+
+		FREE_RETURN:
+		if (__getcs() & 3)
+		{
+			QWORD addr2 = (QWORD) (heap + 1);
+			QWORD addr3 = (QWORD) (heap + 1 + (*heap >> 3));
+			addr2 += 0xFFF;
+			addr2 &= ~0xFFFULL;
+			addr3 &= ~0xFFFULL;
+			if (addr2 < (addr0 - 0x1000))
+				addr2 = (addr0 - 0x1000);
+			if (addr3 > (addr1 + 0x1000))
+				addr3 = (addr1 + 0x1000);
+			if (addr3 - addr2)
+			{
+				QWORD addr4 = addr2;
+				virtual_alloc(CURRENT_PROCESS_HANDLE, &addr4, (addr3 - addr4) >> 12, VMM_TYPE_UNCOMMIT);
+				virtual_alloc(CURRENT_PROCESS_HANDLE, &addr4, (addr3 - addr4) >> 12, VMM_TYPE_COMMIT);
+			}
 		}
 		return;
 	}

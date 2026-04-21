@@ -5,7 +5,6 @@
 
 void xhci_usb_msc_setup(XHCI_USB_DEVICE *device)
 {
-	printf("USB Mass Storage Device @ %p\n", device);
 	STANDARD_USB_INTERFACE *iface = device->interface;
 	if (!iface)
 		return;

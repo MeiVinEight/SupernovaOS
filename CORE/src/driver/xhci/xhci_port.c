@@ -33,7 +33,6 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId
 	if (port->POEN)
 	{
 		status->RST = 0;
-		printf("Port already enabled\n");
 		return 0;
 	}
 

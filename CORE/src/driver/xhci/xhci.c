@@ -70,7 +70,6 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 		if (!controller->operational->PORT[i].CCSS)
 			continue;
 
-		printf("Port %lu\n", i);
 		xhci_setup_device(controller, i);
 	}
 }
@@ -289,29 +288,12 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 			DWORD portId = trb->PRID - 1;
 			volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 			XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
-			if (port->CSCH)
-				printf("Connection Status: %u\n", port->CCSS);
-			if (port->PECH)
-				printf("Port Enable: %u\n", port->POEN);
 			if (port->WRCH)
-			{
 				status->RST = 1;
-				printf("Warm Reset complete\n");
-			}
-			if (port->OCCH)
-				printf("Over-current condition: %u\n", port->OCAC);
 			if (port->PRCH)
-			{
 				status->RST = 1;
-				printf("Reset complete\n");
-			}
-			if (port->PLCH)
-				printf("Port Link Status: %u\n", port->PLST);
 			if (port->CECH)
-			{
 				status->ERR = 1;
-				printf("Port Config Error\n");
-			}
 			// Clear port status change bits
 			xhci_port_ack_port_changes(device, portId, XHCI_PORTSC_PSC_MASK);
 			continue;

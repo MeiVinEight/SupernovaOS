@@ -106,8 +106,6 @@ void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 		return;
 	STANDARD_USB_ENDPOINT *iepdesc = usb_search_endpoint(device->configuration, USB_XFER_TYPE_BULK, USB_DIR_IN);
 	STANDARD_USB_ENDPOINT *oepdesc = usb_search_endpoint(device->configuration, USB_XFER_TYPE_BULK, USB_DIR_OUT);
-	printf("USB Endpoint: addr=%02x, attr=%02x, max packet size=%04x, interval=%u\n", iepdesc->ADDR, iepdesc->ATTR, iepdesc->MPSZ, iepdesc->ITVL);
-	printf("USB Endpoint: addr=%02x, attr=%02x, max packet size=%04x, interval=%u\n", oepdesc->ADDR, oepdesc->ATTR, oepdesc->MPSZ, oepdesc->ITVL);
 	if (!iepdesc || !oepdesc)
 	{
 		printf("USB Mass Storage Endpoint not found\n");
@@ -126,8 +124,6 @@ void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 		printf("USB Mass Storage Endpoint1 fail: %lu\n", cc);
 		return;
 	}
-	printf("USB Mass Storage Transfer %lu: %p\n", iepid, device->transfer[iepid]);
-	printf("USB Mass Storage Transfer %lu: %p\n", oepid, device->transfer[oepid]);
 
 	BYTE maxLun = -1;
 	USB_DEVICE_SETUP_DATA requ;
@@ -143,15 +139,12 @@ void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 		printf("USB Mass Storage GET_MAX_LUN fail: %lu\n", cc);
 		return;
 	}
-	printf("USB Mass Storage Max Lun: %u\n", maxLun);
-	printf("USB Mass Storage Test Ready\n");
 	BYTE cmd[6] = {0, 0, 0, 0, 0, 0};
 	if ((cc = scsi_command(device, iepid, oepid, 1, 0, cmd, 6, 0, 0)))
 	{
 		printf("USB Mass Storage Not Ready: %lu\n", cc);
 		return;
 	}
-	printf("USB Mass Storage Ready!\n");
 
 	SCSI_COMMAND_INQUIRY inquiry;
 	__memset(&inquiry, 0, sizeof(SCSI_COMMAND_INQUIRY));
@@ -174,16 +167,6 @@ void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 		printf("USB Mass Storage Inquiry Failed: %lu\n", cc);
 		return;
 	}
-	char buf1[9];
-	char buf2[17];
-	char buf3[5];
-	__memset(buf1, 0, sizeof(buf1));
-	__memset(buf2, 0, sizeof(buf2));
-	__memset(buf3, 0, sizeof(buf3));
-	__memcpy(buf1, data->VEND, 8);
-	__memcpy(buf2, data->PROD, 16);
-	__memcpy(buf3, data->REVI, 4);
-	printf("USB Massage Storage INQUIRY: %s %s %s\n", buf1, buf2, buf3);
 	ssd->IQRY = *data;
 
 	SCSI_READ_CAPACITY16_COMMAND rcapa;
@@ -198,20 +181,11 @@ void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 		printf("USB Mass Storage Read Capacity failed: %lu\n", cc);
 		return;
 	}
-	printf("USB Massage Storage Capacity: LBA=%llu, sector=%lu\n", scsi_reverse8(capa->LBAX), scsi_reverse4(capa->LBLX));
 
 	ssd->XSSD.READ = usb_bulk_read;
 	ssd->XSSD.CAPA = scsi_reverse8(capa->LBAX);
 	ssd->XUSB = device;
 	ssd->IEPI = iepid;
 	ssd->OEPI = oepid;
-
-	__memset(buf, 0, 0x1000);
-	if ((cc = usb_bulk_read(&ssd->XSSD, buf, 1, 1)))
-	{
-		printf("USB Mass Storage LBA read failed: %lu\n", cc);
-		return;
-	}
-	printf("%s\n", (char *) buf);
 	free_physical_memory(phyAddr, 1);
 }

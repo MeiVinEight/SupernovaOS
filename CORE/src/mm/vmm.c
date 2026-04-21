@@ -627,6 +627,6 @@ QWORD virtual_alloc(QWORD proc, QWORD *virtAddr, QWORD allocSize, DWORD allocTyp
 
 	if (proc == CURRENT_PROCESS_HANDLE)
 		proc = (QWORD) current_process();
-	PROCESS_CONTROL_BLOCK *currproc = (PROCESS_CONTROL_BLOCK *) core_mapping(proc);
+	PROCESS_CONTROL_BLOCK *currproc = (PROCESS_CONTROL_BLOCK *) proc;
 	return vmm_alloc(&currproc->VMMA, virtAddr, allocSize, 0, allocType, 1);
 }

@@ -4,8 +4,6 @@
 #include <file/pe32x.h>
 #include <user/user.h>
 #include <core.h>
-#include <stdio.h>
-#include <mm/pmm.h>
 
 extern BYTE __ImageBase;
 
@@ -23,7 +21,7 @@ PROCESS_CONTROL_BLOCK *create_process()
 	DWORD imageSize = ntHeaders->OPTI.SIMG;
 	DWORD allocSize = (imageSize + 0xFFF) & ~0xFFF;
 	QWORD virtAddr = 0x0000800000000000ULL - allocSize;
-	virtual_alloc(physical_address((QWORD) pcb), &virtAddr, allocSize >> 12, VMM_TYPE_COMMITXF);
+	virtual_alloc((QWORD) pcb, &virtAddr, allocSize >> 12, VMM_TYPE_COMMITXF);
 	__memcpy((void *) virtAddr, &__ImageBase, imageSize);
 	dosHeader = (IMAGE_DOS_HEADER *) (virtAddr);
 	ntHeaders = (IMAGE_NT_HEADERS *) (virtAddr + dosHeader->PEHO);
@@ -43,7 +41,7 @@ QWORD process_start(PROCESS_CONTROL_BLOCK *pcb)
 	IMAGE_DOS_HEADER *dosHeader = (IMAGE_DOS_HEADER *) (pcb->CORE);
 	IMAGE_NT_HEADERS *ntHeaders = (IMAGE_NT_HEADERS *) (pcb->CORE + dosHeader->PEHO);
 	QWORD virtAddr = 0x1000;
-	virtual_alloc(physical_address((QWORD) pcb), &virtAddr, 0x3FFFF, VMM_TYPE_COMMITXF);
+	virtual_alloc((QWORD) pcb, &virtAddr, 0x3FFFF, VMM_TYPE_COMMITXF);
 	QWORD stack = 0x40000000 - 0x40;
 	QWORD entry = ntHeaders->OPTI.ENTY + pcb->CORE;
 	CURRENT_PROCESS = pcb;

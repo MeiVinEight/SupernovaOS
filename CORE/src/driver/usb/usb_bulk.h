@@ -10,6 +10,9 @@
 #define CBW_SIGNATURE 0x43425355 // USBC
 #define CSW_SIGNATURE 0x53425355 // USBS
 
+#include <types.h>
+#include <driver/xhci/xhci_device.h>
+
 typedef struct _USB_MASS_STORAGE_BULK_CBW
 {
 	/**
@@ -91,3 +94,5 @@ typedef struct _USB_MASS_STORAGE_BULK_CSW
 	 */
 	BYTE  STAT;
 } USB_MASS_STORAGE_BULK_CSW;
+
+void xhci_usb_msc_bot(XHCI_USB_DEVICE *device);

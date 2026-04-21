@@ -1,0 +1,213 @@
+#include <driver/usb/usb_bulk.h>
+#include <driver/disk/disk.h>
+#include <driver/xhci/xhci_device.h>
+#include <driver/xhci/xhci_context.h>
+#include <driver/scsi/scsi.h>
+#include <driver/scsi/scsi_cmd.h>
+#include <mm/vmm.h>
+#include <intrinsic.h>
+#include <stdio.h>
+#include <core.h>
+
+typedef struct _USB_BULK_STORAGE_DEVICE
+{
+	STANDARD_STORAGE_DEVICE XSSD;
+	XHCI_USB_DEVICE        *XUSB;
+	SCSI_DATA_INQUIRY       IQRY;
+	BYTE                    IEPI;
+	BYTE                    OEPI;
+} USB_BULK_STORAGE_DEVICE;
+
+DWORD scsi_command(XHCI_USB_DEVICE *device, DWORD iepid, DWORD oepid, DWORD isIn, DWORD lun, const void *cmd, DWORD cmdLen, void *data, DWORD dataLen)
+{
+	if ((QWORD) data & 0xFFF)
+		return -1; // Un-aligned address
+
+	BYTE *buf = (BYTE *) core_mapping(device->persistent);
+	USB_MASS_STORAGE_BULK_CBW *cbw = (USB_MASS_STORAGE_BULK_CBW *) buf;
+	__memset(cbw, 0, sizeof(USB_MASS_STORAGE_BULK_CBW));
+	cbw->SIGN = CBW_SIGNATURE;
+	cbw->TAGX = 1;
+	cbw->DTRL = dataLen;
+	cbw->FLAG = (dataLen && isIn) ? USB_DIR_IN : USB_DIR_OUT;
+	cbw->CLUN = lun;
+	cbw->CLEN = cmdLen;
+	__memcpy(cbw->CMMD, cmd, cmdLen);
+	DWORD cc;
+	if ((cc = xhci_transfer(device, oepid, 1, 0, (void *) core_mapping(device->persistent), 31)) != XHCI_CODE_SUCCESS)
+	{
+		printf("USB SCSI Transfer CBW failed: %lu\n", cc);
+		return cc;
+	}
+	if (dataLen)
+	{
+		if ((cc = xhci_transfer(device, (isIn ? iepid : oepid), 1, 0, data, dataLen)) != XHCI_CODE_SUCCESS)
+		{
+			printf("USB SCSI Transfer Data failed: %lu\n", cc);
+			return cc;
+		}
+	}
+	USB_MASS_STORAGE_BULK_CSW *csw = (USB_MASS_STORAGE_BULK_CSW *) buf;
+	csw->SIGN = 0;
+	if ((cc = xhci_transfer(device, iepid, 1, 0, csw, 13)) != XHCI_CODE_SUCCESS)
+	{
+		printf("USB SCSI Transfer CSW failed: %lu\n", cc);
+	}
+	if (csw->SIGN != CSW_SIGNATURE)
+	{
+		printf("USB Wrong CSW Signature: %08lx\n", csw->SIGN);
+		return -1;
+	}
+	if (!csw->STAT)
+		return 0;
+	if (csw->STAT == 1)
+	{
+		printf("USB CSW Command Failed\n");
+		return -1;
+	}
+	printf("USB BOT Reset\n");
+	return -2;
+}
+QWORD usb_bulk_read(STANDARD_STORAGE_DEVICE *dev, void *buf, QWORD lba, DWORD sec)
+{
+	USB_BULK_STORAGE_DEVICE *device = (USB_BULK_STORAGE_DEVICE *) dev;
+
+	BYTE *addr = buf;
+	while (sec)
+	{
+		DWORD rsec = sec;
+		if (rsec > 8)
+			rsec = 8;
+		SCSI_READ16_COMMAND read16;
+		__memset(&read16, 0, sizeof(SCSI_READ16_COMMAND));
+		read16.CODE = CDB_CMD_READ_16;
+		read16.LBAX = scsi_reverse8(lba);
+		read16.TLEN = scsi_reverse4(rsec);
+		DWORD cc;
+		if ((cc = scsi_command(device->XUSB, device->IEPI, device->OEPI, 1, 0, &read16, sizeof(read16), addr, ((QWORD) rsec) << 9)))
+		{
+			printf("USB Mass Storage LBA failed: %lu\n", cc);
+			return cc;
+		}
+		lba += rsec;
+		sec -= rsec;
+		addr += rsec << 9;
+	}
+
+	return 0;
+}
+void xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
+{
+	if (!device->interface)
+		return;
+	STANDARD_USB_ENDPOINT *iepdesc = usb_search_endpoint(device->configuration, USB_XFER_TYPE_BULK, USB_DIR_IN);
+	STANDARD_USB_ENDPOINT *oepdesc = usb_search_endpoint(device->configuration, USB_XFER_TYPE_BULK, USB_DIR_OUT);
+	printf("USB Endpoint: addr=%02x, attr=%02x, max packet size=%04x, interval=%u\n", iepdesc->ADDR, iepdesc->ATTR, iepdesc->MPSZ, iepdesc->ITVL);
+	printf("USB Endpoint: addr=%02x, attr=%02x, max packet size=%04x, interval=%u\n", oepdesc->ADDR, oepdesc->ATTR, oepdesc->MPSZ, oepdesc->ITVL);
+	if (!iepdesc || !oepdesc)
+	{
+		printf("USB Mass Storage Endpoint not found\n");
+		return;
+	}
+	DWORD iepid = xhci_endpoint_id(iepdesc);
+	DWORD oepid = xhci_endpoint_id(oepdesc);
+	DWORD cc;
+	if ((cc = xhci_usb_configure_xfer_endpoint(device, iepdesc)))
+	{
+		printf("USB Mass Storage Endpoint0 fail: %lu\n", cc);
+		return;
+	}
+	if ((cc = xhci_usb_configure_xfer_endpoint(device, oepdesc)))
+	{
+		printf("USB Mass Storage Endpoint1 fail: %lu\n", cc);
+		return;
+	}
+	printf("USB Mass Storage Transfer %lu: %p\n", iepid, device->transfer[iepid]);
+	printf("USB Mass Storage Transfer %lu: %p\n", oepid, device->transfer[oepid]);
+
+	BYTE maxLun = -1;
+	USB_DEVICE_SETUP_DATA requ;
+	requ.RECP = USB_RECIP_INTERFACE;
+	requ.RTYP = USB_RTYPE_CLASS;
+	requ.DIRE = USB_RDIR_IN;
+	requ.REQU = USB_REQ_GET_MAX_LUN;
+	requ.VALU = 0;
+	requ.INDX = device->interface->IFCN;
+	requ.LENG = 1;
+	if ((cc = xhci_control_transfer(device, &requ, &maxLun, 1)) != XHCI_CODE_SUCCESS)
+	{
+		printf("USB Mass Storage GET_MAX_LUN fail: %lu\n", cc);
+		return;
+	}
+	printf("USB Mass Storage Max Lun: %u\n", maxLun);
+	printf("USB Mass Storage Test Ready\n");
+	BYTE cmd[6] = {0, 0, 0, 0, 0, 0};
+	if ((cc = scsi_command(device, iepid, oepid, 1, 0, cmd, 6, 0, 0)))
+	{
+		printf("USB Mass Storage Not Ready: %lu\n", cc);
+		return;
+	}
+	printf("USB Mass Storage Ready!\n");
+
+	SCSI_COMMAND_INQUIRY inquiry;
+	__memset(&inquiry, 0, sizeof(SCSI_COMMAND_INQUIRY));
+	inquiry.CODE = 0x12;
+	inquiry.ALEN = 36;
+
+	USB_BULK_STORAGE_DEVICE *ssd = heap_alloc(sizeof(USB_BULK_STORAGE_DEVICE));
+	__memset(ssd, 0, sizeof(USB_BULK_STORAGE_DEVICE));
+	storage_insert(&ssd->XSSD);
+	QWORD phyAddr = alloc_physical_memory(1, 0);
+	BYTE *buf = (BYTE *) core_mapping(phyAddr);
+
+	SCSI_DATA_INQUIRY *data = (SCSI_DATA_INQUIRY *) buf;
+	__memset(cmd, 0, 6);
+	__memset(data, 0, 36);
+	cmd[0] = 0x12;
+	cmd[4] = 36;
+	if ((cc = scsi_command(device, iepid, oepid, 1, 0, &inquiry, sizeof(inquiry), data, sizeof(SCSI_DATA_INQUIRY))))
+	{
+		printf("USB Mass Storage Inquiry Failed: %lu\n", cc);
+		return;
+	}
+	char buf1[9];
+	char buf2[17];
+	char buf3[5];
+	__memset(buf1, 0, sizeof(buf1));
+	__memset(buf2, 0, sizeof(buf2));
+	__memset(buf3, 0, sizeof(buf3));
+	__memcpy(buf1, data->VEND, 8);
+	__memcpy(buf2, data->PROD, 16);
+	__memcpy(buf3, data->REVI, 4);
+	printf("USB Massage Storage INQUIRY: %s %s %s\n", buf1, buf2, buf3);
+	ssd->IQRY = *data;
+
+	SCSI_READ_CAPACITY16_COMMAND rcapa;
+	__memset(&rcapa, 0, sizeof(SCSI_READ_CAPACITY16_COMMAND));
+	rcapa.CODE = CDB_CMD_SERVICE_ACTION_IN;
+	rcapa.SACT = CDB_CMD_SAI_READ_CAPACITY_16;
+	rcapa.ALEN = sizeof(SCSI_READ_CAPACITY16_DATA);
+	SCSI_READ_CAPACITY16_DATA *capa = (SCSI_READ_CAPACITY16_DATA *) buf;;
+	__memset(capa, 0, sizeof(SCSI_READ_CAPACITY16_DATA));
+	if ((cc = scsi_command(device, iepid, oepid, 1, 0, &rcapa, sizeof(rcapa), capa, sizeof(SCSI_READ_CAPACITY16_DATA))))
+	{
+		printf("USB Mass Storage Read Capacity failed: %lu\n", cc);
+		return;
+	}
+	printf("USB Massage Storage Capacity: LBA=%llu, sector=%lu\n", scsi_reverse8(capa->LBAX), scsi_reverse4(capa->LBLX));
+
+	ssd->XSSD.READ = usb_bulk_read;
+	ssd->XSSD.CAPA = scsi_reverse8(capa->LBAX);
+	ssd->XUSB = device;
+	ssd->IEPI = iepid;
+	ssd->OEPI = oepid;
+
+	__memset(buf, 0, 0x1000);
+	if ((cc = usb_bulk_read(&ssd->XSSD, buf, 1, 1)))
+	{
+		printf("USB Mass Storage LBA read failed: %lu\n", cc);
+		return;
+	}
+	printf("%s\n", (char *) buf);
+	free_physical_memory(phyAddr, 1);
+}

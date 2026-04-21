@@ -176,17 +176,17 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, DWORD wait, USB_DEV
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
 	XHCI_TRANSFER_RING *transfer = device->transfer[endpoint];
 
-	// Use the device's persisitent DMA buffer
-	if (!device->persistent)
-		return 1;
-	if (len > 0x1000)
-		return 1;
-
 	// For OUT data stage, copy caller data into DMA buffer enqueue
 	void *dmaBuffer = (void *) core_mapping(device->persistent);
 
 	if (requ)
 	{
+		// Use the device's persisitent DMA buffer
+		if (!device->persistent)
+			return 1;
+		if (len > 0x1000)
+			return 1;
+
 		// For OUT data stage, copy caller data into DMA buffer enqueue
 		DWORD isIn = requ->DIRE;
 		if (!isIn && buf)
@@ -227,7 +227,6 @@ DWORD xhci_transfer(XHCI_USB_DEVICE *device, DWORD endpoint, DWORD wait, USB_DEV
 	}
 	else
 	{
-		__memset(dmaBuffer, 0, 0x1000);
 		XHCI_TRB_NORMAL normal;
 		__memset(&normal, 0, sizeof(XHCI_TRB_NORMAL));
 		normal.DATA = physical_address((QWORD) buf);
@@ -340,7 +339,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		return;
 	}
 
-	printf("USB Descriptor: len=%u, type=%u, rel=%x, class=%u, subclass=%u, proto=%u, maxps=%u\n", desc.LENG, desc.TYPE, desc.UREL, desc.CCOD, desc.SCOD, desc.POTO, desc.MPS0);
 	// If the device reported a different max packet size, update the input context
 	DWORD reportMaxPs = desc.MPS0;
 	if (reportMaxPs == 9)
@@ -350,7 +348,6 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		xhci_usb_configure_control_endpoint(device, reportMaxPs);
 
 		// Send Evaluate Context to update the xHC's internal state
-		printf("Evalute Context for Max Packet Size: %lu\n", reportMaxPs);
 		XHCI_TRB_EVALUATE_CONTEXT evaluate;
 		__memset(&evaluate, 0, sizeof(XHCI_TRB_EVALUATE_CONTEXT));
 		evaluate.CTXT = physical_address((QWORD) device->context);

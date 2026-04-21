@@ -70,7 +70,9 @@ void setup_usb_xhci_pcie(PCI_EXPRESS_DEVICE *dev)
 		if (!controller->operational->PORT[i].CCSS)
 			continue;
 
-		xhci_setup_device(controller, i);
+		DWORD cc = xhci_setup_device(controller, i);
+		if (cc)
+			printf("Port %lu return %lu\n", i, cc);
 	}
 }
 DWORD xhci_reset_controller(PCI_EXPRESS_XHCI_CONTROLLER *device)
@@ -238,13 +240,12 @@ DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB
 		__memcpy(completion, (void *) comp, sizeof(XHCI_TRB_COMMAND_COMPLETION));
 	return comp->CCOD;
 }
-void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
+DWORD xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 {
-	printf("Disable slot: %lu\n", slotId);
 	if (!slotId)
-		return;
+		return 1;
 	if (slotId > device->capability->SLOT)
-		return;
+		return 2;
 	QWORD outputContext = device->context[slotId];
 	if (outputContext)
 		free_physical_memory(outputContext, 1);
@@ -255,7 +256,8 @@ void xhci_disable_slot(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD slotId)
 	trb.SLOT = slotId;
 	DWORD cc;
 	if ((cc = xhci_send_command(device, &trb, 0)) != XHCI_CODE_SUCCESS)
-		printf("Disable slot command failed: %lu\n", cc);
+		return 3 + cc;
+	return 0;
 }
 void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 {
@@ -327,12 +329,11 @@ void xhci_interrupt(INTERRUPT_STACK *stack)
 	}
 	eoi_apic(0);
 }
-void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
+DWORD xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 {
 	if (xhci_port_reset(device, portId))
 	{
-		printf("Reset port failed\n");
-		return;
+		return 1;
 	}
 
 	XHCI_TRB_ENABLE_SLOT trb;
@@ -342,8 +343,7 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	xhci_send_command(device, &trb, &completion);
 	if (completion.CCOD != XHCI_CODE_SUCCESS)
 	{
-		printf("Enable slot failed: %u\n", completion.CCOD);
-		return;
+		return 2;
 	}
 	DWORD slotId = completion.SLID;
 
@@ -354,11 +354,11 @@ void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId)
 	usbdev->controller = (void *) device;
 	if (xhci_setup_usb_device(usbdev, portId, slotId))
 	{
-		printf("Setup device failed\n");
 		xhci_disable_slot(device, slotId);
+		return 3;
 	}
 	usbdev->root = portId;
 
 	// Enumerate device
-	xhci_usb_enumerate_device(usbdev);
+	return xhci_usb_enumerate_device(usbdev);
 }

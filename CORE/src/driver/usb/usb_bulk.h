@@ -95,4 +95,4 @@ typedef struct _USB_MASS_STORAGE_BULK_CSW
 	BYTE  STAT;
 } USB_MASS_STORAGE_BULK_CSW;
 
-void xhci_usb_msc_bot(XHCI_USB_DEVICE *device);
+DWORD xhci_usb_msc_bot(XHCI_USB_DEVICE *device);

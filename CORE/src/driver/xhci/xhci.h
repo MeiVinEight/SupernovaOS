@@ -35,6 +35,6 @@ void xhci_configure_controller(PCI_EXPRESS_XHCI_CONTROLLER *device);
 void xhci_interrupt_ack(PCI_EXPRESS_XHCI_CONTROLLER *device, BYTE intr);
 DWORD xhci_send_command(PCI_EXPRESS_XHCI_CONTROLLER *device, void *trb, XHCI_TRB_COMMAND_COMPLETION *completion);
 void xhci_interrupt(INTERRUPT_STACK *stack);
-void xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId);
+DWORD xhci_setup_device(PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId);
 
 #endif //SUPERNOVA_XHCI_H

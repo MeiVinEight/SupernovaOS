@@ -43,7 +43,6 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId
 		delay(1000);
 		if (!port->PPWR)
 		{
-			printf("xHCI PORT %lu POWER OFF\n", portId);
 			return 1;
 		}
 	}
@@ -68,24 +67,21 @@ DWORD xhci_port_reset(volatile PCI_EXPRESS_XHCI_CONTROLLER *device, DWORD portId
 	//if ((usb3 && !port->WRCH) || (!usb3 && !port->PRCH))
 	if (!status->RST)
 	{
-		printf("xHCI PORT: %lu RESET TIMEOUT\n", portId);
-		return 1;
+		return 2;
 	}
 	status->RST = 0;
 
 	delay(100); // Post-reset settling
 	if (status->ERR)
 	{
-		printf("Port Reset Error\n");
-		return 1;
+		return 3;
 	}
 
 	delay(100);
     // Verify the port is enabled after reset
 	if (!port->POEN)
 	{
-		printf("Port not enable\n");
-		return 1;
+		return 4;
 	}
 	return 0;
 }

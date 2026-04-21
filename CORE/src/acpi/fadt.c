@@ -3,9 +3,7 @@
 #include <interrupt/interrupt.h>
 #include <acpi/dsdt.h>
 #include <intrinsic.h>
-#include <console.h>
 #include <core.h>
-#include <stdio.h>
 
 volatile ACPI_FADT *volatile FIXED_ACPI_TABLE = 0;
 
@@ -55,27 +53,24 @@ void system_control_interrupt(INTERRUPT_STACK *stack)
 	eoi_apic(0);
 	acpi_shutdown();
 }
-void setup_fadt(volatile ACPI_FADT *fadt)
+DWORD setup_fadt(volatile ACPI_FADT *fadt)
 {
 	if (!FIXED_ACPI_TABLE)
 	{
 		FIXED_ACPI_TABLE = fadt;
-		return;
+		return 0;
 	}
 
 	setup_fadt_s5();
 
 	if (ioapic_redirect(FIXED_ACPI_TABLE->SCIV, FIXED_ACPI_TABLE->SCIV + 0x20))
-	{
-		printf("I/O APIC Redirect IRQ FAILED\n");
-		return;
-	}
+		return 1;
 	register_interrupt(FIXED_ACPI_TABLE->SCIV + 0x20, system_control_interrupt);
 
 	if (!FIXED_ACPI_TABLE->SMIC)
-		return;
+		return 2;
 	if (!FIXED_ACPI_TABLE->ACPE)
-		return;
+		return 3;
 	__outbyte(FIXED_ACPI_TABLE->SMIC, FIXED_ACPI_TABLE->ACPE);
 	while (!(__inword(FIXED_ACPI_TABLE->PM1X.CNTA) & FADT_PM1E_ST_SCI_EN)) __halt();
 	if (FIXED_ACPI_TABLE->PM1X.CNTB)
@@ -90,6 +85,7 @@ void setup_fadt(volatile ACPI_FADT *fadt)
 	__outword(enReg1a, FADT_PM1E_EN_PWRBTN_EN);
 	if (enReg1b)
 		__outword(enReg1b, FADT_PM1E_EN_PWRBTN_EN);
+	return 0;
 }
 void acpi_shutdown()
 {

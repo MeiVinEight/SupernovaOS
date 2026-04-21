@@ -142,10 +142,7 @@ DWORD xhci_usb_configure_xfer_endpoint(XHCI_USB_DEVICE *device, STANDARD_USB_END
 	configure.SLOT = device->slot;
 	DWORD cc;
 	if ((cc = xhci_send_command(device->controller, &configure, 0)) != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: USB Configure Endpoint failed: %lu\n", cc);
 		return 1;
-	}
 	return 0;
 }
 DWORD xhci_address_device(const XHCI_USB_DEVICE *device, XHCI_TRB_COMMAND_COMPLETION *completion, const DWORD bsr)
@@ -308,7 +305,7 @@ DWORD xhci_get_string_descriptor(XHCI_USB_DEVICE *device, DWORD indx, STANDARD_U
 	requ.LENG = len;
 	return xhci_control_transfer(device, &requ, out, len);
 }
-void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
+DWORD xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 {
 	PCI_EXPRESS_XHCI_CONTROLLER *controller = device->controller;
 	DWORD isRoot = !device->route;
@@ -322,10 +319,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	__memset(&completion, 0, sizeof(XHCI_TRB_COMMAND_COMPLETION));
 	DWORD rc = xhci_address_device(device, &completion, 0);
 	if (rc != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: Address Device Command failed: %lu\n", rc);
-		return;
-	}
+		return 4;
 
 	// Read the first 8 bytes of the device descriptor to get bMaxPacketSize0.
 	// On VL805/VL817 the hub TT can babble under concurrent periodic traffic,
@@ -334,10 +328,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
 	rc = xhci_get_device_descriptor(device, &desc, 8);
 	if (rc != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: Failed to get device descriptor: %lu for slot %u\n", rc, device->slot);
-		return;
-	}
+		return 5;
 
 	// If the device reported a different max packet size, update the input context
 	DWORD reportMaxPs = desc.MPS0;
@@ -354,10 +345,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 		evaluate.TYPE = XHCI_TRB_TYPE_EVALUATE_CONTEXT;
 		evaluate.SLOT = device->slot;
 		if ((rc = xhci_send_command(controller, &evaluate, 0)) != XHCI_CODE_SUCCESS)
-		{
-			printf("Evaluate Context failed: %lu\n", rc);
-			return;
-		}
+			return 6;
 	}
 
 	/*
@@ -372,25 +360,16 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	__memset(&desc, 0, sizeof(STANDARD_USB_DEVICE));
 	rc = xhci_get_device_descriptor(device, &desc, sizeof(STANDARD_USB_DEVICE));
 	if (rc != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: Failed to get full device descriptor: %lu for slot %u\n", rc, device->slot);
-		return;
-	}
+		return 7;
 
 	STANDARD_USB_CONFIGURATION iconf;
 	__memset(&iconf, 0, sizeof(STANDARD_USB_CONFIGURATION));
 	if ((rc = xhci_get_config_descriptor(device, 0, &iconf, 9)) != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: Failed to get standard configuration descriptor: %lu\n", rc);
-		return;
-	}
+		return 8;
 	STANDARD_USB_CONFIGURATION *conf = heap_alloc(iconf.TLEN);
 	__memset(conf, 0, iconf.TLEN);
 	if ((rc = xhci_get_config_descriptor(device, 0, conf, iconf.TLEN)) != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: Failed to get total configuration descriptor: %lu\n", rc);
-		return;
-	}
+		return 9;
 	device->configuration = conf;
 
 	// Sync the input context with the xHC's current output context
@@ -419,10 +398,7 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	}
 
 	if (!iface)
-	{
-		printf("xHCI: USB Interface NOT FOUND for slot %u\n", device->slot);
-		return;
-	}
+		return 10;
 	device->interface = iface;
 
 	// Set Configuration
@@ -435,22 +411,20 @@ void xhci_usb_enumerate_device(XHCI_USB_DEVICE *device)
 	requ.INDX = 0;
 	requ.LENG = 0;
 	if ((rc = xhci_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: USB Set Configuration failed: %lu\n", rc);
-		return;
-	}
+		return 11;
 
 	if (iface->CCOD == USB_CLASS_HID)
-		xhci_usb_hid_setup(device, iface);
+		return xhci_usb_hid_setup(device, iface);
 	if (iface->CCOD == USB_CLASS_MASS_STORAGE)
-		xhci_usb_msc_setup(device);
+		return xhci_usb_msc_setup(device);
+	return 12;
 }
 DWORD xhci_usb_hid_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *iface)
 {
 	// Doesn't support boot protocol.
 	if (iface->SCOD != USB_HID_SUBCLASS_BOOT)
-		return -1;
+		return 1;
 	if (iface->POTO == USB_HID_PROTOCOL_KEYBOARD)
 		return xhci_usb_keyboard_setup(device, iface);
-	return -1;
+	return 1;
 }

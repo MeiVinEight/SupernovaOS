@@ -5,13 +5,11 @@
 #include <driver/xhci/xhci.h>
 #include <driver/pci/msi/msix.h>
 #include <driver/pci/msi/msi.h>
-#include <stdio.h>
 
 COREAPI volatile ACPI_MCFG *volatile MCFG = 0;
 
 void setup_pcie_mcfg(ACPI_MCFG *mcfg)
 {
-	printf("MCFG @ %p\n", mcfg);
 	MCFG = mcfg;
 }
 void setup_pcie()

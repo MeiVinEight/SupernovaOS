@@ -36,10 +36,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	// Search interrupt in endpoint
 	STANDARD_USB_ENDPOINT *endpoint = usb_search_endpoint(device->configuration, USB_XFER_TYPE_INT, USB_DIR_IN);
 	if (!endpoint)
-	{
-		printf("USB: Endpoint Interrupt In NOT FOUND for device %u\n", device->slot);
-		return -2;
-	}
+		return 1;
 
 	// Enable "boot" protocol.
 	USB_DEVICE_SETUP_DATA requ;
@@ -52,10 +49,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	requ.LENG = 0;
 	DWORD cc;
 	if ((cc = xhci_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: USB Set Protocol failed: %lu\n", cc);
 		return 0x80 + cc;
-	}
 
 	// Periodically send reports to enable key repeat.
 	// Send USB HID SetIdle request
@@ -67,10 +61,7 @@ DWORD xhci_usb_keyboard_setup(XHCI_USB_DEVICE *device, STANDARD_USB_INTERFACE *i
 	requ.INDX = 0;
 	requ.LENG = 0;
 	if ((cc = xhci_control_transfer(device, &requ, 0, 0)) != XHCI_CODE_SUCCESS)
-	{
-		printf("xHCI: USB Set Idle failed: %lu\n", cc);
 		return 0x80 + cc;
-	}
 
 	if (xhci_usb_configure_xfer_endpoint(device, endpoint))
 		return 1;

@@ -244,7 +244,7 @@ typedef struct _ACPI_FADT
 } ACPI_FADT;
 #pragma pack(pop)
 
-void setup_fadt(volatile ACPI_FADT *FADT);
+DWORD setup_fadt(volatile ACPI_FADT *FADT);
 void acpi_shutdown();
 
 #endif //SUPERNOVA_FADT_H

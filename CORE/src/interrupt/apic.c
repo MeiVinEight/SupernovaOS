@@ -167,7 +167,6 @@ void setup_apic_timer(DWORD rate)
 	QWORD hpetHwFreq = hpet_query_frequency();
 	if (hpetHwFreq)
 	{
-		printf("HPET %llu Hz\n", hpetHwFreq);
 		QWORD startHpet = hpet_get_counter();
 		// Reset APIC timer (set counter to 0xFFFFFFFF)
 		APIC_REGISTERS[APIC_TICR][0] = 0xFFFFFFFFUL;
@@ -203,18 +202,6 @@ void setup_apic_timer(DWORD rate)
 
 	// Get APIC timer frequency
 	QWORD freq = 0xFFFFFFFFU - apicTick;
-
-
-	QWORD freqKHz = freq / 1000;
-	QWORD shift = 1;
-	while (freqKHz > 999)
-	{
-		freqKHz++;
-		freqKHz /= 10;
-		shift *= 10;
-	}
-	freqKHz *= shift;
-	printf("APIC %llu MHz (%llu Hz)\n", freqKHz / 1000, freqKHz);
 
 	// Use it as APIC timer counter initializer
 	APIC_REGISTERS[APIC_TICR][0] = freq / rate;

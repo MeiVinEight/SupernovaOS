@@ -1,4 +1,6 @@
 #include <driver/disk/disk.h>
+#include <interrupt/syscall.h>
+#include <intrinsic.h>
 
 STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;
 
@@ -6,4 +8,35 @@ void storage_insert(STANDARD_STORAGE_DEVICE *device)
 {
 	device->NEXT = STORAGE_DEVICE;
 	STORAGE_DEVICE = device;
+}
+QWORD storage_enumerate(QWORD curr, QWORD *handles, DWORD *count)
+{
+	if (!count)
+		return -1;
+
+	if (__getcs() & 3)
+	{
+		SYSCALL_STORAGE_ENUMERATE arg;
+		arg.TYPE = SYSCALL_TYPE_STORAGE_ENUM;
+		arg.CURR = curr;
+		arg.HNDL = handles;
+		arg.CONT = count;
+		return __syscall(&arg);
+	}
+
+	STANDARD_STORAGE_DEVICE *dev = (STANDARD_STORAGE_DEVICE *) curr;
+	if (!dev)
+		dev = STORAGE_DEVICE;
+	DWORD cnt = 0;
+	while (dev)
+	{
+		if (cnt >= *count)
+			break;
+		if (handles)
+			handles[cnt] = (QWORD) dev;
+		cnt++;
+		dev = dev->NEXT;
+	}
+	*count = cnt;
+	return 0;
 }

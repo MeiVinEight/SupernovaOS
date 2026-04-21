@@ -5,6 +5,7 @@
 #include <arch/tss.h>
 #include <intrinsic.h>
 #include <std/string.h>
+#include <driver/disk/disk.h>
 
 void interrupt_system_call(INTERRUPT_STACK *stack)
 {
@@ -30,6 +31,13 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 		if (arg->ADDR > ((QWORD *) (1ULL << 47)))
 			return;
 		stack->RAX = virtual_alloc(arg->PROC, arg->ADDR, arg->SIZE, arg->ATYP);
+		return;
+	}
+	if (type == SYSCALL_TYPE_STORAGE_ENUM)
+	{
+		SYSCALL_STORAGE_ENUMERATE *arg = (SYSCALL_STORAGE_ENUMERATE *) stack->RCX;
+		stack->RAX = storage_enumerate(arg->CURR, arg->HNDL, arg->CONT);
+		return;
 	}
 }
 void setup_system_call()

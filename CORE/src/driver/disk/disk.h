@@ -14,3 +14,4 @@ struct _STANDARD_STORAGE_DEVICE
 extern STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;
 
 void storage_insert(STANDARD_STORAGE_DEVICE *device);
+QWORD storage_enumerate(QWORD curr, QWORD *handles, DWORD *count);

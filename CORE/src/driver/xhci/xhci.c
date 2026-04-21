@@ -289,7 +289,6 @@ void xhc_event_ring_process(PCI_EXPRESS_XHCI_CONTROLLER *device)
 			DWORD portId = trb->PRID - 1;
 			volatile XHCI_PORT_SPACE *port = device->operational->PORT + portId;
 			XHCI_PORT_STATUS *status = (XHCI_PORT_STATUS *) device->status + portId;
-			printf("Port %lu Status Change: %u\n", portId, trb->CCOD);
 			if (port->CSCH)
 				printf("Connection Status: %u\n", port->CCSS);
 			if (port->PECH)

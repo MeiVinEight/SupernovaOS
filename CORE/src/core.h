@@ -5,8 +5,6 @@
 #ifndef SUPERNOVA_CORE_H
 #define SUPERNOVA_CORE_H
 
-#define SYSTEM_ADDRESS 0xFFFF800000000000ULL
-
 #include <types.h>
 #include <file/pe32x.h>
 #include <interrupt/interrupt.h>

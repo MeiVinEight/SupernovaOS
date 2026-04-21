@@ -28,9 +28,9 @@ COREAPI QWORD *volatile HEAPK;
 void INT0E(INTERRUPT_STACK *stack)
 {
 	QWORD addr = __readcr2();
-	if (addr >= 0xFFFF800000000000ULL)
+	if (addr >= CORE_ADDRESS_LINEAR)
 	{
-		if (addr < 0xFFFF808000000000ULL)
+		if (addr < CORE_ADDRESS_HEAP)
 		{
 			QWORD phyAddr = addr & 0x0000007FFFE00000ULL;
 			addr &= ~((1ULL << 21) - 1);
@@ -468,7 +468,7 @@ void *heap_alloc(QWORD allocSize)
 		// Create a new Heap with 1*4K page
 		QWORD phyAddr = alloc_physical_memory(1, 0);
 		// Mapping to Heap Space
-		QWORD heapBase = 0xFFFF808000000000ULL;
+		QWORD heapBase = CORE_ADDRESS_HEAP;
 		virtual_mapping(phyAddr, heapBase, 1, PAGE_4K, PAGING_WRITE);
 		HEAPK = (QWORD *) heapBase;
 		// Initial block size, free, lastblock

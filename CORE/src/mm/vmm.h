@@ -7,6 +7,9 @@
 
 #include <types.h>
 
+#define CORE_ADDRESS_LINEAR    0xFFFF800000000000ULL
+#define CORE_ADDRESS_HEAP      0xFFFF808000000000ULL
+
 #define PAGE_4K 0
 #define PAGE_2M 1
 #define PAGE_1G 2

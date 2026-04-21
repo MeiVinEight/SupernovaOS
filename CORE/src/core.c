@@ -7,6 +7,7 @@
 #include <arch/rflag.h>
 #include <arch/efer.h>
 #include <arch/msr.h>
+#include <mm/vmm.h>
 
 COREAPI DWORD _fltused = 1;
 
@@ -14,7 +15,7 @@ QWORD core_mapping(QWORD addr)
 {
 	if (SYSTEM_TABLE->USER)
 		return addr;
-	return addr | SYSTEM_ADDRESS;
+	return addr | CORE_ADDRESS_LINEAR;
 }
 void panic(INTERRUPT_STACK *stack)
 {

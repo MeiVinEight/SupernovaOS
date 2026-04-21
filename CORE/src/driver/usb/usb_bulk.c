@@ -70,6 +70,9 @@ DWORD scsi_command(XHCI_USB_DEVICE *device, DWORD iepid, DWORD oepid, DWORD isIn
 }
 QWORD usb_bulk_read(STANDARD_STORAGE_DEVICE *dev, void *buf, QWORD lba, DWORD sec)
 {
+	if ((QWORD) buf & 0xFFF)
+		return -1;
+
 	USB_BULK_STORAGE_DEVICE *device = (USB_BULK_STORAGE_DEVICE *) dev;
 
 	BYTE *addr = buf;
@@ -84,6 +87,7 @@ QWORD usb_bulk_read(STANDARD_STORAGE_DEVICE *dev, void *buf, QWORD lba, DWORD se
 		read16.LBAX = scsi_reverse8(lba);
 		read16.TLEN = scsi_reverse4(rsec);
 		DWORD cc;
+		(void) *((volatile BYTE *) addr); // Make sure physical page allocated
 		if ((cc = scsi_command(device->XUSB, device->IEPI, device->OEPI, 1, 0, &read16, sizeof(read16), addr, ((QWORD) rsec) << 9)))
 		{
 			printf("USB Mass Storage LBA failed: %lu\n", cc);

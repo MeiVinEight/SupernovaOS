@@ -117,6 +117,6 @@ void panic(INTERRUPT_STACK *stack)
 		printf(" LMA");
 	if (efer & EFER_NXE)
 		printf(" NXE");
-
+	__sti();
 	while (SYSTEM_TABLE->RUNN) _mm_pause();
 }

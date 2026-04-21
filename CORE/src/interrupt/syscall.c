@@ -39,6 +39,12 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 		stack->RAX = storage_enumerate(arg->CURR, arg->HNDL, arg->CONT);
 		return;
 	}
+	if (type == SYSCALL_TYPE_STORAGE_OPER)
+	{
+		SYSCALL_STORAGE_OPERATION *arg = (SYSCALL_STORAGE_OPERATION *) stack->RCX;
+		__sti();
+		stack->RAX = storage_operation(arg->HNDL, arg->ADDR, arg->LBAA, arg->CONT, arg->OPER);
+	}
 }
 void setup_system_call()
 {

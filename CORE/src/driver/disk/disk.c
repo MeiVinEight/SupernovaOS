@@ -40,3 +40,23 @@ QWORD storage_enumerate(QWORD curr, QWORD *handles, DWORD *count)
 	*count = cnt;
 	return 0;
 }
+QWORD storage_operation(QWORD handle, void *buf, QWORD lba, DWORD sector, DWORD opera)
+{
+	if (__getcs() & 3)
+	{
+		SYSCALL_STORAGE_OPERATION arg;
+		arg.TYPE = SYSCALL_TYPE_STORAGE_OPER;
+		arg.HNDL = handle;
+		arg.ADDR = buf;
+		arg.LBAA = lba;
+		arg.CONT = sector;
+		arg.OPER = opera;
+		return __syscall(&arg);
+	}
+	STANDARD_STORAGE_DEVICE *device = (STANDARD_STORAGE_DEVICE *) handle;
+	if (opera == STORAGE_OPERATIO_READ)
+		return device->READ(device, buf, lba, sector);
+	if (opera == STORAGE_OPERATIO_WRITE)
+		return device->WRIT(device, buf, lba, sector);
+	return -1;
+}

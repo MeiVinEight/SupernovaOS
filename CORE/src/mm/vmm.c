@@ -4,6 +4,7 @@
 #include <intrinsic.h>
 #include <interrupt/syscall.h>
 #include <proc/proc.h>
+#include <async/async.h>
 
 #define MEMBLK_NODE_PRE_PAGE 0x7F
 
@@ -24,6 +25,7 @@ typedef union _VIRTUAL_ADDRESS
 COREAPI LINEAR_MEMORY_BLOCK *volatile BLOCK_HEAP = 0;
 COREAPI LINEAR_MEMORY_BLOCK *volatile MEMORY_MAP = 0;
 COREAPI QWORD *volatile HEAPK;
+REENTRANT_LOCK VMM_LOCK;
 
 void INT0E(INTERRUPT_STACK *stack)
 {
@@ -226,6 +228,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 	if (type > 4)
 		goto ALLOC_FAILED;
 
+	async_lock(&VMM_LOCK);
 	LINEAR_MEMORY_BLOCK **ref = root;
 	while (*ref && pageCount)
 	{
@@ -342,6 +345,7 @@ QWORD vmm_alloc(void *root, QWORD *addr, QWORD pageCount, int align, DWORD type,
 		pageCount -= allocSize;
 		*addr += allocSize;
 	}
+	async_unlock(&VMM_LOCK);
 	if (pageCount)
 		goto ALLOC_FAILED;
 	*addr -= pc;

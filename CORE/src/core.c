@@ -13,6 +13,8 @@ COREAPI DWORD _fltused = 1;
 
 QWORD core_mapping(QWORD addr)
 {
+	if (!addr)
+		return 0;
 	if (SYSTEM_TABLE->USER)
 		return addr;
 	return addr | CORE_ADDRESS_LINEAR;

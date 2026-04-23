@@ -1,6 +1,7 @@
 #include <driver/nvme/nvme.h>
 #include <mm/vmm.h>
 #include <driver/pci/pci.h>
+#include <core.h>
 #include <stdio.h>
 
 NVM_EXPRESS_CONTROLLER *NVME_CONTROLLER;
@@ -22,4 +23,8 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 	controller->PCIE = *pcie;
 	controller->NEXT = NVME_CONTROLLER;
 	NVME_CONTROLLER = controller;
+	controller->NVME = (NVM_EXPRESS_CONTROLLER_SPACE *) core_mapping(pcie_cfg_get_base_address(&controller->PCIE,  0));
+	printf("NVM Express @ %p\n", controller->NVME);
+	printf("Submission Queue: %p\n", (void *) controller->NVME->ASQA);
+	printf("Completion Queue: %p\n", (void *) controller->NVME->ACQA);
 }

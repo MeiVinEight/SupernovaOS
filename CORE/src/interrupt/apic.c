@@ -2,14 +2,12 @@
 #include <interrupt/8259a.h>
 #include <arch/ia32_msr.h>
 #include <intrinsic.h>
-#include <console.h>
 #include <core.h>
 #include <timer/hpet.h>
 #include <timer/rtc.h>
 #include <interrupt/interrupt.h>
 #include <arch/processor.h>
 #include <mm/segment.h>
-#include <stdio.h>
 #include <smp/smp.h>
 
 

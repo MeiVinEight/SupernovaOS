@@ -169,8 +169,9 @@ extern volatile ACPI_MCFG *volatile MCFG;
 void setup_pcie_mcfg(ACPI_MCFG *mcfg);
 void setup_pcie();
 QWORD pcie_cfg_get_base_address(PCI_EXPRESS_DEVICE *device, DWORD addrIdx);
-DWORD pcie_bar_cound(PCI_EXPRESS_DEVICE *device);
+DWORD pcie_bar_count(PCI_EXPRESS_DEVICE *device);
 PCI_EXPRESS_CAPABILITY *__stdcall pcie_capability(PCI_EXPRESS_DEVICE *device, DWORD capa);
 DWORD pcie_setup_interrupt(PCI_EXPRESS_DEVICE *device, void (*irq)(INTERRUPT_STACK *stack), BYTE intx);
+void pcie_enable_bus_master(PCI_EXPRESS_DEVICE *device);
 
 #endif

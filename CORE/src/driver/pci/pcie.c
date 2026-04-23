@@ -5,6 +5,7 @@
 #include <driver/xhci/xhci.h>
 #include <driver/pci/msi/msix.h>
 #include <driver/pci/msi/msi.h>
+#include <driver/ahci/ahci.h>
 
 COREAPI volatile ACPI_MCFG *volatile MCFG = 0;
 
@@ -62,6 +63,8 @@ void setup_pcie()
 					pcie.configuration = conf;
 					if (conf->class == 0x0C0330) // xHCI
 						setup_usb_xhci_pcie(&pcie);
+					if (conf->class == 0x010601) // AHCI
+						setup_ahci_controller(&pcie);
 				}
 			}
 		}
@@ -104,7 +107,7 @@ QWORD pcie_cfg_get_base_address(PCI_EXPRESS_DEVICE *device, DWORD addrIdx)
 
 	return 0;
 }
-DWORD pcie_bar_cound(PCI_EXPRESS_DEVICE *device)
+DWORD pcie_bar_count(PCI_EXPRESS_DEVICE *device)
 {
 	if (device->configuration->type & 0x7F)
 		return 2;
@@ -146,4 +149,8 @@ DWORD pcie_setup_interrupt(PCI_EXPRESS_DEVICE *device, void (*irq)(INTERRUPT_STA
 	{
 	}
 	return 0;
+}
+void pcie_enable_bus_master(PCI_EXPRESS_DEVICE *device)
+{
+	device->configuration->command |= PCI_COMMAND_BUS_MASTER;
 }

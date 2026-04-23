@@ -39,12 +39,14 @@ COREAPI char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
 
 COREAPI char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
 
+COREAPI char PCI_DEVICE_808606D3[] = "400 Series Chipset Family SATA AHCI Controller";
 COREAPI char PCI_DEVICE_808606ED[] = "Comet Lake USB 3.1 xHCI Host Controller";
 COREAPI char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_808610D3[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
 COREAPI char PCI_DEVICE_80861901[] = "6th-9th Gen Core Processor PCIe Controller (x16)";
 COREAPI char PCI_DEVICE_80861911[] = "Xeon E3-1200 v5/v6 / E3-1500 v5 / 6th/7th/8th Gen Core Processor Gaussian Mixture Model";
+COREAPI char PCI_DEVICE_80861E31[] = "7 Series/C210 Series Chipset Family USB xHCI Host Controller";
 COREAPI char PCI_DEVICE_8086272B[] = "Wi-Fi 7(802.11be) AX1775*/AX1790*/BE20*/BE401/BE1750* 2x2";
 COREAPI char PCI_DEVICE_808627B9[] = "VirtualBox ISA Bridge";
 COREAPI char PCI_DEVICE_80862829[] = "82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode]";
@@ -146,12 +148,14 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	}
 	if (device.VENDOR == 0x8086)
 	{
+		if (device.DEVICE == 0x06D3) return PCI_DEVICE_808606D3;
 		if (device.DEVICE == 0x06ED) return PCI_DEVICE_808606ED;
 		if (device.DEVICE == 0x100E) return PCI_DEVICE_8086100E;
 		if (device.DEVICE == 0x10D3) return PCI_DEVICE_808610D3;
 		if (device.DEVICE == 0x1237) return PCI_DEVICE_80861237;
 		if (device.DEVICE == 0x1901) return PCI_DEVICE_80861901;
 		if (device.DEVICE == 0x1911) return PCI_DEVICE_80861911;
+		if (device.DEVICE == 0x1E31) return PCI_DEVICE_80861E31;
 		if (device.DEVICE == 0x272B) return PCI_DEVICE_8086272B;
 		if (device.DEVICE == 0x27B9) return PCI_DEVICE_808627B9;
 		if (device.DEVICE == 0x2829) return PCI_DEVICE_80862829;

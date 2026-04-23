@@ -22,7 +22,7 @@ DWORD __stdcall pcie_setup_msix(PCI_EXPRESS_DEVICE *device, DWORD intx)
 	DWORD pbaBir = cap->PBIR;
 
 	// Make sure the BAR is valid before using it
-	if (tableBir >= pcie_bar_cound(device) || pbaBir >= pcie_bar_cound(device))
+	if (tableBir >= pcie_bar_count(device) || pbaBir >= pcie_bar_count(device))
 		return 0;
 
 	// Get bars

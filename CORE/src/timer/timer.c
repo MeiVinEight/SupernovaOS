@@ -51,5 +51,5 @@ void delay(QWORD ms)
 {
 	QWORD tsc = __rdtsc();
 	tsc += TSC_FREQUENCY_KHZ * ms;
-	while (__rdtsc() < tsc) _mm_pause();
+	__pause(tsc);
 }

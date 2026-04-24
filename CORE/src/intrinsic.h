@@ -62,3 +62,4 @@ WORD __getgs();
 QWORD __getrfl();
 DWORD __rdmsr(DWORD);
 void __wrmsr(DWORD, DWORD);
+void __pause(QWORD);

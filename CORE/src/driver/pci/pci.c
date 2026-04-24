@@ -30,6 +30,7 @@ COREAPI char PCI_DEVICE_15AD077A[] = "USB3 xHCI 2.0 Controller";
 COREAPI char PCI_DEVICE_15AD0790[] = "PCI bridge";
 COREAPI char PCI_DEVICE_15AD07A0[] = "PCI Express Root Port";
 COREAPI char PCI_DEVICE_15AD07E0[] = "SATA AHCI controller";
+COREAPI char PCI_DEVICE_15AD07F0[] = "NVMe SSD Controller";
 
 COREAPI char PCI_DEVICE_15B7501E[] = "PC SN735 / WD_BLACK SN750 SE NVMe SSD (DRAM-less)";
 
@@ -134,6 +135,7 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 		if (device.DEVICE == 0x0790) return PCI_DEVICE_15AD0790;
 		if (device.DEVICE == 0x07A0) return PCI_DEVICE_15AD07A0;
 		if (device.DEVICE == 0x07E0) return PCI_DEVICE_15AD07E0;
+		if (device.DEVICE == 0x07F0) return PCI_DEVICE_15AD07F0;
 	}
 	if (device.VENDOR == 0x15B7)
 	{

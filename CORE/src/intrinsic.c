@@ -184,3 +184,13 @@ __declspec(allocate(".text")) char __wrmsr[] =
 	0x0F, 0x30, // WRMSR
 	0xC3,       // RET
 };
+__declspec(allocate(".text")) char __pause[] =
+{
+	0xF3, 0x90,             // PAUSE
+	0x0F, 0x31,             // RDTSC
+	0x48, 0xC1, 0xE2, 0x20, // SHL   RDX, 20H
+	0x48, 0x0B, 0xD0,       // OR    RDX, RAX
+	0x48, 0x3B, 0xD1,       // CMP   RDX, RCX
+	0x72,  0xF0,            // JZ    __pause
+	0xC3,                   // RET
+};

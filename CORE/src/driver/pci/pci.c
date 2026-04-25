@@ -5,11 +5,13 @@
 COREAPI char PCI_VENDOR_10DE[] = "NVIDIA Corporation";
 COREAPI char PCI_VENDOR_1234[] = "QEMU Virtual Machine";
 COREAPI char PCI_VENDOR_15AD[] = "VMware";
+COREAPI char PCI_VENDOR_15B7[] = "Sandisk Corp";
 COREAPI char PCI_VENDOR_1969[] = "Qualcomm Atheros";
 COREAPI char PCI_VENDOR_1987[] = "Phison Electronics Corporation";
 COREAPI char PCI_VENDOR_1B21[] = "ASMedia Technology Inc.";
 COREAPI char PCI_VENDOR_1B36[] = "Red Hat Inc";
 COREAPI char PCI_VENDOR_1DEE[] = "Biwin Storage Technology Co., Ltd.";
+COREAPI char PCI_VENDOR_1E95[] = "Solid State Storage Technology Corporation";
 COREAPI char PCI_VENDOR_8086[] = "Intel Corporation";
 COREAPI char PCI_VENDOR_80EE[] = "InnoTek Systemberatung GmbH";
 
@@ -28,6 +30,9 @@ COREAPI char PCI_DEVICE_15AD077A[] = "USB3 xHCI 2.0 Controller";
 COREAPI char PCI_DEVICE_15AD0790[] = "PCI bridge";
 COREAPI char PCI_DEVICE_15AD07A0[] = "PCI Express Root Port";
 COREAPI char PCI_DEVICE_15AD07E0[] = "SATA AHCI controller";
+COREAPI char PCI_DEVICE_15AD07F0[] = "NVMe SSD Controller";
+
+COREAPI char PCI_DEVICE_15B7501E[] = "PC SN735 / WD_BLACK SN750 SE NVMe SSD (DRAM-less)";
 
 COREAPI char PCI_DEVICE_1969E0B1[] = "Killer E2500 Gigabit Ethernet Controller";
 
@@ -36,8 +41,11 @@ COREAPI char PCI_DEVICE_19875013[] = "PS5013 E13 NVMe Controller";
 COREAPI char PCI_DEVICE_1B212142[] = "ASM2142/ASM3142 USB 3.1 Host Controller";
 
 COREAPI char PCI_DEVICE_1B36000D[] = "QEMU XHCI Host Controller";
+COREAPI char PCI_DEVICE_1B360010[] = "QEMU NVM Express Controller";
 
 COREAPI char PCI_DEVICE_1DEE2262[] = "HP EX950 NVMe SSD";
+
+COREAPI char PCI_DEVICE_1E959100[] = "CL1-3D256-Q11 NVMe SSD M.2";
 
 COREAPI char PCI_DEVICE_808606D3[] = "400 Series Chipset Family SATA AHCI Controller";
 COREAPI char PCI_DEVICE_808606ED[] = "Comet Lake USB 3.1 xHCI Host Controller";
@@ -92,11 +100,13 @@ const char *pci_vendor_name(DWORD vendorId)
 		case 0x10DE: return PCI_VENDOR_10DE;
 		case 0x1234: return PCI_VENDOR_1234;
 		case 0x15AD: return PCI_VENDOR_15AD;
+		case 0x15B7: return PCI_VENDOR_15B7;
 		case 0x1969: return PCI_VENDOR_1969;
 		case 0x1987: return PCI_VENDOR_1987;
 		case 0x1B21: return PCI_VENDOR_1B21;
 		case 0x1B36: return PCI_VENDOR_1B36;
 		case 0x1DEE: return PCI_VENDOR_1DEE;
+		case 0x1E95: return PCI_VENDOR_1E95;
 		case 0x8086: return PCI_VENDOR_8086;
 		case 0x80EE: return PCI_VENDOR_80EE;
 		default: return 0;
@@ -115,6 +125,22 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	{
 		if (device.DEVICE == 0x1111) return PCI_DEVICE_12341111;
 	}
+	if (device.VENDOR == 0x15AD)
+	{
+		if (device.DEVICE == 0x0405) return PCI_DEVICE_15AD0405;
+		if (device.DEVICE == 0x0740) return PCI_DEVICE_15AD0740;
+		if (device.DEVICE == 0x0770) return PCI_DEVICE_15AD0770;
+		if (device.DEVICE == 0x0774) return PCI_DEVICE_15AD0774;
+		if (device.DEVICE == 0x077A) return PCI_DEVICE_15AD077A;
+		if (device.DEVICE == 0x0790) return PCI_DEVICE_15AD0790;
+		if (device.DEVICE == 0x07A0) return PCI_DEVICE_15AD07A0;
+		if (device.DEVICE == 0x07E0) return PCI_DEVICE_15AD07E0;
+		if (device.DEVICE == 0x07F0) return PCI_DEVICE_15AD07F0;
+	}
+	if (device.VENDOR == 0x15B7)
+	{
+		if (device.DEVICE == 0x501E) return PCI_DEVICE_15B7501E;
+	}
 	if (device.VENDOR == 0x1969)
 	{
 		if (device.DEVICE == 0xE0B1) return PCI_DEVICE_1969E0B1;
@@ -130,21 +156,15 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	if (device.VENDOR == 0x1B36)
 	{
 		if (device.DEVICE == 0x000D) return PCI_DEVICE_1B36000D;
+		if (device.DEVICE == 0x0010) return PCI_DEVICE_1B360010;
 	}
 	if (device.VENDOR == 0x1DEE)
 	{
 		if (device.DEVICE == 0x2262) return PCI_DEVICE_1DEE2262;
 	}
-	if (device.VENDOR == 0x15AD)
+	if (device.VENDOR == 0x1E95)
 	{
-		if (device.DEVICE == 0x0405) return PCI_DEVICE_15AD0405;
-		if (device.DEVICE == 0x0740) return PCI_DEVICE_15AD0740;
-		if (device.DEVICE == 0x0770) return PCI_DEVICE_15AD0770;
-		if (device.DEVICE == 0x0774) return PCI_DEVICE_15AD0774;
-		if (device.DEVICE == 0x077A) return PCI_DEVICE_15AD077A;
-		if (device.DEVICE == 0x0790) return PCI_DEVICE_15AD0790;
-		if (device.DEVICE == 0x07A0) return PCI_DEVICE_15AD07A0;
-		if (device.DEVICE == 0x07E0) return PCI_DEVICE_15AD07E0;
+		if (device.DEVICE == 0x9100) return PCI_DEVICE_1E959100;
 	}
 	if (device.VENDOR == 0x8086)
 	{

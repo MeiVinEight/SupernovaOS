@@ -6,6 +6,7 @@
 #include <driver/pci/msi/msix.h>
 #include <driver/pci/msi/msi.h>
 #include <driver/ahci/ahci.h>
+#include <driver/nvme/nvme.h>
 
 COREAPI volatile ACPI_MCFG *volatile MCFG = 0;
 
@@ -65,6 +66,8 @@ void setup_pcie()
 						setup_usb_xhci_pcie(&pcie);
 					if (conf->class == 0x010601) // AHCI
 						setup_ahci_controller(&pcie);
+					if (conf->class == 0x010802) // NVMe
+						nvme_controller_setup(&pcie);
 				}
 			}
 		}

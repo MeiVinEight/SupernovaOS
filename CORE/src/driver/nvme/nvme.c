@@ -102,7 +102,7 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 	__memset(controller->CASQ.RING, 0, 0x1000);
 	controller->CASQ.BELL = controller->NVME->BELL;
 	controller->CASQ.SIZE = (0x1000 / sizeof(NVM_EXPRESS_SUBMISSION)) - 1;
-	controller->NVME->ASQS = (WORD) controller->CASQ.SIZE + 1;
+	controller->NVME->ASQS = (WORD) controller->CASQ.SIZE;
 	controller->NVME->ASQA = physical_address((QWORD) controller->CASQ.RING);
 
 	controller->CACQ.RING = (NVM_EXPRESS_COMPLETION *) core_mapping(alloc_physical_memory(1, 0));
@@ -110,7 +110,7 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 	controller->CACQ.BELL = controller->NVME->BELL + stride;
 	controller->CACQ.SIZE = (0x1000 / sizeof(NVM_EXPRESS_COMPLETION)) - 1;
 	controller->CACQ.CYCL = 1;
-	controller->NVME->ACQS = (WORD) controller->CACQ.SIZE + 1;
+	controller->NVME->ACQS = (WORD) controller->CACQ.SIZE;
 	controller->NVME->ACQA = physical_address((QWORD) controller->CACQ.RING);
 	//controller->NVME->CAQA = (((WORD) controller->CACQ.SIZE + 1) << 16) | (controller->CASQ.SIZE + 1);
 

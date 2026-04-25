@@ -2,6 +2,7 @@
 
 #include <types.h>
 #include <driver/pci/pcie.h>
+#include <driver/disk/disk.h>
 
 #define NVME_CAP_CSS_NOIOCSS 0x80
 #define NVME_CAP_CSS_IOCSS   0x40
@@ -9,14 +10,23 @@
 
 // Admin Commands
 #define NVME_ADMIN_DELETE_SQ    0x00
-#define NVME_ADMIN_CREATE_SQ    0x01
+#define NVME_ADM_CMD_CREATE_SQ    0x01
 #define NVME_ADMIN_DELETE_CQ    0x04
-#define NVME_ADMIN_CREATE_CQ    0x05
+#define NVME_ADM_CMD_CREATE_CQ    0x05
 #define NVME_ADM_CMD_IDENTIFY   0x06
 #define NVME_ADMIN_SET_FEATURES 0x09
 #define NVME_ADMIN_GET_FEATURES 0x0A
 
-#define NVME_IDENTIFY_CONTROLLER 0x01
+// NVM Commands
+#define NVME_CMD_FLUSH 0x00
+#define NVME_CMD_WRITE 0x01
+#define NVME_CMD_READ 0x02
+
+#define NVME_IDENTIFY_CNS_NAMESPACE  0x00
+#define NVME_IDENTIFY_CNS_CONTROLLER 0x01
+
+#define NVME_TRANSFER_WRITE 0
+#define NVME_TRANSFER_READ  1
 
 typedef struct _NVM_EXPRESS_CAPABILITY
 {
@@ -960,6 +970,9 @@ struct _PCI_EXPRESS_NVME_CONTROLLER
 	NVM_EXPRESS_CAPABILITY        CAPA;
 	NVM_EXPRESS_SUBMISSION_QUEUE  CASQ;
 	NVM_EXPRESS_COMPLETION_QUEUE  CACQ;
+	NVM_EXPRESS_SUBMISSION_QUEUE  IOSQ;
+	NVM_EXPRESS_COMPLETION_QUEUE  IOCQ;
+	DWORD                         NSCN;
 };
 typedef struct _NVM_EXPRESS_SUBMISSION_IDENTIFY
 {
@@ -1140,17 +1153,788 @@ typedef struct _NVM_EXPRESS_SUBMISSION_IDENTIFY
 	DWORD CDWC; // Command Dword 12 (CDW12): This field is command specific Dword 12.
 	DWORD CDWD; // Command Dword 13 (CDW13): This field is command specific Dword 13.
 
-	DWORD UIDX; // UUID Index (UIDX): Refer to Figure 716.
+	DWORD UIDX:7; // UUID Index (UIDX): Refer to Figure 716.
 	DWORD RSV3:25;
 
 	DWORD CDWF; // Command Dword 15 (CDW15): This field is command specific Dword 15.
 } NVM_EXPRESS_SUBMISSION_IDENTIFY;
-typedef struct _NVM_EXPRESS_IDENTIFY
+typedef struct _NVM_EXPRESS_SUBMISSION_CREATE_CQ
+{
+	/**
+	 * Opcode (OPC): This field specifies the opcode of the command to be executed as shown here:
+	 * - 07:02 Function (FN): This field contains a value that, in combination with the other fields in the
+	 *   Opcode data structure, creates a unique combined opcode value.
+	 * - 01:00
+	 *   Data Transfer Direction (DTD): This field indicates the direction of a data transfer, if any. All
+	 *   options of the command shall transfer data as specified or transfer no data. All
+	 *   commands, including vendor specific commands, shall follow this convention.
+	 *   - 00b No Data Transfer: No data is transferred.
+	 *   - 01b Host to Controller Transfer: Data is transferred from the host to the
+	 *     controller.
+	 *   - 10b Controller to Host Transfer: Data is transferred from the controller to the
+	 *     host.
+	 *   - 11b Bi-Directional Transfer: Data is transferred from the host to the controller
+	 *     and from the controller to the host.
+	 */
+	BYTE  OPCO;
+	/**
+	 * Fused Operation (FUSE): In a fused operation, a complex command is created by “fusing” together two
+	 * simpler commands. Refer to section 3.4.2. This field specifies whether this command is part of a fused
+	 * operation and if so, which command it is in the sequence.
+	 * - 00b Normal operation
+	 * - 01b First command of Fused operation
+	 * - 10b Second command of Fused operation
+	 * - 11b Reserved
+	 */
+	BYTE  FUSE:2;
+	BYTE  RSV0:4;
+	/**
+	 * PRP or SGL for Data Transfer (PSDT): This field specifies whether PRPs or SGLs are used for any data
+	 * transfer associated with the command. PRPs shall be used for all Admin commands for NVMe over PCIe
+	 * implementations. SGLs shall be used for all Admin and I/O commands for NVMe over Fabrics implementations
+	 * (i.e., this field set to 01b). An NVMe Transport may support only specific values (refer to the applicable NVMe
+	 * Transport binding specification for details).
+	 * - 00b PRPS Used: PRPs are used for this transfer.
+	 * - 01b
+	 *   SGLs Used MPTR Address: SGLs are used for this transfer. If used, Metadata Pointer
+	 *   (MPTR) contains an address of a single contiguous physical buffer.
+	 *
+	 *   Refer to the Metadata Buffer Alignment (MBA) bit of the SGLS field in the Identify
+	 *   Controller data structure (refer to Figure 328) for alignment requirements.
+	 *
+	 * - 10b
+	 *   SGLs Used MPTR SGL Segment: SGLs are used for this transfer. If used, Metadata
+	 *   Pointer (MPTR) contains an address of an SGL segment containing exactly one SGL
+	 *   Descriptor that is qword aligned.
+	 * - 11b Reserved
+	 *
+	 * If there is metadata that is not interleaved with the user data, as specified in the Format NVM command, then
+	 * the Metadata Pointer (MPTR) field is used to point to the metadata. The definition of the Metadata Pointer field
+	 * is dependent on the setting in this field. Refer to Figure 92.
+	 */
+	BYTE  PSDT:2;
+	/**
+	 * Command Identifier (CID): This field specifies a unique identifier for the command when combined with the
+	 * Submission Queue identifier.
+	 *
+	 * The value of FFFFh should not be used as the Error Information log page (refer to section 5.2.12.1.2) uses
+	 * this value to indicate an error is not associated with a particular command.
+	 */
+	WORD  COID;
+	/**
+	 * Namespace Identifier (NSID): This field specifies the namespace that this command applies to. If the
+	 * namespace identifier is not used for the command, then this field shall be cleared to 0h. The value FFFFFFFFh
+	 * in this field is a broadcast value (refer to section 3.2.1.2), where the scope (e.g., the NVM subsystem, all
+	 * attached namespaces, or all namespaces in the NVM subsystem) is dependent on the command. Refer to
+	 * Figure 142 and Figure 589 for commands that support the use of the value FFFFFFFFh in this field.
+	 *
+	 * Specifying an inactive namespace identifier (refer to section 3.2.1.4) in a command that uses the namespace
+	 * identifier shall cause the controller to abort the command with a status code of Invalid Field in Command,
+	 * unless otherwise specified. Specifying an invalid namespace identifier (refer to section 3.2.1.2) in a command
+	 * that uses the namespace identifier shall cause the controller to abort the command with a status code of Invalid
+	 * Namespace or Format, unless otherwise specified.
+	 *
+	 * If the namespace identifier is used for the command (refer to Figure 142), the value FFFFFFFFh is not
+	 * supported for that command, and the host specifies a value of FFFFFFFFh, then the controller shall abort the
+	 * command with a status code of Invalid Field in Command, unless otherwise specified.
+	 *
+	 * If the namespace identifier is not used for the command and the host specifies a value from 1h to FFFFFFFFh,
+	 * then the controller shall abort the command with a status code of Invalid Field in Command, unless otherwise
+	 * specified.
+	 */
+	DWORD NSID;
+
+	DWORD CDW2;
+	DWORD CDW3;
+
+	/**
+	 * Metadata Pointer (MPTR): If CDW0.PSDT (refer to Figure 91) is cleared to 00b, then this field shall contain
+	 * the address of a contiguous physical buffer of metadata and that address shall be dword aligned (i.e., bits 1:0
+	 * cleared to 00b). The controller is not required to check that bits 1:0 are cleared to 00b. The controller may
+	 * report an error of Invalid Field in Command if bits 1:0 are not cleared to 00b. If the controller does not report
+	 * an error of Invalid Field in Command, then the controller shall operate as if bits 1:0 are cleared to 00b.
+	 * If CDW0.PSDT is set to 01b, then this field shall contain the address of a contiguous physical buffer of
+	 * metadata. Refer to the Metadata Buffer Alignment (MBA) bit of the SGLS field in the Identify Controller data
+	 * structure for alignment requirements.
+	 *
+	 * If CDW0.PSDT is set to 10b, then this field shall contain the address of an SGL segment that contains exactly
+	 * one SGL Descriptor. The address of that SGL segment shall be qword aligned (i.e., bits 2:0 cleared to 000b).
+	 *
+	 * The SGL Descriptor contained in that SGL segment is the first SGL Descriptor of the metadata for the
+	 * command. If the SGL Descriptor contained in that SGL segment is an SGL Data Block descriptor, then that
+	 * SGL Data Block Descriptor is the only SGL Descriptor and therefore describes the entire metadata data
+	 * transfer. Refer to section 4.3.2. The controller is not required to check that bits 2:0 are cleared to 000b. The
+	 * controller may report an error of Invalid Field in Command if bits 2:0 are not cleared to 000b. If the controller
+	 * does not report an error of Invalid Field in Command, then the controller shall operate as if bits 2:0 are cleared
+	 * to 000b.
+	 */
+	QWORD META;
+
+	/**
+	 * PRP Entry 1 (PRP1): If CDW11.PC is set to ‘1’, then this field specifies a 64-bit base memory address
+	 * pointer of the Completion Queue that is physically contiguous. The address pointer is memory page
+	 * aligned (based on the value in CC.MPS) unless otherwise specified. If CDW11.PC is cleared to ‘0’, then
+	 * this field specifies a PRP List pointer that describes the list of pages that constitute the Completion
+	 * Queue. The list of pages is memory page aligned (based on the value in CC.MPS) unless otherwise
+	 * specified. In both cases the PRP Entry shall have an offset of 0h. In a non-contiguous Completion Queue,
+	 * each PRP Entry in the PRP List shall have an offset of 0h. If there is a PRP Entry with a non-zero offset,
+	 * then the controller should return an error of PRP Offset Invalid.
+	 */
+	QWORD PRP1;
+	/**
+	 * PRP Entry 2 (PRP2): This field:
+	 * - is reserved if the data transfer does not cross a memory page boundary;
+	 * - specifies the Page Base Address of the second memory page if the data
+	 *   transfer crosses exactly one memory page boundary. E.g.,:
+	 *   - the command data transfer length is equal in size to one memory
+	 *     page and the offset portion of the PBAO field of PRP1 is nonzero; or
+	 *   - the Offset portion of the PBAO field of PRP1 is equal to 0h and
+	 *     the command data transfer length is greater than one memory
+	 *     page and less than or equal to two memory pages in size;
+	 * and
+	 * - is a PRP List pointer if the data transfer crosses more than one memory
+	 *   page boundary. E.g.,:
+	 *   - the command data transfer length is greater than or equal to two
+	 *     memory pages in size but the offset portion of the PBAO field of
+	 *     PRP1 is non-zero; or
+	 *   - the command data transfer length is equal in size to more than
+	 *     two memory pages and the Offset portion of the PBAO field of
+	 *     PRP1 is equal to 0h.
+	 */
+	QWORD PRP2;
+
+	// DWORD CDWA; // Command Dword 10 (CDW10): This field is command specific Dword 10.
+	/**
+	 * Queue Identifier (QID): This field specifies the identifier to assign to the Submission Queue to be
+	 * created. This identifier corresponds to the Submission Queue Tail Doorbell used for this command (i.e.,
+	 * the value y in SQyTDBL section of the NVMe over PCIe Transport Specification). This value shall not
+	 * exceed the value reported in the Number of Queues feature (refer to section 5.2.26.2.1) for I/O
+	 * Submission Queues. If the value specified is 0h, exceeds the Number of Queues reported, or
+	 * corresponds to an identifier already in use, the controller should return an error of Invalid Queue Identifier.
+	 */
+	WORD  QUID;
+	/**
+	 * Queue Size (QSIZE): This field specifies the size of the Submission Queue to be created. If the size is
+	 * 0h or larger than the controller supports, the controller should return an error of Invalid Queue Size. Refer
+	 * to section 3.3.3.1. This is a 0’s based value.
+	 */
+	WORD  QUSZ;
+
+	// DWORD CDWB; // Command Dword 11 (CDW11): This field is command specific Dword 11.
+	/**
+	 * Physically Contiguous (PC): If this bit is set to ‘1’, then the Completion Queue is physically contiguous
+	 * and PRP Entry 1 (PRP1) is the address of a contiguous physical buffer. If this bit is cleared to ‘0’, then
+	 * the Completion Queue is not physically contiguous and PRP Entry 1 (PRP1) is a PRP List pointer. If this
+	 * bit is cleared to ‘0’ and CAP.CQR is set to ‘1’, then the controller shall abort the command with a status
+	 * code of Invalid Field in Command.
+	 *
+	 * If the:
+	 * - queue is located in the Controller Memory Buffer;
+	 * - PC is cleared to ‘0’; and
+	 * - CMBLOC.CQPDS is cleared to ‘0’,
+	 *
+	 * then the controller shall abort the command with a status code of Invalid Use of Controller Memory Buffer.
+	 */
+	WORD  PCON:1;
+	/**
+	 * Interrupts Enabled (IEN): If this bit is set to ‘1’, then interrupts are enabled for this Completion Queue.
+	 * If this bit is cleared to ‘0’, then interrupts are disabled for this Completion Queue.
+	 */
+	WORD  INTE:1;
+	WORD  RSV1:14;
+	/**
+	 * Interrupt Vector (IV): This field’s value is transport specific and is described in the applicable NVMe
+	 * Transport binding specification if required. If not defined by the transport, then this field shall be cleared
+	 * to 0h.
+	 */
+	WORD  INTV;
+
+	DWORD CDWC; // Command Dword 12 (CDW12): This field is command specific Dword 12.
+	DWORD CDWD; // Command Dword 13 (CDW13): This field is command specific Dword 13.
+	DWORD CDWE; // Command Dword 14 (CDW14): This field is command specific Dword 14.
+	DWORD CDWF; // Command Dword 15 (CDW15): This field is command specific Dword 15.
+} NVM_EXPRESS_SUBMISSION_CREATE_CQ;
+typedef struct _NVM_EXPRESS_SUBMISSION_CREATE_SQ
+{
+	/**
+	 * Opcode (OPC): This field specifies the opcode of the command to be executed as shown here:
+	 * - 07:02 Function (FN): This field contains a value that, in combination with the other fields in the
+	 *   Opcode data structure, creates a unique combined opcode value.
+	 * - 01:00
+	 *   Data Transfer Direction (DTD): This field indicates the direction of a data transfer, if any. All
+	 *   options of the command shall transfer data as specified or transfer no data. All
+	 *   commands, including vendor specific commands, shall follow this convention.
+	 *   - 00b No Data Transfer: No data is transferred.
+	 *   - 01b Host to Controller Transfer: Data is transferred from the host to the
+	 *     controller.
+	 *   - 10b Controller to Host Transfer: Data is transferred from the controller to the
+	 *     host.
+	 *   - 11b Bi-Directional Transfer: Data is transferred from the host to the controller
+	 *     and from the controller to the host.
+	 */
+	BYTE  OPCO;
+	/**
+	 * Fused Operation (FUSE): In a fused operation, a complex command is created by “fusing” together two
+	 * simpler commands. Refer to section 3.4.2. This field specifies whether this command is part of a fused
+	 * operation and if so, which command it is in the sequence.
+	 * - 00b Normal operation
+	 * - 01b First command of Fused operation
+	 * - 10b Second command of Fused operation
+	 * - 11b Reserved
+	 */
+	BYTE  FUSE:2;
+	BYTE  RSV0:4;
+	/**
+	 * PRP or SGL for Data Transfer (PSDT): This field specifies whether PRPs or SGLs are used for any data
+	 * transfer associated with the command. PRPs shall be used for all Admin commands for NVMe over PCIe
+	 * implementations. SGLs shall be used for all Admin and I/O commands for NVMe over Fabrics implementations
+	 * (i.e., this field set to 01b). An NVMe Transport may support only specific values (refer to the applicable NVMe
+	 * Transport binding specification for details).
+	 * - 00b PRPS Used: PRPs are used for this transfer.
+	 * - 01b
+	 *   SGLs Used MPTR Address: SGLs are used for this transfer. If used, Metadata Pointer
+	 *   (MPTR) contains an address of a single contiguous physical buffer.
+	 *
+	 *   Refer to the Metadata Buffer Alignment (MBA) bit of the SGLS field in the Identify
+	 *   Controller data structure (refer to Figure 328) for alignment requirements.
+	 *
+	 * - 10b
+	 *   SGLs Used MPTR SGL Segment: SGLs are used for this transfer. If used, Metadata
+	 *   Pointer (MPTR) contains an address of an SGL segment containing exactly one SGL
+	 *   Descriptor that is qword aligned.
+	 * - 11b Reserved
+	 *
+	 * If there is metadata that is not interleaved with the user data, as specified in the Format NVM command, then
+	 * the Metadata Pointer (MPTR) field is used to point to the metadata. The definition of the Metadata Pointer field
+	 * is dependent on the setting in this field. Refer to Figure 92.
+	 */
+	BYTE  PSDT:2;
+	/**
+	 * Command Identifier (CID): This field specifies a unique identifier for the command when combined with the
+	 * Submission Queue identifier.
+	 *
+	 * The value of FFFFh should not be used as the Error Information log page (refer to section 5.2.12.1.2) uses
+	 * this value to indicate an error is not associated with a particular command.
+	 */
+	WORD  COID;
+	/**
+	 * Namespace Identifier (NSID): This field specifies the namespace that this command applies to. If the
+	 * namespace identifier is not used for the command, then this field shall be cleared to 0h. The value FFFFFFFFh
+	 * in this field is a broadcast value (refer to section 3.2.1.2), where the scope (e.g., the NVM subsystem, all
+	 * attached namespaces, or all namespaces in the NVM subsystem) is dependent on the command. Refer to
+	 * Figure 142 and Figure 589 for commands that support the use of the value FFFFFFFFh in this field.
+	 *
+	 * Specifying an inactive namespace identifier (refer to section 3.2.1.4) in a command that uses the namespace
+	 * identifier shall cause the controller to abort the command with a status code of Invalid Field in Command,
+	 * unless otherwise specified. Specifying an invalid namespace identifier (refer to section 3.2.1.2) in a command
+	 * that uses the namespace identifier shall cause the controller to abort the command with a status code of Invalid
+	 * Namespace or Format, unless otherwise specified.
+	 *
+	 * If the namespace identifier is used for the command (refer to Figure 142), the value FFFFFFFFh is not
+	 * supported for that command, and the host specifies a value of FFFFFFFFh, then the controller shall abort the
+	 * command with a status code of Invalid Field in Command, unless otherwise specified.
+	 *
+	 * If the namespace identifier is not used for the command and the host specifies a value from 1h to FFFFFFFFh,
+	 * then the controller shall abort the command with a status code of Invalid Field in Command, unless otherwise
+	 * specified.
+	 */
+	DWORD NSID;
+
+	DWORD CDW2;
+	DWORD CDW3;
+
+	/**
+	 * Metadata Pointer (MPTR): If CDW0.PSDT (refer to Figure 91) is cleared to 00b, then this field shall contain
+	 * the address of a contiguous physical buffer of metadata and that address shall be dword aligned (i.e., bits 1:0
+	 * cleared to 00b). The controller is not required to check that bits 1:0 are cleared to 00b. The controller may
+	 * report an error of Invalid Field in Command if bits 1:0 are not cleared to 00b. If the controller does not report
+	 * an error of Invalid Field in Command, then the controller shall operate as if bits 1:0 are cleared to 00b.
+	 * If CDW0.PSDT is set to 01b, then this field shall contain the address of a contiguous physical buffer of
+	 * metadata. Refer to the Metadata Buffer Alignment (MBA) bit of the SGLS field in the Identify Controller data
+	 * structure for alignment requirements.
+	 *
+	 * If CDW0.PSDT is set to 10b, then this field shall contain the address of an SGL segment that contains exactly
+	 * one SGL Descriptor. The address of that SGL segment shall be qword aligned (i.e., bits 2:0 cleared to 000b).
+	 *
+	 * The SGL Descriptor contained in that SGL segment is the first SGL Descriptor of the metadata for the
+	 * command. If the SGL Descriptor contained in that SGL segment is an SGL Data Block descriptor, then that
+	 * SGL Data Block Descriptor is the only SGL Descriptor and therefore describes the entire metadata data
+	 * transfer. Refer to section 4.3.2. The controller is not required to check that bits 2:0 are cleared to 000b. The
+	 * controller may report an error of Invalid Field in Command if bits 2:0 are not cleared to 000b. If the controller
+	 * does not report an error of Invalid Field in Command, then the controller shall operate as if bits 2:0 are cleared
+	 * to 000b.
+	 */
+	QWORD META;
+
+	/**
+	 * PRP Entry 1 (PRP1): If CDW11.PC is set to ‘1’, then this field specifies a 64-bit base memory address
+	 * pointer of the Submission Queue that is physically contiguous. The address pointer is memory page
+	 * aligned (based on the value in CC.MPS) unless otherwise specified. If CDW11.PC is cleared to ‘0’, then
+	 * this field specifies a PRP List pointer that describes the list of pages that constitute the Submission
+	 * Queue. The list of pages is memory page aligned (based on the value in CC.MPS) unless otherwise
+	 * specified. In both cases, the PRP Entry shall have an offset of 0h. In a non-contiguous Submission
+	 * Queue, each PRP Entry in the PRP List shall have an offset of 0h. If there is a PRP Entry with a
+	 * non-zero offset, then the controller should return an error of PRP Offset Invalid.
+	 */
+	QWORD PRP1;
+	/**
+	 * PRP Entry 2 (PRP2): This field:
+	 * - is reserved if the data transfer does not cross a memory page boundary;
+	 * - specifies the Page Base Address of the second memory page if the data
+	 *   transfer crosses exactly one memory page boundary. E.g.,:
+	 *   - the command data transfer length is equal in size to one memory
+	 *     page and the offset portion of the PBAO field of PRP1 is nonzero; or
+	 *   - the Offset portion of the PBAO field of PRP1 is equal to 0h and
+	 *     the command data transfer length is greater than one memory
+	 *     page and less than or equal to two memory pages in size;
+	 * and
+	 * - is a PRP List pointer if the data transfer crosses more than one memory
+	 *   page boundary. E.g.,:
+	 *   - the command data transfer length is greater than or equal to two
+	 *     memory pages in size but the offset portion of the PBAO field of
+	 *     PRP1 is non-zero; or
+	 *   - the command data transfer length is equal in size to more than
+	 *     two memory pages and the Offset portion of the PBAO field of
+	 *     PRP1 is equal to 0h.
+	 */
+	QWORD PRP2;
+
+	// DWORD CDWA; // Command Dword 10 (CDW10): This field is command specific Dword 10.
+	/**
+	 * Queue Identifier (QID): This field specifies the identifier to assign to the Submission Queue to be
+	 * created. This identifier corresponds to the Submission Queue Tail Doorbell used for this command (i.e.,
+	 * the value y in SQyTDBL section of the NVMe over PCIe Transport Specification). This value shall not
+	 * exceed the value reported in the Number of Queues feature (refer to section 5.2.26.2.1) for I/O
+	 * Submission Queues. If the value specified is 0h, exceeds the Number of Queues reported, or
+	 * corresponds to an identifier already in use, the controller should return an error of Invalid Queue Identifier.
+	 */
+	WORD  QUID;
+	/**
+	 * Queue Size (QSIZE): This field specifies the size of the Submission Queue to be created. If the size is
+	 * 0h or larger than the controller supports, the controller should return an error of Invalid Queue Size. Refer
+	 * to section 3.3.3.1. This is a 0’s based value.
+	 */
+	WORD  QUSZ;
+
+	//DWORD CDWB; // Command Dword 11 (CDW11): This field is command specific Dword 11.
+	/**
+	 * Physically Contiguous (PC): If this bit is set to ‘1’, then the Submission Queue is physically
+	 * contiguous and PRP Entry 1 (PRP1) is the address of a contiguous physical buffer. If this bit is cleared
+	 * to ‘0’, then the Submission Queue is not physically contiguous and PRP Entry 1 (PRP1) is a PRP List
+	 * pointer. If this bit is cleared to ‘0’ and CAP.CQR is set to ‘1’, then the controller should return an error
+	 * of Invalid Field in Command.
+	 *
+	 * If the:
+	 * - queue is located in the Controller Memory Buffer;
+	 * - PC is cleared to ‘0’; and
+	 * - CMBLOC.CQPDS is cleared to ‘0’,
+	 *
+	 * then the controller shall abort the command with Invalid Use of Controller Memory Buffer status.
+	 */
+	WORD  PCON:1;
+	/**
+	 * Queue Priority (QPRIO): This field specifies the priority class to use for commands within this
+	 * Submission Queue. This field is only used when the weighted round robin with urgent priority class is
+	 * the arbitration mechanism selected. This field shall be ignored by the controller if weighted round robin
+	 * with urgent priority class is not used. Refer to section 3.4.4.
+	 *
+	 * - 00b Urgent
+	 * - 01b High
+	 * - 10b Medium
+	 * - 11b Low
+	 */
+	WORD  QPRI:2;
+	WORD  RSV1:13;
+	/**
+	 * Completion Queue Identifier (CQID): This field specifies the identifier of the I/O Completion Queue
+	 * to utilize for any command completions entries associated with this Submission Queue.
+	 *
+	 * If the value specified:
+	 * - a) is 0h (i.e., the Admin Completion Queue), then the controller shall abort the command with
+	 * - a status code of Invalid Queue Identifier;
+	 * - b) is outside the range supported by the controller, then the controller shall abort the command
+	 *   with a status code of Invalid Queue Identifier; or
+	 * - c) is within the range supported by the controller and does not specify an I/O Completion Queue
+	 *   that has been created, then the controller shall abort the command with a status code of
+	 *   Completion Queue Invalid.
+	 */
+	WORD  CQID;
+
+	// DWORD CDWC; // Command Dword 12 (CDW12): This field is command specific Dword 12.
+	/**
+	 * NVM Set Identifier (NVMSETID): This field indicates the identifier of the NVM Set to be associated with
+	 * this Submission Queue.
+	 *
+	 * If this field is cleared to 0h or the SQ Associations capability is not supported (refer to section 8.1.27),
+	 * then this Submission Queue is not associated with any specific NVM Set.
+	 *
+	 * If this field is set to a non-zero value that is not specified in the NVM Set List (refer to Figure 333) and
+	 * the SQ Associations capability is supported (refer to section 8.1.27), then the controller shall abort the
+	 * command with a status code of Invalid Field in Command.
+	 *
+	 * The host should not submit commands for namespaces associated with other NVM Sets in this
+	 * Submission Queue (refer to section 8.1.27).
+	 */
+	WORD  NVMS;
+	WORD  RSV2;
+
+	DWORD CDWD; // Command Dword 13 (CDW13): This field is command specific Dword 13.
+	DWORD CDWE; // Command Dword 14 (CDW14): This field is command specific Dword 14.
+	DWORD CDWF; // Command Dword 15 (CDW15): This field is command specific Dword 15.
+} NVM_EXPRESS_SUBMISSION_CREATE_SQ;
+typedef struct _NVM_EXPRESS_IDENTIFY_CONTROLLER
 {
 	WORD  PVID;
 	WORD  SVID;
 	char  SERN[20];
 	char  MODN[40];
-} NVM_EXPRESS_IDENTIFY;
+	char  FMWR[8];
+	BYTE  RABR;
+	char  IEEE[3];
+	BYTE  CMIC;
+	/**
+	 * Maximum Data Transfer Size (MDTS): This field indicates the maximum data transfer
+	 * size for a command that transfers data between host-accessible memory (refer to section
+	 * 1.5.45) and the controller. The host should not submit a command that exceeds this
+	 * maximum data transfer size. If a command is submitted that exceeds this transfer size,
+	 * then the command is aborted with a status code of Invalid Field in Command. The value
+	 * is in units of the minimum memory page size (CAP.MPSMIN) and is reported as a power
+	 * of two (2^n). A value of 0h indicates that there is no maximum data transfer size.
+	 *
+	 * If the MEM bit is cleared to ‘0’ in the CTRATT field, then this field includes the length of
+	 * metadata, if metadata is interleaved with the user data.
+	 *
+	 * If the MEM bit is set to ‘1’, then this field excludes the length of metadata.
+	 *
+	 * This field does not apply to commands that do not transfer data between host-accessible
+	 * memory and the controller (e.g., the Verify command, the Write Uncorrectable command,
+	 * and the Write Zeroes command); refer to the ONCS field for restrictions on these
+	 * commands and other commands that transfer data.
+	 *
+	 * If SGL Bit Bucket descriptors are supported, their lengths shall be included in determining
+	 * if a command exceeds the Maximum Data Transfer Size for destination data buffers.
+	 * Their length in a source data buffer is not included for a Maximum Data Transfer Size
+	 * calculation.
+	 */
+	BYTE  MDTS;
+	WORD  CTRI;
+	DWORD VERI;
+	DWORD RTDR;
+	DWORD RTDE;
+	DWORD OAES;
+	DWORD CTRA;
+	WORD  RRLS;
+	BYTE  BPCA;
+	BYTE  RSV0;
+	DWORD NSSL;
+	WORD  RSV1;
+	BYTE  PLSI;
+	BYTE  CTRT;
+	QWORD FUID[2];
+	WORD  CRD1;
+	WORD  CRD2;
+	WORD  CRD3;
+	BYTE  CRCA;
+	BYTE  CIUQ;
+	QWORD CIRN;
+	BYTE  RSV2[253 - 144];
+	BYTE  NSSR;
+	BYTE  VMCI;
+	BYTE  MECA;
+
+    // Admin Command Set Attributes (Bytes 256-511)
+	WORD  OACS;
+	BYTE  ACLM;
+	BYTE  AERL;
+	BYTE  FRMW;
+	BYTE  LPAT;
+	BYTE  ELPE;
+	BYTE  NPSS;
+	BYTE  AVSC;
+	BYTE  APST;
+	WORD  WCTT;
+	WORD  CCTT;
+	WORD  MTFA;
+	DWORD HMPS;
+	DWORD HMMS;
+	BYTE  TNCA[16];
+	BYTE  UNCA[16];
+	BYTE  RSV3[512 - 312];
+
+    // NVM Command Set Attributes (Bytes 512-703)
+	BYTE  SQES;
+	BYTE  CQES;
+	WORD  MXOC;
+	/**
+	 * Number of Namespaces (NN): This field indicates the maximum value of a valid NSID
+	 * for the NVM subsystem. Refer to the MNAN field for the number of supported
+	 * namespaces in the NVM subsystem.
+	 */
+	DWORD NSCN;
+} NVM_EXPRESS_IDENTIFY_CONTROLLER;
+typedef struct _NVM_EXPRESS_LBA_FORMAT
+{
+	/**
+	 * Metadata Size (MS): This field indicates the number of metadata bytes provided per LBA-based on the
+	 * LBA Data Size indicated. If there is no metadata supported, then this field shall be cleared to 0h.
+	 * If metadata is supported, then the namespace may support the metadata being transferred as part of an
+	 * extended data LBA or as part of a separate contiguous buffer. If end-to-end data protection is enabled,
+	 * then the first eight bytes or last eight bytes of the metadata is the protection information (refer to the DPS
+	 * field in the Identify Namespace data structure).
+	 */
+	WORD META;
+	/**
+	 * LBA Data Size (LBADS): This field indicates the LBA data size supported. The value is reported in terms
+	 * of a power of two (2^n). A non-zero value less than 9 (i.e., 512 bytes) is not supported. If the value
+	 * reported is 0h, then the LBA format is not currently available (refer to section 5.5).
+	 */
+	BYTE LBAD;
+	/**
+	 * Relative Performance (RP): This field indicates the relative performance of the LBA format indicated
+	 * relative to other LBA formats supported by the controller. Depending on the size of the LBA and
+	 * associated metadata, there may be performance implications. The performance analysis is based on
+	 * better performance on a queue depth 32 with 4 KiB read workload. The meanings of the values indicated
+	 * are included in the following table.
+	 *
+	 * - 00b Best performance
+	 * - 01b Better performance
+	 * - 10b Good performance
+	 * - 11b Degraded performance
+	 */
+	BYTE RPRF:2;
+	BYTE RSV0:6;
+} NVM_EXPRESS_LBA_FORMAT;
+typedef struct _NVM_EXPRESS_IDENTIFY_NAMESPACE
+{
+	/**
+	 * Namespace Size (NSZE): This field indicates the total size of the namespace in logical
+	 * blocks. A namespace of size n consists of LBA 0 through LBA (n - 1). The number of
+	 * logical blocks is based on the formatted logical block size.
+	 * Refer to section 2.1.1 for details on the usage of this field.
+	 */
+	QWORD NSZE;
+	QWORD NCAP;
+	QWORD NUSE;
+	BYTE  FEAT;
+	BYTE  LBFN;
+	/**
+	 * Formatted LBA Size (FLBAS): This field indicates the LBA data size and metadata
+	 * size combination that the namespace has been formatted with (refer to section 4.1.2).
+	 *
+	 * - 7 Reserved
+	 * - 6:5 Format Index Upper (FIDXU): This field indicates the most-significant 2
+	 *   bits of the Format Index that was used to format the namespace. If the total
+	 *   number of LBA formats supported (refer to section 5.5) is less than or equal
+	 *   to 16, then the host should ignore this field.
+	 * - 4 Metadata Transferred as Extended LBA (MTELBA): If this bit is set to ‘1’,
+	 *   then metadata is transferred at the end of the logical block, creating an
+	 *   extended logical block. If this bit is cleared to ‘0’, then indicates that all of
+	 *   the metadata for a command is transferred as a separate contiguous buffer
+	 *   of data. This bit is not applicable when there is no metadata.
+	 * - 3:0 Format Index Lower (FIDXL): This field indicates the least-significant 4
+	 *   bits of the Format Index that was used to format the namespace.
+	 */
+	BYTE  LBAS;
+	BYTE  MCAP;
+	BYTE  EDPC;
+	BYTE  EDPS;
+	BYTE  NMIC;
+	BYTE  RSVT;
+	BYTE  RV00[128 - 32];
+	NVM_EXPRESS_LBA_FORMAT LBAF[64];
+} NVM_EXPRESS_IDENTIFY_NAMESPACE;
+typedef struct _NVM_EXPRESS_SUBMISSION_READ
+{
+	/**
+	 * Opcode (OPC): This field specifies the opcode of the command to be executed as shown here:
+	 * - 07:02 Function (FN): This field contains a value that, in combination with the other fields in the
+	 *   Opcode data structure, creates a unique combined opcode value.
+	 * - 01:00
+	 *   Data Transfer Direction (DTD): This field indicates the direction of a data transfer, if any. All
+	 *   options of the command shall transfer data as specified or transfer no data. All
+	 *   commands, including vendor specific commands, shall follow this convention.
+	 *   - 00b No Data Transfer: No data is transferred.
+	 *   - 01b Host to Controller Transfer: Data is transferred from the host to the
+	 *     controller.
+	 *   - 10b Controller to Host Transfer: Data is transferred from the controller to the
+	 *     host.
+	 *   - 11b Bi-Directional Transfer: Data is transferred from the host to the controller
+	 *     and from the controller to the host.
+	 */
+	BYTE  OPCO;
+	/**
+	 * Fused Operation (FUSE): In a fused operation, a complex command is created by “fusing” together two
+	 * simpler commands. Refer to section 3.4.2. This field specifies whether this command is part of a fused
+	 * operation and if so, which command it is in the sequence.
+	 * - 00b Normal operation
+	 * - 01b First command of Fused operation
+	 * - 10b Second command of Fused operation
+	 * - 11b Reserved
+	 */
+	BYTE  FUSE:2;
+	BYTE  RSV0:4;
+	/**
+	 * PRP or SGL for Data Transfer (PSDT): This field specifies whether PRPs or SGLs are used for any data
+	 * transfer associated with the command. PRPs shall be used for all Admin commands for NVMe over PCIe
+	 * implementations. SGLs shall be used for all Admin and I/O commands for NVMe over Fabrics implementations
+	 * (i.e., this field set to 01b). An NVMe Transport may support only specific values (refer to the applicable NVMe
+	 * Transport binding specification for details).
+	 * - 00b PRPS Used: PRPs are used for this transfer.
+	 * - 01b
+	 *   SGLs Used MPTR Address: SGLs are used for this transfer. If used, Metadata Pointer
+	 *   (MPTR) contains an address of a single contiguous physical buffer.
+	 *
+	 *   Refer to the Metadata Buffer Alignment (MBA) bit of the SGLS field in the Identify
+	 *   Controller data structure (refer to Figure 328) for alignment requirements.
+	 *
+	 * - 10b
+	 *   SGLs Used MPTR SGL Segment: SGLs are used for this transfer. If used, Metadata
+	 *   Pointer (MPTR) contains an address of an SGL segment containing exactly one SGL
+	 *   Descriptor that is qword aligned.
+	 * - 11b Reserved
+	 *
+	 * If there is metadata that is not interleaved with the user data, as specified in the Format NVM command, then
+	 * the Metadata Pointer (MPTR) field is used to point to the metadata. The definition of the Metadata Pointer field
+	 * is dependent on the setting in this field. Refer to Figure 92.
+	 */
+	BYTE  PSDT:2;
+	/**
+	 * Command Identifier (CID): This field specifies a unique identifier for the command when combined with the
+	 * Submission Queue identifier.
+	 *
+	 * The value of FFFFh should not be used as the Error Information log page (refer to section 5.2.12.1.2) uses
+	 * this value to indicate an error is not associated with a particular command.
+	 */
+	WORD  COID;
+
+	/**
+	 * Namespace Identifier (NSID): This field specifies the namespace that this command applies to. If the
+	 * namespace identifier is not used for the command, then this field shall be cleared to 0h. The value FFFFFFFFh
+	 * in this field is a broadcast value (refer to section 3.2.1.2), where the scope (e.g., the NVM subsystem, all
+	 * attached namespaces, or all namespaces in the NVM subsystem) is dependent on the command. Refer to
+	 * Figure 142 and Figure 589 for commands that support the use of the value FFFFFFFFh in this field.
+	 *
+	 * Specifying an inactive namespace identifier (refer to section 3.2.1.4) in a command that uses the namespace
+	 * identifier shall cause the controller to abort the command with a status code of Invalid Field in Command,
+	 * unless otherwise specified. Specifying an invalid namespace identifier (refer to section 3.2.1.2) in a command
+	 * that uses the namespace identifier shall cause the controller to abort the command with a status code of Invalid
+	 * Namespace or Format, unless otherwise specified.
+	 *
+	 * If the namespace identifier is used for the command (refer to Figure 142), the value FFFFFFFFh is not
+	 * supported for that command, and the host specifies a value of FFFFFFFFh, then the controller shall abort the
+	 * command with a status code of Invalid Field in Command, unless otherwise specified.
+	 *
+	 * If the namespace identifier is not used for the command and the host specifies a value from 1h to FFFFFFFFh,
+	 * then the controller shall abort the command with a status code of Invalid Field in Command, unless otherwise
+	 * specified.
+	 */
+	DWORD NSID;
+
+	DWORD CDW2;
+	DWORD CDW3;
+
+	/**
+	 * Metadata Pointer (MPTR): If CDW0.PSDT (refer to Figure 91) is cleared to 00b, then this field shall contain
+	 * the address of a contiguous physical buffer of metadata and that address shall be dword aligned (i.e., bits 1:0
+	 * cleared to 00b). The controller is not required to check that bits 1:0 are cleared to 00b. The controller may
+	 * report an error of Invalid Field in Command if bits 1:0 are not cleared to 00b. If the controller does not report
+	 * an error of Invalid Field in Command, then the controller shall operate as if bits 1:0 are cleared to 00b.
+	 * If CDW0.PSDT is set to 01b, then this field shall contain the address of a contiguous physical buffer of
+	 * metadata. Refer to the Metadata Buffer Alignment (MBA) bit of the SGLS field in the Identify Controller data
+	 * structure for alignment requirements.
+	 *
+	 * If CDW0.PSDT is set to 10b, then this field shall contain the address of an SGL segment that contains exactly
+	 * one SGL Descriptor. The address of that SGL segment shall be qword aligned (i.e., bits 2:0 cleared to 000b).
+	 *
+	 * The SGL Descriptor contained in that SGL segment is the first SGL Descriptor of the metadata for the
+	 * command. If the SGL Descriptor contained in that SGL segment is an SGL Data Block descriptor, then that
+	 * SGL Data Block Descriptor is the only SGL Descriptor and therefore describes the entire metadata data
+	 * transfer. Refer to section 4.3.2. The controller is not required to check that bits 2:0 are cleared to 000b. The
+	 * controller may report an error of Invalid Field in Command if bits 2:0 are not cleared to 000b. If the controller
+	 * does not report an error of Invalid Field in Command, then the controller shall operate as if bits 2:0 are cleared
+	 * to 000b.
+	 */
+	QWORD META;
+
+	/**
+	 * PRP Entry 1 (PRP1): This field contains:
+	 * - the first PRP entry for the command; or
+	 * - a PRP List pointer,
+	 *
+	 * depending on the command (e.g., the Create I/O Completion Queue command
+	 * (refer to Figure 502)).
+	 */
+	QWORD PRP1;
+	/**
+	 * PRP Entry 2 (PRP2): This field:
+	 * - is reserved if the data transfer does not cross a memory page boundary;
+	 * - specifies the Page Base Address of the second memory page if the data
+	 *   transfer crosses exactly one memory page boundary. E.g.,:
+	 *   - the command data transfer length is equal in size to one memory
+	 *     page and the offset portion of the PBAO field of PRP1 is nonzero; or
+	 *   - the Offset portion of the PBAO field of PRP1 is equal to 0h and
+	 *     the command data transfer length is greater than one memory
+	 *     page and less than or equal to two memory pages in size;
+	 * and
+	 * - is a PRP List pointer if the data transfer crosses more than one memory
+	 *   page boundary. E.g.,:
+	 *   - the command data transfer length is greater than or equal to two
+	 *     memory pages in size but the offset portion of the PBAO field of
+	 *     PRP1 is non-zero; or
+	 *   - the command data transfer length is equal in size to more than
+	 *     two memory pages and the Offset portion of the PBAO field of
+	 *     PRP1 is equal to 0h.
+	 */
+	QWORD PRP2;
+
+	// DWORD CDWA; // Command Dword 10 (CDW10): This field is command specific Dword 10.
+	// DWORD CDWB; // Command Dword 11 (CDW11): This field is command specific Dword 11.
+	QWORD LBA0;
+
+	// DWORD CDWC; // Command Dword 12 (CDW12): This field is command specific Dword 12.
+	/**
+	 * Number of Logical Blocks (NLB): This field indicates the number of logical blocks to be read. This is a
+	 * 0’s based value.
+	 */
+	WORD  CONT;
+	/**
+	 * Command Extension Type (CETYPE): Specifies the Command Extension Type that applies to the
+	 * command (refer to the Key Per I/O section in the NVM Express Base Specification).
+	 */
+	BYTE  CEXT:4;
+	BYTE  RSV1:4;
+	// Storage Tag Check (STC): This bit specifies the Storage Tag field shall be checked as part of end-to-end data protection processing as defined in Figure 12.
+	BYTE  STCK:1;
+	BYTE  RSV2:1;
+	// Protection Information (PRINFO): Specifies the protection information action and check field, as defined in Figure 11.
+	BYTE  PROT:4;
+	/**
+	 * Force Unit Access (FUA): If this bit is set to ‘1’, then for data and metadata, if any, associated with
+	 * logical blocks specified by the Read command, the controller shall:
+	 * - 1) commit that data and metadata, if any, to non-volatile medium; and
+	 * - 2) return the data, and metadata, if any, that are read from non-volatile medium.
+	 *
+	 * There is no implied ordering with other commands. If this bit is cleared to ‘0’, then this bit has no effect.
+	 */
+	BYTE  FUAC:1;
+	/**
+	 * Limited Retry (LR): If this bit is set to ‘1’, then the controller should apply limited retry efforts. If this bit
+	 * is cleared to ‘0’, then the controller should apply all available error recovery means to return the data to
+	 * the host.
+	 */
+	BYTE  RTRY:1;
+
+	DWORD CDWD; // Command Dword 13 (CDW13): This field is command specific Dword 13.
+	DWORD CDWE; // Command Dword 14 (CDW14): This field is command specific Dword 14.
+	DWORD CDWF; // Command Dword 15 (CDW15): This field is command specific Dword 15.
+} NVM_EXPRESS_SUBMISSION_READ;
+typedef struct _NVM_EXPRESS_STORAGE
+{
+	STANDARD_STORAGE_DEVICE      SSDV;
+	PCI_EXPRESS_NVME_CONTROLLER *CTRL;
+	void                        *BUFF;
+	DWORD                        NSID;
+	DWORD                        STAT;
+} NVM_EXPRESS_STORAGE;
 
 void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie);

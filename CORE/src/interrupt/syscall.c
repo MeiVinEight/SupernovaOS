@@ -6,6 +6,7 @@
 #include <intrinsic.h>
 #include <std/string.h>
 #include <driver/disk/disk.h>
+#include <fs/part.h>
 
 void interrupt_system_call(INTERRUPT_STACK *stack)
 {
@@ -44,6 +45,13 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 		SYSCALL_STORAGE_OPERATION *arg = (SYSCALL_STORAGE_OPERATION *) stack->RCX;
 		__sti();
 		stack->RAX = storage_operation(arg->HNDL, arg->ADDR, arg->LBAA, arg->CONT, arg->OPER);
+		return;
+	}
+	if (type == SYSCALL_TYPE_PARTITION_ENUM)
+	{
+		SYSCALL_PARTITION_ENUMERATE *arg = (SYSCALL_PARTITION_ENUMERATE *) stack->RCX;
+		stack->RAX = partition_enumerate(arg->HNDL, arg->ADDR, arg->CONT);
+		return;
 	}
 }
 void setup_system_call()

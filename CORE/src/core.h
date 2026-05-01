@@ -1,7 +1,3 @@
-//
-// Created by MeiVi on 2026/03/11.
-//
-
 #ifndef SUPERNOVA_CORE_H
 #define SUPERNOVA_CORE_H
 

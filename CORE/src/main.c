@@ -47,15 +47,6 @@ unsigned long long _DllMainCRTStartup()
 	setup_timer();
 	apic_setup_multiprocessor();
 	setup_system_call();
-
-	printf("Base Address       Length             Type\n");
-	volatile EFI_MEMORY_REGION *mmr = SYSTEM_TABLE->MEMORY;
-	while (mmr->F)
-	{
-		printf("%p | %p | %02X\n", (void *) mmr->A, (void *) mmr->L, (WORD) mmr->F);
-		mmr++;
-	}
-
 	setup_pcie();
 
 	return process_start(create_process());

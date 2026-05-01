@@ -39,7 +39,7 @@ DWORD __stdcall pcie_setup_msix(PCI_EXPRESS_DEVICE *device, DWORD intx)
 	pbaBar += (cap->POFF << 3);
 
 	// Build the MSI-X address and data
-    // Populate the vector table entry
+	// Populate the vector table entry
 	volatile PCI_EXPRESS_MSIX_TABLE_ENTRY *msixTable = (PCI_EXPRESS_MSIX_TABLE_ENTRY *) core_mapping(tableBar);
 	msixTable[0].ADDR = MSI_ADDRESS_BASE | apic_current_id();
 	msixTable[0].DATA = APIC_ICR_DELIVERY_FIXED | intx;

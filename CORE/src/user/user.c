@@ -8,6 +8,7 @@
 #include <driver/disk/disk.h>
 #include <fs/gpt/gpt.h>
 #include <timer/timer.h>
+#include <fs/part.h>
 
 extern BYTE __ImageBase;
 
@@ -33,47 +34,14 @@ void user_main()
 	storage_enumerate(0, disks, &dcnt);
 	void *addr = 0;
 	virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &addr, 1, VMM_TYPE_COMMITXF);
+	GUID_PARTITION *part = heap_alloc(sizeof(GUID_PARTITION) * 16);
 	for (DWORD didx = 0; didx < dcnt; didx++)
 	{
 		printf("disk %p\n", (void *) disks[didx]);
-		DWORD cc = storage_operation(disks[didx], addr, 1, 1, STORAGE_OPERATIO_READ);
-		if (cc)
+		BYTE pcnt = partition_enumerate(disks[didx], part, 16);
+		for (DWORD pidx = 0; pidx < pcnt; pidx++)
 		{
-			printf("Disk read failed: %ld\n", cc);
-			continue;
-		}
-		GUID_PARTITION_TABLE_HEADER header = *(GUID_PARTITION_TABLE_HEADER *) addr;
-		/*
-		if (header.GUID[0] != SYSTEM_TABLE->GUID0[0] || header.GUID[1] != SYSTEM_TABLE->GUID0[1])
-			continue;
-		*/
-
-		QWORD plba = header.PLBA;
-		for (DWORD pidx = 0; pidx < header.PCNT; pidx++)
-		{
-			if (!(pidx & 3))
-			{
-				cc = storage_operation(disks[didx], addr, plba, 1, STORAGE_OPERATIO_READ);
-				if (cc)
-				{
-					printf("Disk read failed: %ld\n", cc);
-					continue;
-				}
-				plba++;
-			}
-			GUID_PARTITION_TABLE_ENTRY *entry = addr;
-			entry += pidx & 3;
-			if (!(entry->UID0[0] | entry->UID0[1]))
-				 break;
-			char partName[38];
-			__memset(partName, 0, 38);
-			printf("HD(%lu,%lu): %016llX+%016llX ", didx, pidx, entry->LBA0, entry->LBA1 - entry->LBA0 + 1);
-			int nameLen = 0;
-			for (; nameLen < 36 && entry->NAME[nameLen]; nameLen++)
-				partName[nameLen] = (char) entry->NAME[nameLen];
-			partName[nameLen] = '\n';
-			partName[nameLen + 1] = 0;
-			printf(partName);
+			printf("HD(%lu,%lu): %016llX-%016llX\n", didx, pidx, part[pidx].LBA0, part[pidx].LBA1);
 		}
 	}
 	printf("OK\n");

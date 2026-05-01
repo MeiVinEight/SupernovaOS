@@ -129,7 +129,6 @@ DWORD xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 
 	USB_BULK_STORAGE_DEVICE *ssd = heap_alloc(sizeof(USB_BULK_STORAGE_DEVICE));
 	__memset(ssd, 0, sizeof(USB_BULK_STORAGE_DEVICE));
-	storage_insert(&ssd->XSSD);
 	QWORD phyAddr = alloc_physical_memory(1, 0);
 	BYTE *buf = (BYTE *) core_mapping(phyAddr);
 
@@ -139,7 +138,10 @@ DWORD xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 	cmd[0] = 0x12;
 	cmd[4] = 36;
 	if ((cc = scsi_command(device, iepid, oepid, 1, 0, &inquiry, sizeof(inquiry), data, sizeof(SCSI_DATA_INQUIRY))))
+	{
+		heap_free(ssd);
 		return 7;
+	}
 	ssd->IQRY = *data;
 
 	SCSI_READ_CAPACITY16_COMMAND rcapa;
@@ -150,13 +152,17 @@ DWORD xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 	SCSI_READ_CAPACITY16_DATA *capa = (SCSI_READ_CAPACITY16_DATA *) buf;;
 	__memset(capa, 0, sizeof(SCSI_READ_CAPACITY16_DATA));
 	if ((cc = scsi_command(device, iepid, oepid, 1, 0, &rcapa, sizeof(rcapa), capa, sizeof(SCSI_READ_CAPACITY16_DATA))))
+	{
+		heap_free(ssd);
 		return 8;
+	}
 
 	ssd->XSSD.READ = usb_bulk_read;
 	ssd->XSSD.CAPA = scsi_reverse8(capa->LBAX);
 	ssd->XUSB = device;
 	ssd->IEPI = iepid;
 	ssd->OEPI = oepid;
+	storage_insert(&ssd->XSSD);
 	free_physical_memory(phyAddr, 1);
 	return 0;
 }

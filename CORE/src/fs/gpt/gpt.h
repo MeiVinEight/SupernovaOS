@@ -2,6 +2,13 @@
 
 #include <types.h>
 
+#define GPT_PART_TYPE_NULL    0
+#define GPT_PART_TYPE_UNKNOWN 1
+#define GPT_PART_TYPE_NTFS    2
+#define GPT_PART_TYPE_FAT32   3
+
+#define GUID_PART_HEAD_SIZE 48
+
 typedef struct _GUID_PARTITION_TABLE_HEADER
 {
 	// Identifies EFI-compatible partition table header. This value must contain the ASCII string "EFI PART", encoded as the 64-bit constant 0x54 52415020494645.
@@ -65,3 +72,25 @@ typedef struct _GUID_PARTITION_TABLE_ENTRY
 	// Null-terminated string containing a human-readable name of the partition.
 	WORD  NAME[36];
 } GUID_PARTITION_TABLE_ENTRY;
+typedef struct _GUID_PARTITION
+{
+	// Unique ID that defines the purpose and type of this Partition. A value of zero defines that this partition entry is not being used.
+	QWORD TYPE[2];
+	/**
+	 * GUID that is unique for every partition entry. Every partition ever created will have a unique GUID.
+	 *
+	 * This GUID must be assigned when the GPT Partition Entry is created.
+
+	 The GPT Partition Entry is created whenever the NumberOfPa rtitionEntries in the GPT Header is increased to include a larger range of addresses.
+	 */
+	QWORD GUID[2];
+	// Starting LBA of the partition defined by this entry.
+	QWORD LBA0;
+	// Ending LBA of the partition defined by this entry.
+	QWORD LBA1;
+	void *DISK;
+	BYTE  PIDX;
+	BYTE  DRIV;
+} GUID_PARTITION;
+
+DWORD gpt_part_type(QWORD *guid);

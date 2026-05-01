@@ -12,6 +12,7 @@ struct _STANDARD_STORAGE_DEVICE
 	QWORD                  (*READ)(STANDARD_STORAGE_DEVICE *device, void *buf, QWORD lba, DWORD sector);
 	QWORD                  (*WRIT)(STANDARD_STORAGE_DEVICE *device, void *buf, QWORD lba, DWORD sector);
 	QWORD                    CAPA;
+	void                    *PART[128];
 };
 
 extern STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;

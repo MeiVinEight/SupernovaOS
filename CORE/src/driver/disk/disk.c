@@ -1,6 +1,7 @@
 #include <driver/disk/disk.h>
 #include <interrupt/syscall.h>
 #include <intrinsic.h>
+#include <fs/part.h>
 
 STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;
 
@@ -8,6 +9,7 @@ void storage_insert(STANDARD_STORAGE_DEVICE *device)
 {
 	device->NEXT = STORAGE_DEVICE;
 	STORAGE_DEVICE = device;
+	setup_part_table(device);
 }
 QWORD storage_enumerate(QWORD curr, QWORD *handles, DWORD *count)
 {

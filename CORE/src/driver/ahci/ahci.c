@@ -65,6 +65,7 @@ void setup_ahci_controller(PCI_EXPRESS_DEVICE *dev)
 		while ((port->STAT & 7) != 3) delay(1);
 
 		SATA_STORAGE_DEVICE *sata = heap_alloc(sizeof(SATA_STORAGE_DEVICE));
+		__memset(sata, 0, sizeof(SATA_STORAGE_DEVICE));
 		sata->SSSD.READ = ahci_ata_read;
 		sata->CTRL = controller;
 		sata->PORT = pidx;

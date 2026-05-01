@@ -401,7 +401,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 			pml4[offset4] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
-			__memset128(pageBuf, pageBuf, 512);
+			__memset128(pageBuf, pageBuf, 0x100);
 		}
 
 		// create 1G page
@@ -420,7 +420,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 			pdpt[offset3] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
-			__memset128(pageBuf, pageBuf, 512);
+			__memset128(pageBuf, pageBuf, 0x100);
 		}
 
 		// create 2M page
@@ -439,7 +439,7 @@ void virtual_mapping(QWORD phyAddr, const QWORD virtualAddr, QWORD pageCount, in
 			pd[offset2] = pageAddr | PAGING_PRESENT | PAGING_WRITE | PAGING_USER;
 			QWORD *pageBuf = (QWORD *) core_mapping(pageAddr);
 			pageBuf[0] = pageBuf[1] = 0;
-			__memset128(pageBuf, pageBuf, 512);
+			__memset128(pageBuf, pageBuf, 0x100);
 		}
 
 		// create 4K page
@@ -464,6 +464,22 @@ QWORD physical_address(QWORD virtAddr)
 	if (pType == PAGE_2M)
 		return (*pEntry & (~(PAGE_2M_OFFSET | PAGING_EXED))) | (virtAddr & PAGE_2M_OFFSET);
 	return (*pEntry & (~(PAGE_4K_OFFSET | PAGING_EXED))) | (virtAddr & PAGE_4K_OFFSET);
+}
+void expand_heap(QWORD *heap)
+{
+	QWORD *heapEnd = heap + 1 + (*heap >> 3);
+	QWORD heapEndAddr = (QWORD) heapEnd;
+	// Allocate one 4K page
+	QWORD phyPage = alloc_physical_memory(1, 0);
+	if (!phyPage)
+	{
+		// No free page, kernel panic
+		*((QWORD *) -1ULL) = 1;
+	}
+	// Mapping page to heap end
+	virtual_mapping(phyPage, heapEndAddr, 1, PAGE_4K, PAGING_WRITE);
+	// Update block size
+	*heap += 0x1000;
 }
 void *heap_alloc(QWORD allocSize)
 {
@@ -493,6 +509,8 @@ void *heap_alloc(QWORD allocSize)
 			// Free and sufficient block
 			if (!(*heap & HEAP_FLAG_USING) && (*heap >= allocSize))
 			{
+				if ((*heap & HEAP_FLAG_LAST) && ((*heap & (~7ULL)) == allocSize))
+					expand_heap(heap);
 				// Get block flags
 				QWORD blockFlag = *heap & 7;
 				// Get block size
@@ -527,19 +545,7 @@ void *heap_alloc(QWORD allocSize)
 		// Expand the heap
 		while ((*heap & (~7ULL)) < allocSize)
 		{
-			QWORD *heapEnd = heap + 1 + (*heap >> 3);
-			QWORD heapEndAddr = (QWORD) heapEnd;
-			// Allocate one 4K page
-			QWORD phyPage = alloc_physical_memory(1, 0);
-			if (!phyPage)
-			{
-				// No free page, kernel panic
-				*((QWORD *) -1ULL) = 1;
-			}
-			// Mapping page to heap end
-			virtual_mapping(phyPage, heapEndAddr, 1, PAGE_4K, PAGING_WRITE);
-			// Update block size
-			*heap += 0x1000;
+			expand_heap(heap);
 		}
 	}
 }

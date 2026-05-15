@@ -6,6 +6,7 @@
 #include <timer/timer.h>
 #include <intrinsic.h>
 #include <driver/ahci/ata.h>
+#include <string.h>
 
 PCIE_AHCI_CONTROLLER *AHCI_CONTROLLER;
 
@@ -70,7 +71,7 @@ void setup_ahci_controller(PCI_EXPRESS_DEVICE *dev)
 		sata->CTRL = controller;
 		sata->PORT = pidx;
 		storage_insert(&sata->SSSD);
-		/*
+
 		phyAddr = alloc_physical_memory(1, 0);
 		BYTE *buf = (BYTE *) core_mapping(phyAddr);
 		__memset(buf, 0, 0x1000);
@@ -80,16 +81,24 @@ void setup_ahci_controller(PCI_EXPRESS_DEVICE *dev)
 			printf("AHCI ATA Operation: %lu\n", cc);
 			continue;
 		}
+
 		BYTE (*swap)[2] = (BYTE (*)[2]) buf;
 		for (int i = 0; i < 256; i++)
 			swap[i][0] ^= swap[i][1] ^= swap[i][0] ^= swap[i][1];
-		char *identify = (char *) (buf + 0x14);
-		identify[0x14] = 0;
-		printf("[%s] ", identify);
-		identify = (char *) (buf + 0x36);
-		identify[0x28] = 0;
-		printf("[%s]\n", identify);
-		*/
+
+		__memcpy(sata->SSSD.TEXT, buf + 0x36, 0x28);
+		sata->SSSD.TEXT[0x28] = 0;
+		strtrim(sata->SSSD.TEXT);
+		sata->SSSD.MODN = sata->SSSD.TEXT;
+
+		size_t modelLen = strlen(sata->SSSD.TEXT);
+		char *serialNum = sata->SSSD.TEXT + modelLen + 1;
+
+		__memcpy(serialNum, buf + 0x14, 0x14);
+		serialNum[0x14] = 0;
+		strtrim(serialNum);
+		if (strlen(serialNum))
+			sata->SSSD.SERN = serialNum;
 	}
 }
 void ahci_port_reset(AHCI_CONTROLLER_PORT *port)

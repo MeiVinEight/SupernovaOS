@@ -4,6 +4,7 @@
 #include <core.h>
 #include <stdio.h>
 #include <timer/timer.h>
+#include <string.h>
 
 PCI_EXPRESS_NVME_CONTROLLER *NVME_CONTROLLER;
 
@@ -254,6 +255,20 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 		printf("Completion COID %d not equal submission COID %d\n", comp.COID, coid);
 
 	NVM_EXPRESS_IDENTIFY_CONTROLLER *identify = buf;
+
+	char *modelSerial = heap_alloc(64);
+	__memset(modelSerial, 0, 64);
+	char *modn = modelSerial;
+	__memcpy(modn, identify->MODN, 40);
+	modn[40] = 0;
+	strtrim(modn);
+	size_t modlen = strlen(modn);
+
+	char *sern = modn + modlen + 1;
+	__memcpy(sern, identify->SERN, 20);
+	sern[20] = 0;
+	strtrim(sern);
+
 	controller->NSCN = identify->NSCN;
 
 	controller->IOSQ.RING = (NVM_EXPRESS_SUBMISSION *) identify;
@@ -296,7 +311,6 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 		printf("Completion COID %d not equal submission COID %d\n", comp.COID, coid);
 
 	// Identify namespaces
-	phyAddr = alloc_physical_memory(1, 0);
 	for (DWORD nsid = 1; nsid <= controller->NSCN; nsid++)
 	{
 		NVM_EXPRESS_IDENTIFY_NAMESPACE *idns = (NVM_EXPRESS_IDENTIFY_NAMESPACE *) core_mapping(phyAddr);
@@ -330,7 +344,13 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 		nvme->SSDV.CAPA = idns->NSZE;
 		nvme->CTRL = controller;
 		nvme->NSID = nsid;
+		__memcpy(nvme->SSDV.TEXT, modelSerial, 64);
+		nvme->SSDV.MODN = nvme->SSDV.TEXT;
+		if (sern[0])
+			nvme->SSDV.SERN = nvme->SSDV.MODN + modlen + 1;
+
 		storage_insert(&nvme->SSDV);
 	}
+	heap_free(modelSerial);
 	free_physical_memory(phyAddr, 1);
 }

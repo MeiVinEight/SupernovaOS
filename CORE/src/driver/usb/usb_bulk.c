@@ -7,6 +7,7 @@
 #include <mm/vmm.h>
 #include <intrinsic.h>
 #include <core.h>
+#include <string.h>
 
 typedef struct _USB_BULK_STORAGE_DEVICE
 {
@@ -125,24 +126,24 @@ DWORD xhci_usb_msc_bot(XHCI_USB_DEVICE *device)
 	SCSI_COMMAND_INQUIRY inquiry;
 	__memset(&inquiry, 0, sizeof(SCSI_COMMAND_INQUIRY));
 	inquiry.CODE = 0x12;
-	inquiry.ALEN = 36;
+	inquiry.ALEN = sizeof(SCSI_DATA_INQUIRY);
 
-	USB_BULK_STORAGE_DEVICE *ssd = heap_alloc(sizeof(USB_BULK_STORAGE_DEVICE));
-	__memset(ssd, 0, sizeof(USB_BULK_STORAGE_DEVICE));
 	QWORD phyAddr = alloc_physical_memory(1, 0);
 	BYTE *buf = (BYTE *) core_mapping(phyAddr);
 
 	SCSI_DATA_INQUIRY *data = (SCSI_DATA_INQUIRY *) buf;
-	__memset(cmd, 0, 6);
-	__memset(data, 0, 36);
-	cmd[0] = 0x12;
-	cmd[4] = 36;
+	__memset(data, 0, sizeof(SCSI_DATA_INQUIRY) + 1);
 	if ((cc = scsi_command(device, iepid, oepid, 1, 0, &inquiry, sizeof(inquiry), data, sizeof(SCSI_DATA_INQUIRY))))
-	{
-		heap_free(ssd);
 		return 7;
-	}
+
+	USB_BULK_STORAGE_DEVICE *ssd = heap_alloc(sizeof(USB_BULK_STORAGE_DEVICE));
+	__memset(ssd, 0, sizeof(USB_BULK_STORAGE_DEVICE));
 	ssd->IQRY = *data;
+	__memcpy(ssd->XSSD.TEXT, ssd->IQRY.VEND, 8);
+	strtrim(ssd->XSSD.TEXT);
+	__memcpy(ssd->XSSD.TEXT + strlen(ssd->XSSD.TEXT), ssd->IQRY.PROD, 16);
+	strtrim(ssd->XSSD.TEXT);
+	ssd->XSSD.MODN = ssd->XSSD.TEXT;
 
 	SCSI_READ_CAPACITY16_COMMAND rcapa;
 	__memset(&rcapa, 0, sizeof(SCSI_READ_CAPACITY16_COMMAND));

@@ -32,4 +32,4 @@ typedef struct _GUID_PARTITION_NTFS
 	NTFS_BOOT      BOOT;
 } GUID_PARTITION_NTFS;
 
-GUID_PARTITION_NTFS *ntfs_create(QWORD handle, GUID_PARTITION_TABLE_ENTRY *gpt);
+void ntfs_create(GUID_PARTITION *part);

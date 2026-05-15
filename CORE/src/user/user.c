@@ -7,7 +7,6 @@
 #include <proc/proc.h>
 #include <driver/disk/disk.h>
 #include <fs/gpt/gpt.h>
-#include <timer/timer.h>
 #include <fs/part.h>
 
 extern BYTE __ImageBase;
@@ -35,10 +34,18 @@ void user_main()
 	void *addr = 0;
 	virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &addr, 1, VMM_TYPE_COMMITXF);
 	GUID_PARTITION *part = heap_alloc(sizeof(GUID_PARTITION) * 16);
+	char *buf = heap_alloc(64);
+	char *model = buf;
+	char *serial = buf + 41;
 	for (DWORD didx = 0; didx < dcnt; didx++)
 	{
-		printf("disk %p\n", (void *) disks[didx]);
-		BYTE pcnt = partition_enumerate(disks[didx], part, 16);
+		QWORD disk = disks[didx];
+		storage_identify(disk, model, serial);
+		printf("%p: %s", (void *) disk, model);
+		if (serial[0])
+			printf(" - %s", serial);
+		printf("\n");
+		BYTE pcnt = partition_enumerate(disk, part, 16);
 		for (DWORD pidx = 0; pidx < pcnt; pidx++)
 		{
 			printf("HD(%lu,%lu): %016llX-%016llX\n", didx, pidx, part[pidx].LBA0, part[pidx].LBA1);

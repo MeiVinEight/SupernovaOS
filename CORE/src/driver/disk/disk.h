@@ -24,4 +24,5 @@ extern STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;
 void storage_insert(STANDARD_STORAGE_DEVICE *device);
 QWORD storage_enumerate(QWORD curr, QWORD *handles, DWORD *count);
 QWORD storage_operation(QWORD handle, void *buf, QWORD lba, DWORD sector, DWORD opera);
+void storage_identify(QWORD disk, char *model, char *serial);
 void *storage_dma_buffer(STANDARD_STORAGE_DEVICE *device);

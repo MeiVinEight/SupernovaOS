@@ -53,6 +53,12 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 		stack->RAX = partition_enumerate(arg->HNDL, arg->ADDR, arg->CONT);
 		return;
 	}
+	if (type == SYSCALL_TYPE_STORAGE_IDENTIFY)
+	{
+		SYSCALL_STORAGE_IDENTIFY *arg = (SYSCALL_STORAGE_IDENTIFY *) stack->RCX;
+		storage_identify(arg->HNDL, arg->MODN, arg->SERN);
+		return;
+	}
 }
 void setup_system_call()
 {

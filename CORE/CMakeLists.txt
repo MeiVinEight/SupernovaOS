@@ -12,7 +12,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR})
 
 file(GLOB_RECURSE SRC_FILES src/*.c)
 
-include_directories(src)
+include_directories(
+	src
+	src/std
+)
 
 add_library(CORE SHARED ${SRC_FILES})
 
@@ -20,7 +23,7 @@ set_target_properties(CORE PROPERTIES
 	SUFFIX ".DLL"
 )
 
-target_compile_options(CORE PUBLIC /GS- /Gz)
+target_compile_options(CORE PUBLIC /GS- /Gz /O2)
 target_link_options(CORE PUBLIC
 	/BASE:0
 	/MANIFEST:NO    # Anti .rsrc section

@@ -4,6 +4,7 @@
 #include <fs/part.h>
 #include <core.h>
 #include <mm/vmm.h>
+#include <string.h>
 
 STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;
 
@@ -63,6 +64,35 @@ QWORD storage_operation(QWORD handle, void *buf, QWORD lba, DWORD sector, DWORD 
 	if (opera == STORAGE_OPERATIO_WRITE)
 		return device->WRIT(device, buf, lba, sector);
 	return -1;
+}
+void storage_identify(QWORD disk, char *model, char *serial)
+{
+	if (__getcs() & 3)
+	{
+		SYSCALL_STORAGE_IDENTIFY arg;
+		arg.TYPE = SYSCALL_TYPE_STORAGE_IDENTIFY;
+		arg.HNDL = disk;
+		arg.MODN = model;
+		arg.SERN = serial;
+		__syscall(&arg);
+		return;
+	}
+
+	STANDARD_STORAGE_DEVICE *dvc = (STANDARD_STORAGE_DEVICE *) disk;
+	if (model)
+	{
+		if (dvc->MODN)
+			strcpy(model, dvc->MODN);
+		else
+			model[0] = 0;
+	}
+	if (serial)
+	{
+		if (dvc->SERN)
+			strcpy(serial, dvc->SERN);
+		else
+			serial[0] = 0;
+	}
 }
 void *storage_dma_buffer(STANDARD_STORAGE_DEVICE *device)
 {

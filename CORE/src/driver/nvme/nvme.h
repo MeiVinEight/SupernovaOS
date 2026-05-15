@@ -1932,7 +1932,6 @@ typedef struct _NVM_EXPRESS_STORAGE
 {
 	STANDARD_STORAGE_DEVICE      SSDV;
 	PCI_EXPRESS_NVME_CONTROLLER *CTRL;
-	void                        *BUFF;
 	DWORD                        NSID;
 	DWORD                        STAT;
 } NVM_EXPRESS_STORAGE;

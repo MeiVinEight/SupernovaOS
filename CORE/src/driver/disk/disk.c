@@ -2,6 +2,8 @@
 #include <interrupt/syscall.h>
 #include <intrinsic.h>
 #include <fs/part.h>
+#include <core.h>
+#include <mm/vmm.h>
 
 STANDARD_STORAGE_DEVICE *volatile STORAGE_DEVICE;
 
@@ -61,4 +63,12 @@ QWORD storage_operation(QWORD handle, void *buf, QWORD lba, DWORD sector, DWORD 
 	if (opera == STORAGE_OPERATIO_WRITE)
 		return device->WRIT(device, buf, lba, sector);
 	return -1;
+}
+void *storage_dma_buffer(STANDARD_STORAGE_DEVICE *device)
+{
+	if (!device)
+		return 0;
+	if (!device->DMAX)
+		device->DMAX = (void *) core_mapping(alloc_physical_memory(1, 0));
+	return device->DMAX;
 }

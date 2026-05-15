@@ -79,7 +79,7 @@ QWORD nvm_express_read(STANDARD_STORAGE_DEVICE *ssd, void *buf, QWORD lba, DWORD
 		BYTE *bufx = buf;
 		QWORD lbax = lba;
 		DWORD cont = count;
-		BYTE *alig = nvme->BUFF;
+		BYTE *alig = storage_dma_buffer(&nvme->SSDV);
 		while (cont)
 		{
 			DWORD rc = 8;
@@ -329,7 +329,6 @@ void nvme_controller_setup(PCI_EXPRESS_DEVICE *pcie)
 		nvme->SSDV.READ = nvm_express_read;
 		nvme->SSDV.CAPA = idns->NSZE;
 		nvme->CTRL = controller;
-		nvme->BUFF = (void *) core_mapping(alloc_physical_memory(1, 0));
 		nvme->NSID = nsid;
 		storage_insert(&nvme->SSDV);
 	}

@@ -8,6 +8,7 @@
 #include <driver/disk/disk.h>
 #include <fs/gpt/gpt.h>
 #include <fs/part.h>
+#include <fs/ntfs/ntfs.h>
 
 extern BYTE __ImageBase;
 
@@ -26,31 +27,45 @@ void user_main()
 		HEAPK[0] = (heapSpace - 8) | HEAP_FLAG_LAST;
 	}
 
-	DWORD dcnt = -1UL;
-	storage_enumerate(0, 0, &dcnt);
-	printf("%lu disk enumerate\n", dcnt);
-	QWORD *disks = heap_alloc(dcnt * sizeof(QWORD));
-	storage_enumerate(0, disks, &dcnt);
-	void *addr = 0;
-	virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &addr, 1, VMM_TYPE_COMMITXF);
-	GUID_PARTITION *part = heap_alloc(sizeof(GUID_PARTITION) * 16);
-	char *buf = heap_alloc(64);
-	char *model = buf;
-	char *serial = buf + 41;
-	for (DWORD didx = 0; didx < dcnt; didx++)
 	{
-		QWORD disk = disks[didx];
-		storage_identify(disk, model, serial);
-		printf("%p: %s", (void *) disk, model);
-		if (serial[0])
-			printf(" - %s", serial);
-		printf("\n");
-		BYTE pcnt = partition_enumerate(disk, part, 16);
-		for (DWORD pidx = 0; pidx < pcnt; pidx++)
+		DWORD dcnt = -1UL;
+		storage_enumerate(0, 0, &dcnt);
+		printf("%lu disk enumerate\n", dcnt);
+		QWORD *disks = heap_alloc(dcnt * sizeof(QWORD));
+		storage_enumerate(0, disks, &dcnt);
+		void *addr = 0;
+		virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &addr, 1, VMM_TYPE_COMMITXF);
+		GUID_PARTITION *part = heap_alloc(sizeof(GUID_PARTITION) * 16);
+		char *buf = heap_alloc(64);
+		char *model = buf;
+		char *serial = buf + 41;
+		for (DWORD didx = 0; didx < dcnt; didx++)
 		{
-			printf("HD(%lu,%lu): %016llX-%016llX\n", didx, pidx, part[pidx].LBA0, part[pidx].LBA1);
+			QWORD disk = disks[didx];
+			storage_identify(disk, model, serial);
+			printf("%p: %s", (void *) disk, model);
+			if (serial[0])
+				printf(" - %s", serial);
+			printf("\n");
+			BYTE pcnt = partition_enumerate(disk, part, 16);
+			for (DWORD pidx = 0; pidx < pcnt; pidx++)
+				printf("HD(%lu,%lu): %016llX-%016llX\n", didx, pidx, part[pidx].LBA0, part[pidx].LBA1);
 		}
+		heap_free(part);
 	}
+
+
+	BYTE *buffer = 0;
+	virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &buffer, 1, VMM_TYPE_COMMITXF);
+	GUID_PARTITION *part = heap_alloc(sizeof(GUID_PARTITION));
+	partition_volume(2, part);
+	NTFS_BOOT *ntfs = (NTFS_BOOT *) part->BOOT;
+	QWORD mftSector = ntfs->HIDN + (ntfs->SCLU * ntfs->MFT0);
+	printf("MFT @ %llu\n", mftSector);
+	storage_operation((QWORD) part->DISK, buffer, mftSector, 2, STORAGE_OPERATIO_READ);
+	printf("MFT %s\n", (char *) buffer);
+
+
 	printf("OK\n");
 	while (SYSTEM_TABLE->RUNN) _mm_pause();
 }

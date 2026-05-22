@@ -59,6 +59,12 @@ void interrupt_system_call(INTERRUPT_STACK *stack)
 		storage_identify(arg->HNDL, arg->MODN, arg->SERN);
 		return;
 	}
+	if (type == SYSCALL_TYPE_PARTITION_VOLUME)
+	{
+		SYSCALL_PARTITION_VOLUME *arg = (SYSCALL_PARTITION_VOLUME *) stack->RCX;
+		stack->RAX = partition_volume(arg->CHAR, arg->PART);
+		return;
+	}
 }
 void setup_system_call()
 {

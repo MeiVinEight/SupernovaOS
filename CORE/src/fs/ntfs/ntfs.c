@@ -11,5 +11,5 @@ void ntfs_create(GUID_PARTITION *part)
 	BYTE *buf = storage_dma_buffer(disk);
 	__memset(buf, 0, 512);
 	storage_operation((QWORD) disk, buf, part->LBA0, 1, STORAGE_OPERATIO_READ);
-	__memcpy(part->PART, buf, 512);
+	__memcpy(part->BOOT, buf, 512);
 }

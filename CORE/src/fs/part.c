@@ -80,3 +80,24 @@ BYTE partition_enumerate(QWORD disk, GUID_PARTITION *buff, BYTE max)
 	}
 	return cnt;
 }
+DWORD partition_volume(BYTE c, GUID_PARTITION *part)
+{
+	if (__getcs() & 3)
+	{
+		SYSCALL_PARTITION_VOLUME arg;
+		arg.TYPE = SYSCALL_TYPE_PARTITION_VOLUME;
+		arg.CHAR = c;
+		arg.PART = part;
+		return __syscall(&arg);
+	}
+
+	if (!part)
+		return 1;
+	if (c >= 26)
+		return 2;
+	__memset(part, 0, sizeof(GUID_PARTITION));
+	if (!PARTITION[c])
+		return 3;
+	__memcpy(part, PARTITION[c], sizeof(GUID_PARTITION));
+	return 0;
+}

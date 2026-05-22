@@ -91,7 +91,7 @@ typedef struct _GUID_PARTITION
 	void *DISK;
 	BYTE  PIDX;
 	BYTE  DRIV;
-	BYTE  PART[512];
+	BYTE  BOOT[512];
 } GUID_PARTITION;
 
 DWORD gpt_part_type(QWORD *guid);

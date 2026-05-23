@@ -57,13 +57,48 @@ void user_main()
 
 	BYTE *buffer = 0;
 	virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &buffer, 1, VMM_TYPE_COMMITXF);
-	GUID_PARTITION *part = heap_alloc(sizeof(GUID_PARTITION));
-	partition_volume(2, part);
-	NTFS_BOOT *ntfs = (NTFS_BOOT *) part->BOOT;
-	QWORD mftSector = ntfs->HIDN + (ntfs->SCLU * ntfs->MFT0);
-	printf("MFT @ %llu\n", mftSector);
-	storage_operation((QWORD) part->DISK, buffer, mftSector, 2, STORAGE_OPERATIO_READ);
-	printf("MFT %s\n", (char *) buffer);
+	NTFS_PARTITION *part = heap_alloc(sizeof(NTFS_PARTITION));
+	__memset(part, 0, sizeof(NTFS_PARTITION));
+	partition_volume(2, &part->GUID);
+	part->BOOT = (NTFS_BOOT *) part->GUID.BOOT;
+	part->MFTF.FMFT = 0;
+
+	NTFS_MFT_FILE_RECORD *mftrecord = ntfs_mft_record(part, 0, buffer);
+	part->MFT0 = heap_alloc(1024);
+	__memcpy(part->MFT0, mftrecord, 1024);
+	mftrecord = part->MFT0;
+
+	BYTE *attr = (BYTE *) mftrecord;
+	attr += mftrecord->HEAD.attrOffset;
+	DWORD attrLength = 0;
+	for (;; attr += attrLength)
+	{
+		NTFS_MFT_ATTR_HEADER *attrHeader = (NTFS_MFT_ATTR_HEADER *) attr;
+		if (attrHeader->type == 0xFFFFFFFF)
+			break;
+		attrLength = attrHeader->length;
+		if (attrHeader->type == 0x0030)
+		{
+			NTFS_MFT_ATTR_FILE_NAME *fileName = (NTFS_MFT_ATTR_FILE_NAME *) (attr + attrHeader->resident.valueOffset);
+			if (!(fileName->nameType & 1))
+				continue;
+			part->MFTF.NAME = fileName;
+			continue;
+		}
+		if (attrHeader->type == 0x0080)
+		{
+			part->MFTF.DATA = attrHeader;
+			continue;
+		}
+	}
+	BYTE *dataRun = ((BYTE *) part->MFTF.DATA) + part->MFTF.DATA->nonResident.dataRunOffset;
+	BYTE *dataEnd = ((BYTE *) part->MFTF.DATA) + part->MFTF.DATA->length;
+	printf("$MFT DATA:");
+	while (dataRun < dataEnd)
+	{
+		printf(" %02X", *dataRun++);
+	}
+	printf("\n");
 
 
 	printf("OK\n");

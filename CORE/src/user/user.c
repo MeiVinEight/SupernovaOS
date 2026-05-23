@@ -63,34 +63,7 @@ void user_main()
 	part->BOOT = (NTFS_BOOT *) part->GUID.BOOT;
 	part->MFTF.FMFT = 0;
 
-	NTFS_MFT_FILE_RECORD *mftrecord = ntfs_mft_record(part, 0, buffer);
-	part->MFT0 = heap_alloc(1024);
-	__memcpy(part->MFT0, mftrecord, 1024);
-	mftrecord = part->MFT0;
-
-	BYTE *attr = (BYTE *) mftrecord;
-	attr += mftrecord->HEAD.attrOffset;
-	DWORD attrLength = 0;
-	for (;; attr += attrLength)
-	{
-		NTFS_MFT_ATTR_HEADER *attrHeader = (NTFS_MFT_ATTR_HEADER *) attr;
-		if (attrHeader->type == 0xFFFFFFFF)
-			break;
-		attrLength = attrHeader->length;
-		if (attrHeader->type == 0x0030)
-		{
-			NTFS_MFT_ATTR_FILE_NAME *fileName = (NTFS_MFT_ATTR_FILE_NAME *) (attr + attrHeader->resident.valueOffset);
-			if (!(fileName->nameType & 1))
-				continue;
-			part->MFTF.NAME = fileName;
-			continue;
-		}
-		if (attrHeader->type == 0x0080)
-		{
-			part->MFTF.DATA = attrHeader;
-			continue;
-		}
-	}
+	ntfs_resolve_mft(part);
 	BYTE *dataRun = ((BYTE *) part->MFTF.DATA) + part->MFTF.DATA->nonResident.dataRunOffset;
 	BYTE *dataEnd = ((BYTE *) part->MFTF.DATA) + part->MFTF.DATA->length;
 	printf("$MFT DATA:");

@@ -118,4 +118,5 @@ typedef struct _NTFS_PARTITION
 } NTFS_PARTITION;
 
 void ntfs_create(GUID_PARTITION *part);
+void ntfs_resolve_mft(NTFS_PARTITION *part);
 NTFS_MFT_FILE_RECORD *ntfs_mft_record(NTFS_PARTITION *part, DWORD mftNum, void *buf);

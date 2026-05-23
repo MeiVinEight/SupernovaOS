@@ -13,6 +13,42 @@ void ntfs_create(GUID_PARTITION *part)
 	storage_operation((QWORD) disk, buf, part->LBA0, 1, STORAGE_OPERATIO_READ);
 	__memcpy(part->BOOT, buf, 512);
 }
+void ntfs_resolve_mft(NTFS_PARTITION *part)
+{
+	part->MFT0 = heap_alloc(1024);
+	// __memcpy(part->MFT0, buffer, 1024);
+	if (!ntfs_mft_record(part, 0, part->MFT0))
+	{
+		heap_free(part->MFT0);
+		part->MFT0 = 0;
+		return;
+	}
+
+	NTFS_MFT_FILE_HEADER *mftrecord = part->MFT0;
+	BYTE *attr = (BYTE *) mftrecord;
+	attr += mftrecord->attrOffset;
+	DWORD attrLength = 0;
+	for (;; attr += attrLength)
+	{
+		NTFS_MFT_ATTR_HEADER *attrHeader = (NTFS_MFT_ATTR_HEADER *) attr;
+		if (attrHeader->type == 0xFFFFFFFF)
+			break;
+		attrLength = attrHeader->length;
+		if (attrHeader->type == 0x0030)
+		{
+			NTFS_MFT_ATTR_FILE_NAME *fileName = (NTFS_MFT_ATTR_FILE_NAME *) (attr + attrHeader->resident.valueOffset);
+			if (!(fileName->nameType & 1))
+				continue;
+			part->MFTF.NAME = fileName;
+			continue;
+		}
+		if (attrHeader->type == 0x0080)
+		{
+			part->MFTF.DATA = attrHeader;
+			continue;
+		}
+	}
+}
 QWORD ntfs_convert_lcn(NTFS_MFT_ATTR_HEADER *dataAttr, QWORD vcn)
 {
 	QWORD dataRunOffset = (QWORD) dataAttr + dataAttr->nonResident.dataRunOffset;
@@ -54,7 +90,9 @@ NTFS_MFT_FILE_RECORD *ntfs_mft_record(NTFS_PARTITION *part, DWORD mftNum, void *
 		DWORD mftInClus = mftNum % mftPreClus;
 		mftSector = ntfs->HIDN + (lcn * ntfs->SCLU) + (mftInClus << 1);
 	}
-	storage_operation((QWORD) part->GUID.DISK, buf, mftSector, 2, STORAGE_OPERATIO_READ);
+	QWORD ret = storage_operation((QWORD) part->GUID.DISK, buf, mftSector, 2, STORAGE_OPERATIO_READ);
+	if (ret)
+		return 0;
 	NTFS_MFT_FILE_RECORD *record = buf;
 	record->UPA0 = record->HEAD.updateSeq[0];
 	record->UPA1 = record->HEAD.updateSeq[1];

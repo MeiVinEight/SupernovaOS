@@ -24,30 +24,7 @@ void ntfs_resolve_mft(NTFS_PARTITION *part)
 		return;
 	}
 
-	NTFS_MFT_FILE_HEADER *mftrecord = part->MFT0;
-	BYTE *attr = (BYTE *) mftrecord;
-	attr += mftrecord->attrOffset;
-	DWORD attrLength = 0;
-	for (;; attr += attrLength)
-	{
-		NTFS_MFT_ATTR_HEADER *attrHeader = (NTFS_MFT_ATTR_HEADER *) attr;
-		if (attrHeader->type == 0xFFFFFFFF)
-			break;
-		attrLength = attrHeader->length;
-		if (attrHeader->type == 0x0030)
-		{
-			NTFS_MFT_ATTR_FILE_NAME *fileName = (NTFS_MFT_ATTR_FILE_NAME *) (attr + attrHeader->resident.valueOffset);
-			if (!(fileName->nameType & 1))
-				continue;
-			part->MFTF.NAME = fileName;
-			continue;
-		}
-		if (attrHeader->type == 0x0080)
-		{
-			part->MFTF.DATA = attrHeader;
-			continue;
-		}
-	}
+	ntfs_resolve_record(part->MFT0, &part->FMFT);
 }
 QWORD ntfs_convert_lcn(NTFS_MFT_ATTR_HEADER *dataAttr, QWORD vcn)
 {
@@ -86,7 +63,7 @@ NTFS_MFT_FILE_RECORD *ntfs_mft_record(NTFS_PARTITION *part, DWORD mftNum, void *
 	if (mftNum)
 	{
 		DWORD vcn = mftNum / mftPreClus;
-		DWORD lcn = ntfs_convert_lcn(part->MFTF.DATA, vcn);
+		DWORD lcn = ntfs_convert_lcn(part->FMFT.DATA, vcn);
 		DWORD mftInClus = mftNum % mftPreClus;
 		mftSector = ntfs->HIDN + (lcn * ntfs->SCLU) + (mftInClus << 1);
 	}
@@ -97,4 +74,28 @@ NTFS_MFT_FILE_RECORD *ntfs_mft_record(NTFS_PARTITION *part, DWORD mftNum, void *
 	record->UPA0 = record->HEAD.updateSeq[0];
 	record->UPA1 = record->HEAD.updateSeq[1];
 	return record;
+}
+void ntfs_resolve_record(void *record, NTFS_FILE *file)
+{
+	NTFS_MFT_FILE_HEADER *mftrecord = record;
+	BYTE *attr = (BYTE *) mftrecord;
+	attr += mftrecord->attrOffset;
+	DWORD attrLen = 0;
+	for (;; attr += attrLen)
+	{
+		NTFS_MFT_ATTR_HEADER *attrHeader = (NTFS_MFT_ATTR_HEADER *) attr;
+		if (attrHeader->type == NTFS_ATTR_TYPE_NONE)
+			break;
+		attrLen = attrHeader->length;
+		if (attrHeader->type == NTFS_ATTR_TYPE_FILE_NAME)
+		{
+			file->NAME = heap_alloc(attrHeader->length);
+			__memcpy(file->NAME, attrHeader, attrHeader->length);
+		}
+		if (attrHeader->type == NTFS_ATTR_TYPE_DATA)
+		{
+			file->DATA = heap_alloc(attrHeader->length);
+			__memcpy(file->DATA, attrHeader, attrHeader->length);
+		}
+	}
 }

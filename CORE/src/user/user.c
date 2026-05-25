@@ -61,11 +61,11 @@ void user_main()
 	__memset(part, 0, sizeof(NTFS_PARTITION));
 	partition_volume(2, &part->GUID);
 	part->BOOT = (NTFS_BOOT *) part->GUID.BOOT;
-	part->MFTF.FMFT = 0;
+	part->FMFT.FMFT = 0;
 
 	ntfs_resolve_mft(part);
-	BYTE *dataRun = ((BYTE *) part->MFTF.DATA) + part->MFTF.DATA->nonResident.dataRunOffset;
-	BYTE *dataEnd = ((BYTE *) part->MFTF.DATA) + part->MFTF.DATA->length;
+	BYTE *dataRun = ((BYTE *) part->FMFT.DATA) + part->FMFT.DATA->nonResident.dataRunOffset;
+	BYTE *dataEnd = ((BYTE *) part->FMFT.DATA) + part->FMFT.DATA->length;
 	printf("$MFT DATA:");
 	while (dataRun < dataEnd)
 	{

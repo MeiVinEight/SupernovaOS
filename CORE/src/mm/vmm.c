@@ -555,6 +555,9 @@ void heap_free(const volatile void *addr)
 	if (!HEAPK)
 		return;
 
+	if (!addr)
+		return;
+
 	QWORD *heap = HEAPK;
 	QWORD *prev = 0;
 	for (; ; prev = heap, heap += 1 + (*heap >> 3))

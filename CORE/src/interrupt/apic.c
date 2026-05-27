@@ -9,6 +9,7 @@
 #include <arch/processor.h>
 #include <mm/segment.h>
 #include <smp/smp.h>
+#include <timer/timer.h>
 
 
 #define CPUID_FEAT_EDX_APIC (1 << 9)
@@ -219,10 +220,10 @@ void apic_ipi(BYTE apicId, BYTE intr)
 {
 	apic_write_interrupt_command((((QWORD) apicId) << 56) | APIC_ICR_LEVEL_ASSERT | intr);
 }
-void apic_startup_ap(BYTE apicid, void (*apEntry)(void))
+DWORD apic_startup_ap(BYTE apicid, void (*apEntry)(void))
 {
 	if (apicid == apic_current_id())
-		return;
+		return 0;
 
 	*((WORD *) (SYSTEM_TABLE->APC + 0x38)) = (WORD) (((QWORD) SYSTEM_TABLE->GDT) & 0xFFFF);
 	*((QWORD *) (SYSTEM_TABLE->APC + 0x95)) = (QWORD) apEntry;
@@ -230,37 +231,24 @@ void apic_startup_ap(BYTE apicid, void (*apEntry)(void))
 	APIC_BSP_LOCK = 1;
 
 	// INIT
-	apic_write_interrupt_command(APIC_ICR_LEVEL_ASSERT | APIC_ICR_DELIVERY_INIT | (((QWORD) apicid) << 56));
+	apic_write_interrupt_command(APIC_ICR_DELIVERY_INIT | APIC_ICR_LEVEL_ASSERT | (((QWORD) apicid) << 56));
 	// Delay
 	__halt();
 	// SIPI
-	apic_write_interrupt_command(APIC_ICR_LEVEL_ASSERT | APIC_ICR_DELIVERY_STARTUP | /*((((QWORD) SYSTEM_TABLE->APC) >> 12) & 0xFF)*/9 | (((QWORD) apicid) << 56));
-	while (APIC_BSP_LOCK) __halt();
-
-
-	/*
-	// Check BSP
-	APIC_REGISTERS[APIC_ICRH][0] = APIC_REGISTERS[APIC_ICRH][0] | (((QWORD) apicid) << 24); // select AP
-	APIC_REGISTERS[APIC_ICRL][0] = (APIC_REGISTERS[APIC_ICRL][0] & 0xFFF00000) | 0x0000C500; // trigger INIT IPI
-	while (APIC_REGISTERS[APIC_ICRL][0] & APIC_ICR_DELIVERY_STATUS) __nop(); // wait for delivery
-	APIC_REGISTERS[APIC_ICRH][0] = APIC_REGISTERS[APIC_ICRH][0] | (((QWORD) apicid) << 24); // select AP
-	APIC_REGISTERS[APIC_ICRL][0] = (APIC_REGISTERS[APIC_ICRL][0] & 0xFFF00000) | 0x00008500; // deassert
-	while (APIC_REGISTERS[APIC_ICRL][0] & APIC_ICR_DELIVERY_STATUS) __nop(); // wait for delivery
-	__halt();
-	// send STARTUP IPI (twice)
-	for (int j = 0; j < 2; j++)
+	QWORD icc = (((QWORD) apicid) << 56);
+	icc |= APIC_ICR_LEVEL_ASSERT;
+	icc |= APIC_ICR_DELIVERY_STARTUP;
+	icc |= /*((((QWORD) SYSTEM_TABLE->APC) >> 12) & 0xFF)*/ 9;
+	apic_write_interrupt_command(icc);
+	DWORD waiting = 0;
+	while (APIC_BSP_LOCK)
 	{
-		APIC_REGISTERS[APIC_ESR][0] = 0; // clear APIC errors
-		APIC_REGISTERS[APIC_ICRH][0] = APIC_REGISTERS[APIC_ICRH][0] | (((QWORD) apicid) << 24); // select AP
-		APIC_REGISTERS[APIC_ICRL][0] = (APIC_REGISTERS[APIC_ICRL][0] & 0xFFF0F800) | 0x00000609; // trigger STARTUP IPI for 0900:0000
-		// wait 200 usec
-		__halt();
-		__halt();
-		__halt();
-		__halt();
-		while (APIC_REGISTERS[APIC_ICRL][0] & APIC_ICR_DELIVERY_STATUS) __nop(); // wait for delivery
+		waiting++;
+		if (waiting > 1000)
+			return 1;
+		delay(1);
 	}
-	*/
+	return 0;
 
 }
 void setup_madt(ACPI_MADT *madt)
@@ -316,7 +304,10 @@ void apic_setup_multiprocessor()
 	SYSTEM_TABLE->PAGING[0][0] = SYSTEM_TABLE->PAGING[0][256];
 	for (int i = 0; i < 64; i++)
 		if (CPU_MASK & (1ULL << i))
-			apic_startup_ap(i, aproc_startup);
+		{
+			if (apic_startup_ap(i, aproc_startup))
+				CPU_MASK |= ~(1ULL << i);
+		}
 	SYSTEM_TABLE->PAGING[0][0] = pag0;
 	register_interrupt(SMP_INT_VECTOR, int_smp);
 }

@@ -110,7 +110,7 @@ DWORD apic_current_id();
 void setup_apic_timer(DWORD rate);
 void eoi_apic(BYTE id);
 void apic_ipi(BYTE apicId, BYTE intr);
-void apic_startup_ap(BYTE apicid, void (*apEntry)(void));
+DWORD apic_startup_ap(BYTE apicid, void (*apEntry)(void));
 void setup_madt(ACPI_MADT *madt);
 void apic_setup_multiprocessor();
 DWORD ioapic_read(volatile DWORD *base, int idx);

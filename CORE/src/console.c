@@ -43,8 +43,8 @@ COREAPI DWORD COLOR_PALETTE[] =
 	0xFFFFFF
 };
 COREAPI SIMPLE_TEXT_MODE SIMPLE_TEXT = {
-	.POS = 0,
-	.COLOR = 0x0F
+	.POSS = 0,
+	.COLR = 0x0F
 };
 COREAPI volatile QWORD FRAME_BUFFER = 0;
 COREAPI volatile QWORD FLUSH_BUFFER = 0;
@@ -71,7 +71,7 @@ void setup_console()
 		avxBuf++;
 	__memset128((void *) FRAME_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
 	__memset128((void *) FLUSH_BUFFER, avxBuf, (SYSTEM_TABLE->PPL * SYSTEM_TABLE->VRES * 4) / 16);
-	((volatile SIMPLE_TEXT_MODE *) &SIMPLE_TEXT)->POS = 0;
+	((volatile SIMPLE_TEXT_MODE *) &SIMPLE_TEXT)->POSS = 0;
 }
 void draw_char(char ch, DWORD color, DWORD x, DWORD y)
 {
@@ -100,19 +100,19 @@ void outchar(char ch)
 	DWORD charPreLine = SYSTEM_TABLE->HRES / 8;
 	if (ch == '\r')
 	{
-		text->POS -= text->POS % charPreLine;
+		text->POSS -= text->POSS % charPreLine;
 	}
 	else if (ch == '\n')
 	{
-		text->POS += charPreLine - (text->POS % charPreLine);
+		text->POSS += charPreLine - (text->POSS % charPreLine);
 	}
 	else
 	{
-		draw_char(ch, text->COLOR, text->POS % charPreLine, text->POS / charPreLine);
-		text->POS++;
+		draw_char(ch, text->COLR, text->POSS % charPreLine, text->POSS / charPreLine);
+		text->POSS++;
 	}
 	DWORD maxLines = SYSTEM_TABLE->VRES / 16;
-	DWORD lines = text->POS / charPreLine;
+	DWORD lines = text->POSS / charPreLine;
 	if (lines >= maxLines)
 	{
 		QWORD copySize = ((SYSTEM_TABLE->VRES - 16) * SYSTEM_TABLE->PPL) >> 2;
@@ -126,7 +126,7 @@ void outchar(char ch)
 		QWORD buf[2] = { 0, 0 };
 		__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
 		__memset128((void *) (FLUSH_BUFFER + ((maxLines - 1) * 64 * SYSTEM_TABLE->PPL)), buf, SYSTEM_TABLE->PPL * 4);
-		text->POS -= charPreLine;
+		text->POSS -= charPreLine;
 	}
 	async_unlock(&CONSOLE_LOCK);
 }

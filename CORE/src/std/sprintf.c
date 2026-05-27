@@ -607,10 +607,10 @@ static int core_vsnprintf(FORMAT_CONTEXT* c, const char* fmt, va_list ap)
 int vprintf(BYTE attr, const char *fmt, va_list ap)
 {
 	FORMAT_CONTEXT c = {1, outchar, 0, 0};
-	DWORD color = SIMPLE_TEXT.COLOR;
-	SIMPLE_TEXT.COLOR = attr;
+	DWORD color = SIMPLE_TEXT.COLR;
+	SIMPLE_TEXT.COLR = attr;
 	int r = core_vsnprintf(&c, fmt, ap);
-	SIMPLE_TEXT.COLOR = color;
+	SIMPLE_TEXT.COLR = color;
 	return r;
 }
 

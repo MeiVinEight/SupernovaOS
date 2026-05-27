@@ -13,14 +13,14 @@ int __cdecl printf(const char* fmt, ...)
 	WORD cs = __getcs();
 	int r;
 	if (!(cs & 3))
-		r = vprintf(SIMPLE_TEXT.COLOR, fmt, va);
+		r = vprintf(SIMPLE_TEXT.COLR, fmt, va);
 	else
 	{
 		SYSCALL_PRINTF arg;
 		arg.TYPE = SYSCALL_TYPE_PRINTF;
 		arg.FMRT = fmt;
 		arg.VARG = va;
-		arg.ATTR = SIMPLE_TEXT.COLOR;
+		arg.ATTR = SIMPLE_TEXT.COLR;
 		r = (int) __syscall(&arg);
 	}
 	va_end(va);

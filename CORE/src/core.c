@@ -21,7 +21,7 @@ QWORD core_mapping(QWORD addr)
 }
 void panic(INTERRUPT_STACK *stack)
 {
-	SIMPLE_TEXT.COLOR = 0x0C;
+	SIMPLE_TEXT.COLR = 0x0C;
 	printf("PANIC CPU #%u INT: #%02llX @ %04llX:%016llX\nERR=%016llX\n", cpu_local_apic_id(), stack->INT, stack->CS, stack->RIP, stack->ERROR);
 	printf("RAX=%016llX RCX=%016llX RDX=%016llX RBX=%016llX\n", stack->RAX, stack->RCX, stack->RDX, stack->RBX);
 	printf("RSP=%016llX RBP=%016llX RSI=%016llX RDI=%016llX\n", stack->RSP, stack->RBP, stack->RSI, stack->RDI);

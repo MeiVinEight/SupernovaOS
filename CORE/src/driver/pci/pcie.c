@@ -7,12 +7,24 @@
 #include <driver/pci/msi/msi.h>
 #include <driver/ahci/ahci.h>
 #include <driver/nvme/nvme.h>
+#include <stdio.h>
 
 COREAPI volatile ACPI_MCFG *volatile MCFG = 0;
 
 void setup_pcie_mcfg(ACPI_MCFG *mcfg)
 {
 	MCFG = mcfg;
+}
+DWORD pcie_setup_devce(PCI_EXPRESS_DEVICE *pcie)
+{
+	PCI_CONFIGURATION_SPACE *conf = pcie->configuration;
+	if (conf->class == 0x0C0330) // xHCI
+		return setup_usb_xhci_pcie(pcie), 1;
+	if (conf->class == 0x010601) // AHCI
+		return setup_ahci_controller(pcie), 1;
+	if (conf->class == 0x010802) // NVMe
+		return nvme_controller_setup(pcie), 1;
+	return 0;
 }
 void setup_pcie()
 {
@@ -42,6 +54,15 @@ void setup_pcie()
 					if ((!conf->device) || (conf->device == 0xFFFF))
 						continue;
 
+
+					PCI_EXPRESS_DEVICE pcie;
+					pcie.bus = bus;
+					pcie.device = device;
+					pcie.function = func;
+					pcie.configuration = conf;
+					if (pcie_setup_devce(&pcie))
+						continue;
+
 					/*
 					PCI_DEVICE_VENDOR vendor;
 					vendor.VENDOR = conf->vendor;
@@ -51,23 +72,10 @@ void setup_pcie()
 					const char *vendorName = pci_vendor_name(vendor.VENDOR);
 					const char *deviceName = pci_device_name(vendor);
 					if (vendorName && deviceName)
-						printf("%s %s", vendorName, deviceName);
+						printf("%s %s\n", vendorName, deviceName);
 					else
-						simple_output_address(vendor.ID, 8);
-					outchar('\n');
+						printf("%08lX\n", vendor.ID);
 					*/
-
-					PCI_EXPRESS_DEVICE pcie;
-					pcie.bus = bus;
-					pcie.device = device;
-					pcie.function = func;
-					pcie.configuration = conf;
-					if (conf->class == 0x0C0330) // xHCI
-						setup_usb_xhci_pcie(&pcie);
-					if (conf->class == 0x010601) // AHCI
-						setup_ahci_controller(&pcie);
-					if (conf->class == 0x010802) // NVMe
-						nvme_controller_setup(&pcie);
 				}
 			}
 		}

@@ -49,6 +49,7 @@ COREAPI char PCI_DEVICE_1E959100[] = "CL1-3D256-Q11 NVMe SSD M.2";
 
 COREAPI char PCI_DEVICE_808606D3[] = "400 Series Chipset Family SATA AHCI Controller";
 COREAPI char PCI_DEVICE_808606ED[] = "Comet Lake USB 3.1 xHCI Host Controller";
+COREAPI char PCI_DEVICE_80860DC7[] = "Ethernet Connection I219-LM";
 COREAPI char PCI_DEVICE_8086100E[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_808610D3[] = "QEMU Virtual Machine Ethernet Controller";
 COREAPI char PCI_DEVICE_80861237[] = "440FX - 82441FX PMC [Natoma]";
@@ -70,6 +71,23 @@ COREAPI char PCI_DEVICE_80867111[] = "82371AB/EB/MB PIIX4 IDE";
 COREAPI char PCI_DEVICE_80867113[] = "82371AB/EB/MB PIIX4 ACPI";
 COREAPI char PCI_DEVICE_80867191[] = "440BX/ZX/DX - 82443BX/ZX/DX AGP bridge";
 COREAPI char PCI_DEVICE_80867192[] = "440BX/ZX/DX - 82443BX/ZX/DX Host bridge (AGP disabled)";
+COREAPI char PCI_DEVICE_80867A83[] = "Q670 Chipset eSPI Controller";
+COREAPI char PCI_DEVICE_80867AA3[] = "600 Series Chipset Family SMBus";
+COREAPI char PCI_DEVICE_80867AA4[] = "600 Series Chipset Family SPI (flash) Controller";
+COREAPI char PCI_DEVICE_80867AA7[] = "600 Series Chipset Family Shared SRAM";
+COREAPI char PCI_DEVICE_80867AA8[] = "600 Series Chipset Family UART #0";
+COREAPI char PCI_DEVICE_80867AAB[] = "600 Series Chipset Family GSPI #1";
+COREAPI char PCI_DEVICE_80867AC8[] = "600 Series Chipset Family PCIe Root Port #25";
+COREAPI char PCI_DEVICE_80867ACC[] = "600 Series Chipset Family I2C Controller #0";
+COREAPI char PCI_DEVICE_80867ACD[] = "600 Series Chipset Family I2C Controller #1";
+COREAPI char PCI_DEVICE_80867ACF[] = "600 Series Chipset Family I2C Controller #3";
+COREAPI char PCI_DEVICE_80867AD0[] = "600 Series Chipset Family HD Audio";
+COREAPI char PCI_DEVICE_80867AE0[] = "600 Series Chipset Family USB 3.2 Gen 2x2 (20Gbs) XHCI Host Controller";
+COREAPI char PCI_DEVICE_80867AE2[] = "600 Series Chipset Family SATA Controller (AHCI)";
+COREAPI char PCI_DEVICE_80867AE8[] = "600 Series Chipset Family CSME HECI #1";
+COREAPI char PCI_DEVICE_80867AEB[] = "600 Series Chipset Family CSME Keyboard and Text (KT) Redirection";
+COREAPI char PCI_DEVICE_80867AFC[] = "600 Series Chipset Family I2C Controller #4";
+COREAPI char PCI_DEVICE_80867AFD[] = "600 Series Chipset Family I2C Controller #5";
 COREAPI char PCI_DEVICE_8086A282[] = "200 Series PCH SATA controller [AHCI mode]";
 COREAPI char PCI_DEVICE_8086A290[] = "200 Series PCH PCI Express Root Port #1";
 COREAPI char PCI_DEVICE_8086A292[] = "200 Series PCH PCI Express Root Port #3";
@@ -88,6 +106,9 @@ COREAPI char PCI_DEVICE_8086A2E9[] = "200 Series PCH PCI Express Root Port #19";
 COREAPI char PCI_DEVICE_8086A2EB[] = "200 Series PCH PCI Express Root Port #21";
 COREAPI char PCI_DEVICE_8086A2C9[] = "Z370 Chipset LPC/eSPI Controller";
 COREAPI char PCI_DEVICE_8086A2F0[] = "200 Series PCH HD Audio";
+COREAPI char PCI_DEVICE_8086A703[] = "Raptor Lake-S Host Bridge/DRAM Controller";
+COREAPI char PCI_DEVICE_8086A77D[] = "Raptor Lake Crashlog and Telemetry";
+COREAPI char PCI_DEVICE_8086A780[] = "Raptor Lake-S GT1 [UHD Graphics 770]";
 
 COREAPI char PCI_DEVICE_80EE4E56[] = "VirtualBox NVMe Controller";
 COREAPI char PCI_DEVICE_80EEBEEF[] = "VirtualBox Graphics Adapter";
@@ -170,6 +191,7 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 	{
 		if (device.DEVICE == 0x06D3) return PCI_DEVICE_808606D3;
 		if (device.DEVICE == 0x06ED) return PCI_DEVICE_808606ED;
+		if (device.DEVICE == 0x0DC7) return PCI_DEVICE_80860DC7;
 		if (device.DEVICE == 0x100E) return PCI_DEVICE_8086100E;
 		if (device.DEVICE == 0x10D3) return PCI_DEVICE_808610D3;
 		if (device.DEVICE == 0x1237) return PCI_DEVICE_80861237;
@@ -191,6 +213,23 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 		if (device.DEVICE == 0x7113) return PCI_DEVICE_80867113;
 		if (device.DEVICE == 0x7191) return PCI_DEVICE_80867191;
 		if (device.DEVICE == 0x7192) return PCI_DEVICE_80867192;
+		if (device.DEVICE == 0x7A83) return PCI_DEVICE_80867A83;
+		if (device.DEVICE == 0x7AA3) return PCI_DEVICE_80867AA3;
+		if (device.DEVICE == 0x7AA4) return PCI_DEVICE_80867AA4;
+		if (device.DEVICE == 0x7AA7) return PCI_DEVICE_80867AA7;
+		if (device.DEVICE == 0x7AA8) return PCI_DEVICE_80867AA8;
+		if (device.DEVICE == 0x7AAB) return PCI_DEVICE_80867AAB;
+		if (device.DEVICE == 0x7AC8) return PCI_DEVICE_80867AC8;
+		if (device.DEVICE == 0x7ACC) return PCI_DEVICE_80867ACC;
+		if (device.DEVICE == 0x7ACD) return PCI_DEVICE_80867ACD;
+		if (device.DEVICE == 0x7ACF) return PCI_DEVICE_80867ACF;
+		if (device.DEVICE == 0x7AD0) return PCI_DEVICE_80867AD0;
+		if (device.DEVICE == 0x7AE0) return PCI_DEVICE_80867AE0;
+		if (device.DEVICE == 0x7AE2) return PCI_DEVICE_80867AE2;
+		if (device.DEVICE == 0x7AE8) return PCI_DEVICE_80867AE8;
+		if (device.DEVICE == 0x7AEB) return PCI_DEVICE_80867AEB;
+		if (device.DEVICE == 0x7AFC) return PCI_DEVICE_80867AFC;
+		if (device.DEVICE == 0x7AFD) return PCI_DEVICE_80867AFD;
 		if (device.DEVICE == 0xA282) return PCI_DEVICE_8086A282;
 		if (device.DEVICE == 0xA290) return PCI_DEVICE_8086A290;
 		if (device.DEVICE == 0xA292) return PCI_DEVICE_8086A292;
@@ -209,6 +248,9 @@ const char *pci_device_name(PCI_DEVICE_VENDOR device)
 		if (device.DEVICE == 0xA2E9) return PCI_DEVICE_8086A2E9;
 		if (device.DEVICE == 0xA2EB) return PCI_DEVICE_8086A2EB;
 		if (device.DEVICE == 0xA2F0) return PCI_DEVICE_8086A2F0;
+		if (device.DEVICE == 0xA703) return PCI_DEVICE_8086A703;
+		if (device.DEVICE == 0xA77D) return PCI_DEVICE_8086A77D;
+		if (device.DEVICE == 0xA780) return PCI_DEVICE_8086A780;
 	}
 	if (device.VENDOR == 0x80EE)
 	{

@@ -161,7 +161,7 @@ typedef struct _PCI_EXPRESS_DEVICE
 	DWORD device:5;
 	DWORD bus:8;
 	DWORD reserve:8;
-	volatile PCI_CONFIGURATION_SPACE *configuration;
+	PCI_CONFIGURATION_SPACE *configuration;
 } PCI_EXPRESS_DEVICE;
 
 extern volatile ACPI_MCFG *volatile MCFG;

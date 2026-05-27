@@ -33,8 +33,8 @@ unsigned long long _DllMainCRTStartup()
 	setup_processor();
 	setup_interrupt();
 	setup_page_fault();
-	setup_basic_console();
 	setup_memory();
+	setup_basic_console();
 	setup_console();
 
 	printf("Supernova OS\n");

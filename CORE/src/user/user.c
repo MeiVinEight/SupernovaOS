@@ -55,15 +55,16 @@ void user_main()
 	}
 
 
-	BYTE *buffer = 0;
+	void *buffer = 0;
 	virtual_alloc(CURRENT_PROCESS_HANDLE, (QWORD *) &buffer, 1, VMM_TYPE_COMMITXF);
+
+
 	NTFS_PARTITION *part = heap_alloc(sizeof(NTFS_PARTITION));
 	__memset(part, 0, sizeof(NTFS_PARTITION));
 	partition_volume(2, &part->GUID);
-	part->BOOT = (NTFS_BOOT *) part->GUID.BOOT;
-	part->FMFT.FMFT = 0;
+	ntfs_setup(part);
 
-	ntfs_resolve_mft(part);
+	/*
 	BYTE *dataRun = ((BYTE *) part->FMFT.DATA) + part->FMFT.DATA->nonResident.dataRunOffset;
 	BYTE *dataEnd = ((BYTE *) part->FMFT.DATA) + part->FMFT.DATA->length;
 	printf("$MFT DATA:");
@@ -72,6 +73,35 @@ void user_main()
 		printf(" %02X", *dataRun++);
 	}
 	printf("\n");
+	*/
+
+	NTFS_MFT_ATTR_HEADER *attr = part->FMFT.DATA;
+	printf("$MFT size: %llu > %llu\n", attr->nonResident.allocatedSize, attr->nonResident.dataSize);
+	QWORD mftcnt = attr->nonResident.dataSize >> 10;
+	NTFS_FILE file;
+	__memset(&file, 0, sizeof(NTFS_FILE));
+	char *fileNameA = heap_alloc(266);
+	for (QWORD mftidx = 1; mftidx < mftcnt; mftidx++)
+	{
+		ntfs_mft_record(part, mftidx, buffer);
+		NTFS_MFT_FILE_HEADER *fileHeader = buffer;
+		if (fileHeader->signature != NTFS_FILE_SIGNATURE)
+			goto CONTINUE;
+		ntfs_resolve_record(&file, buffer);
+		if (!file.NAME)
+			goto CONTINUE;
+
+		NTFS_MFT_ATTR_FILE_NAME *fileName = ntfs_attr_body(file.NAME, 0);
+		if (ntfs_file_name_parent_mft(fileName) != 5)
+			goto CONTINUE;
+		for (BYTE i = 0; i < fileName->nameLen; i++)
+			fileNameA[i] = (char) fileName->name[i];
+		fileNameA[fileName->nameLen] = 0;
+		printf("%04llx: %s\n", mftidx, fileNameA);
+
+		CONTINUE:;
+		ntfs_file_destructor(&file);
+	}
 
 
 	printf("OK\n");

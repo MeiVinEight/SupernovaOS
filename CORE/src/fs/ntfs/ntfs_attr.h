@@ -48,3 +48,6 @@ typedef struct _NTFS_MFT_ATTR_FILE_NAME
 	BYTE nameType;
 	WORD name[];
 } NTFS_MFT_ATTR_FILE_NAME;
+
+void *ntfs_attr_body(NTFS_MFT_ATTR_HEADER *attrHeader, int nonResident);
+QWORD ntfs_file_name_parent_mft(NTFS_MFT_ATTR_FILE_NAME *fileName);

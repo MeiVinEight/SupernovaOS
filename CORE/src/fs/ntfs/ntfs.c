@@ -2,6 +2,7 @@
 #include <mm/vmm.h>
 #include <intrinsic.h>
 #include <driver/disk/disk.h>
+#include <stdio.h>
 
 void ntfs_create(GUID_PARTITION *part)
 {
@@ -12,19 +13,6 @@ void ntfs_create(GUID_PARTITION *part)
 	__memset(buf, 0, 512);
 	storage_operation((QWORD) disk, buf, part->LBA0, 1, STORAGE_OPERATIO_READ);
 	__memcpy(part->BOOT, buf, 512);
-}
-void ntfs_resolve_mft(NTFS_PARTITION *part)
-{
-	part->MFT0 = heap_alloc(1024);
-	// __memcpy(part->MFT0, buffer, 1024);
-	if (!ntfs_mft_record(part, 0, part->MFT0))
-	{
-		heap_free(part->MFT0);
-		part->MFT0 = 0;
-		return;
-	}
-
-	ntfs_resolve_record(part->MFT0, &part->FMFT);
 }
 QWORD ntfs_convert_lcn(NTFS_MFT_ATTR_HEADER *dataAttr, QWORD vcn)
 {
@@ -75,27 +63,19 @@ NTFS_MFT_FILE_RECORD *ntfs_mft_record(NTFS_PARTITION *part, DWORD mftNum, void *
 	record->UPA1 = record->HEAD.updateSeq[1];
 	return record;
 }
-void ntfs_resolve_record(void *record, NTFS_FILE *file)
+void ntfs_setup(NTFS_PARTITION *part)
 {
-	NTFS_MFT_FILE_HEADER *mftrecord = record;
-	BYTE *attr = (BYTE *) mftrecord;
-	attr += mftrecord->attrOffset;
-	DWORD attrLen = 0;
-	for (;; attr += attrLen)
+	part->BOOT = (NTFS_BOOT *) part->GUID.BOOT;
+	part->FMFT.FMFT = 0;
+	part->MFT0 = heap_alloc(1024);
+	// __memcpy(part->MFT0, buffer, 1024);
+	if (!ntfs_mft_record(part, 0, part->MFT0))
 	{
-		NTFS_MFT_ATTR_HEADER *attrHeader = (NTFS_MFT_ATTR_HEADER *) attr;
-		if (attrHeader->type == NTFS_ATTR_TYPE_NONE)
-			break;
-		attrLen = attrHeader->length;
-		if (attrHeader->type == NTFS_ATTR_TYPE_FILE_NAME)
-		{
-			file->NAME = heap_alloc(attrHeader->length);
-			__memcpy(file->NAME, attrHeader, attrHeader->length);
-		}
-		if (attrHeader->type == NTFS_ATTR_TYPE_DATA)
-		{
-			file->DATA = heap_alloc(attrHeader->length);
-			__memcpy(file->DATA, attrHeader, attrHeader->length);
-		}
+		printf("$MFT READ FAILED!\n");
+		heap_free(part->MFT0);
+		part->MFT0 = 0;
+		return;
 	}
+
+	ntfs_resolve_record(&part->FMFT, part->MFT0);
 }

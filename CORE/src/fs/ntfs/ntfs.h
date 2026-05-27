@@ -3,6 +3,7 @@
 #include  <types.h>
 #include <fs/gpt/gpt.h>
 #include <fs/ntfs/ntfs_attr.h>
+#include <fs/ntfs/ntfs_file.h>
 
 #define NTFS_FILE_SIGNATURE 0x454C4946 // "FILE"
 #define NTFS_ATTR_TYPE_FILE_NAME 0x00000030
@@ -61,12 +62,6 @@ typedef struct _NTFS_MFT_FILE_RECORD
 	BYTE RV01[510];
 	WORD UPA1;
 } NTFS_MFT_FILE_RECORD;
-typedef struct _NTFS_FILE
-{
-	QWORD FMFT;
-	NTFS_MFT_ATTR_HEADER *NAME;
-	NTFS_MFT_ATTR_HEADER *DATA;
-} NTFS_FILE;
 typedef struct _NTFS_PARTITION
 {
 	GUID_PARTITION GUID;
@@ -76,6 +71,6 @@ typedef struct _NTFS_PARTITION
 } NTFS_PARTITION;
 
 void ntfs_create(GUID_PARTITION *part);
-void ntfs_resolve_mft(NTFS_PARTITION *part);
+QWORD ntfs_convert_lcn(NTFS_MFT_ATTR_HEADER *dataAttr, QWORD vcn);
 NTFS_MFT_FILE_RECORD *ntfs_mft_record(NTFS_PARTITION *part, DWORD mftNum, void *buf);
-void ntfs_resolve_record(void *record, NTFS_FILE *file);
+void ntfs_setup(NTFS_PARTITION *ntfs);

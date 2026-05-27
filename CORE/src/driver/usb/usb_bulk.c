@@ -66,7 +66,23 @@ DWORD scsi_command(XHCI_USB_DEVICE *device, DWORD iepid, DWORD oepid, DWORD isIn
 QWORD usb_bulk_read(STANDARD_STORAGE_DEVICE *dev, void *buf, QWORD lba, DWORD sec)
 {
 	if ((QWORD) buf & 0xFFF)
-		return 1;
+	{
+		void *bufx = storage_dma_buffer(dev);
+		QWORD cc = 0;
+		while (sec)
+		{
+			DWORD read = sec;
+			if (sec > 8)
+				read = 8;
+			if ((cc = usb_bulk_read(dev, bufx, lba, read)))
+				break;
+			__memcpy(buf, bufx, (read << 9));
+			buf = ((BYTE *) buf) + (read << 9);
+			lba += read;
+			sec -= read;
+		}
+		return cc;
+	}
 
 	USB_BULK_STORAGE_DEVICE *device = (USB_BULK_STORAGE_DEVICE *) dev;
 

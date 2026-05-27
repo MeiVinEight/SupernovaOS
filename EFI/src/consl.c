@@ -1,0 +1,112 @@
+#include <consl.h>
+#include <uefi.h>
+
+UEFIAPI QWORD volatile FRAME_BUFFER;
+UEFIAPI QWORD volatile FLUSH_BUFFER;
+UEFIAPI DWORD COLOR_PALETTE[] =
+{
+	0x000000,
+	0x0000AA,
+	0x00AA00,
+	0x00AAAA,
+	0xAA0000,
+	0xAA00AA,
+	0xFFAA00,
+	0xAAAAAA,
+	0x555555,
+	0x5555FF,
+	0x55FF55,
+	0x55FFFF,
+	0xFF5555,
+	0xFF55FF,
+	0xFFFF55,
+	0xFFFFFF
+};
+UEFIAPI SIMPLE_TEXT_MODE volatile SIMPLE_TEXT = {
+	.POSS = 0,
+	.COLR = 0x0F
+};
+UEFIAPI char scroll_text_line[] = {
+	// LOOP0:
+	0x48, 0x85, 0xC9,             // TEST RCX, RCX
+	0x74, 0x1F,                   // JZ LOOP1
+
+	0xF3, 0x0F, 0x6F, 0x02,       // MOVDQU XMM0, XMMWORD PTR [RDX]
+	0xF3, 0x41, 0x0F, 0x7F, 0x00, // MOVDQU XMMWORD PTR [R8], XMM0
+	0xF3, 0x41, 0x0F, 0x7F, 0x01, // MOVDQU XMMWORD PTR [R9], XMM0
+	0x48, 0x83, 0xC2, 0x10,       // ADD RDX, 10H
+	0x49, 0x83, 0xC0, 0x10,       // ADD R8, 10H
+	0x49, 0x83, 0xC1, 0x10,       // ADD R9, 10H
+	0x48, 0xFF, 0xC9,             // DEC RCX
+	0xEB, 0xDC,                   // JMP LOOP0
+
+	// LOOP1:
+	0xC3,                   // RET
+};
+
+void setup_console(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode, BYTE *font)
+{
+	FRAME_BUFFER = mode->FrameBufferBase;
+	FLUSH_BUFFER = mode->FrameBufferBase;
+	SIMPLE_TEXT.FONT = (BYTE (*)[16]) font;
+	SIMPLE_TEXT.HRES = mode->Info->HorizontalResolution;
+	SIMPLE_TEXT.VRES = mode->Info->VerticalResolution;
+	SIMPLE_TEXT.PPLN = mode->Info->PixelsPerScanLine;
+}
+void draw_char(char ch, DWORD color, DWORD x, DWORD y)
+{
+	volatile BYTE(*fontMap)[16] = SIMPLE_TEXT.FONT;
+	volatile BYTE *font = fontMap[ch];
+	DWORD colorMap[2] = {COLOR_PALETTE[(color >> 4) & 0xF], COLOR_PALETTE[(color >> 0) & 0xF]};
+	QWORD ppl = SIMPLE_TEXT.PPLN;
+	for (int i = 0; i < 16; i++)
+	{
+		BYTE fontBitLine = font[i];
+		for (int j = 8; j--;)
+		{
+			((DWORD *) FRAME_BUFFER)[((y << 4) + i) * ppl + (x << 3) + j] = colorMap[fontBitLine & 1];
+			((DWORD *) FLUSH_BUFFER)[((y << 4) + i) * ppl + (x << 3) + j] = colorMap[fontBitLine & 1];
+			fontBitLine >>= 1;
+		}
+	}
+}
+void outchar(char ch)
+{
+	if (!ch)
+		return;
+	//async_lock(&CONSOLE_LOCK);
+
+	volatile SIMPLE_TEXT_MODE *text = &SIMPLE_TEXT;
+	DWORD charPreLine = SIMPLE_TEXT.HRES / 8;
+	if (ch == '\r')
+	{
+		text->POSS -= text->POSS % charPreLine;
+	}
+	else if (ch == '\n')
+	{
+		text->POSS += charPreLine - (text->POSS % charPreLine);
+	}
+	else
+	{
+		draw_char(ch, text->COLR, text->POSS % charPreLine, text->POSS / charPreLine);
+		text->POSS++;
+	}
+	DWORD maxLines = SIMPLE_TEXT.VRES / 16;
+	DWORD lines = text->POSS / charPreLine;
+	if (lines >= maxLines)
+	{
+		QWORD copySize = ((SIMPLE_TEXT.VRES - 16) * SIMPLE_TEXT.PPLN) >> 2;
+		QWORD src = (FLUSH_BUFFER + SIMPLE_TEXT.PPLN * 16 * 4);
+		//while (copySize--)
+		//	*(dst++) = *(src++);
+		//__memcpy128(dst, src, copySize);
+		((void (*)(QWORD, QWORD, QWORD, QWORD)) scroll_text_line)(copySize, src, FRAME_BUFFER, FLUSH_BUFFER);
+		//dst = (QWORD *) FLUSH_BUFFER;
+		//__memcpy128(dst, src, copySize);
+		QWORD buf[2] = { 0, 0 };
+		__memset128((void *) (FRAME_BUFFER + ((maxLines - 1) * 64 * SIMPLE_TEXT.PPLN)), buf, SIMPLE_TEXT.PPLN * 4);
+		__memset128((void *) (FLUSH_BUFFER + ((maxLines - 1) * 64 * SIMPLE_TEXT.PPLN)), buf, SIMPLE_TEXT.PPLN * 4);
+		text->POSS -= charPreLine;
+	}
+	//async_unlock(&CONSOLE_LOCK);
+}

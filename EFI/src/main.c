@@ -1,7 +1,7 @@
-
 #include "uefi.h"
 #include "intrinsic.h"
 #include "ntfs.h"
+#include "consl.h"
 
 #define PCI_COMMAND         0x04
 #define PCI_BASE_ADDRESS_5	0x24
@@ -79,7 +79,7 @@ typedef struct _SUPERNOVA_SYSTEM_TABLE
 	QWORD PAGE[];
 } SUPERNOVA_SYSTEM_TABLE;
 
-extern char __ImageBase;
+extern BYTE __ImageBase;
 UEFIAPI QWORD EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID[2] = { 0x4A3823DC9042A9DE, 0x6A5180D0DE7AFB96 };
 UEFIAPI QWORD EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID[2] = { 0x11d26459964e5b22, 0x3b7269c9a000398e };
 UEFIAPI QWORD EFI_FILE_INFO_GUID[2] = { 0x11d26d3f09576e92, 0x3b7269c9a000398E };
@@ -115,8 +115,9 @@ void OutputText(const char *s)
 	WORD buf[2] = { 0, 0 };
 	while (*s)
 	{
-		buf[0] = (unsigned char) *s++;
-		OutputString(buf);
+		//buf[0] = (unsigned char) *s++;
+		//OutputString(buf);
+		outchar(*s++);
 	}
 }
 void OutputNumber(QWORD x)
@@ -129,7 +130,7 @@ void OutputNumber(QWORD x)
 		int idx = 19;
 		while (idx && x)
 		{
-			buf[--idx] = '0' + (x % 10);
+			buf[--idx] = (char) ('0' + (x % 10));
 			x /= 10;
 		}
 		num += idx;
@@ -453,6 +454,7 @@ DWORD DetectingDisk(EFI_SYSTEM_TABLE *table)
 
 unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable)
 {
+	handle = &__ImageBase;
 	SYSTEM_TABLE = systemTable;
 	SYSTEM_TABLE->BootServices->SetWatchdogTimer(0, 0, 0, 0);
 
@@ -460,7 +462,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	__writecr0((__readcr0() & (~4ULL)) | 2); // CLEAR CR0.EM AND SET CR0.MP
 	__writecr4(__readcr4() | (3 << 9)); // SET CR4.OSFXSR AND CR4.OSXMMEEXCPT
 
-	int maxMode = 0;
+	DWORD maxMode = 0;
 	QWORD chars = 0;
 	for (DWORD i = 0; i < SYSTEM_TABLE->ConOut->Mode->MaxMode; i++)
 	{
@@ -478,6 +480,7 @@ unsigned long long EFIMainCRTStartup(void *handle, EFI_SYSTEM_TABLE *systemTable
 	SYSTEM_TABLE->BootServices->LocateProtocol(EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, 0, (void **) &graphics);
 	DetectingMode(graphics);
 	QWORD fbb = graphics->Mode->FrameBufferBase;
+	setup_console(graphics->Mode, handle + 0x60);
 
 	/*
 	for (DWORD i = 0; i < info.VerticalResolution; i++)

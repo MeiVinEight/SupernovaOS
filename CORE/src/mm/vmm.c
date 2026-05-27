@@ -607,7 +607,7 @@ void heap_free(const volatile void *addr)
 				addr2 = (addr0 - 0x1000);
 			if (addr3 > (addr1 + 0x1000))
 				addr3 = (addr1 + 0x1000);
-			if (addr3 - addr2)
+			if (addr2 < addr3)
 			{
 				QWORD addr4 = addr2;
 				virtual_alloc(CURRENT_PROCESS_HANDLE, &addr4, (addr3 - addr4) >> 12, VMM_TYPE_UNCOMMIT);

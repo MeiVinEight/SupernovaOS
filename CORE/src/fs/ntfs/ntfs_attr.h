@@ -48,6 +48,13 @@ typedef struct _NTFS_MFT_ATTR_FILE_NAME
 	BYTE nameType;
 	WORD name[];
 } NTFS_MFT_ATTR_FILE_NAME;
+typedef struct _NTFS_MFT_ATTR_INDEX_ROOT
+{
+	DWORD TYPE; // Attribute Type
+	DWORD RULE; //
+	DWORD SRCD; // Index Record Size
+	DWORD CRCD; // Index Record Clusters
+} NTFS_MFT_ATTR_INDEX_ROOT;
 
 void *ntfs_attr_body(NTFS_MFT_ATTR_HEADER *attrHeader, int nonResident);
 QWORD ntfs_file_name_parent_mft(NTFS_MFT_ATTR_FILE_NAME *fileName);

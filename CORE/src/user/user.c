@@ -15,9 +15,9 @@ extern BYTE __ImageBase;
 void user_main()
 {
 	SYSTEM_TABLE = (SUPERNOVA_SYSTEM_TABLE *) &__ImageBase;
-	SIMPLE_TEXT.COLOR = 0x0A;
+	SIMPLE_TEXT.COLR = 0x0A;
 	printf("SupernovaOS @ %p\n", SYSTEM_TABLE);
-	SIMPLE_TEXT.COLOR = 0x0F;
+	SIMPLE_TEXT.COLR = 0x0F;
 
 	// Create Process Heap
 	{
@@ -64,17 +64,6 @@ void user_main()
 	partition_volume(2, &part->GUID);
 	ntfs_setup(part);
 
-	/*
-	BYTE *dataRun = ((BYTE *) part->FMFT.DATA) + part->FMFT.DATA->nonResident.dataRunOffset;
-	BYTE *dataEnd = ((BYTE *) part->FMFT.DATA) + part->FMFT.DATA->length;
-	printf("$MFT DATA:");
-	while (dataRun < dataEnd)
-	{
-		printf(" %02X", *dataRun++);
-	}
-	printf("\n");
-	*/
-
 	NTFS_MFT_ATTR_HEADER *attr = part->FMFT.DATA;
 	printf("$MFT size: %llu > %llu\n", attr->nonResident.allocatedSize, attr->nonResident.dataSize);
 	QWORD mftcnt = attr->nonResident.dataSize >> 10;
@@ -86,6 +75,8 @@ void user_main()
 		ntfs_mft_record(part, mftidx, buffer);
 		NTFS_MFT_FILE_HEADER *fileHeader = buffer;
 		if (fileHeader->signature != NTFS_FILE_SIGNATURE)
+			goto CONTINUE;
+		if (!(fileHeader->flags & 1))
 			goto CONTINUE;
 		ntfs_resolve_record(&file, buffer);
 		if (!file.NAME)
